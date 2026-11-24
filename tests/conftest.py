@@ -6,10 +6,14 @@ The Xiaomi cloud and the vacuum are never contacted: the config flow talks to a 
 
 from __future__ import annotations
 
+import json
+import string
 from collections.abc import Generator
+from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from homeassistant.data_entry_flow import FlowManager, FlowResultType
 
 from custom_components.better_xiaomi_cloud_map_extractor.connector.model import (
     XiaomiCloudMapExtractorConnectorStatus,
@@ -26,6 +30,67 @@ from .original_entries import ALL_SHAPES, SHAPES_WITH_MAC, OriginalShape
 @pytest.fixture(autouse=True)
 def auto_enable_custom_integrations(enable_custom_integrations: None) -> None:
     """Load custom_components/ in every test."""
+
+
+TRANSLATIONS = json.loads(
+    (Path(__file__).parents[1] / "custom_components/better_xiaomi_cloud_map_extractor/translations/en.json").read_text()
+)
+# Reasons Home Assistant translates itself.
+COMMON_ABORTS = {"already_configured", "already_in_progress"}
+
+
+def _placeholders(text: str) -> set[str]:
+    return {name for _, name, _, _ in string.Formatter().parse(text) if name}
+
+
+def assert_renders(section: str, result: dict) -> None:
+    """The frontend can show this flow result: every text exists and gets each placeholder it uses.
+
+    A missing placeholder shows as `MISSING_VALUE` in the frontend (the QR login step, upstream #795).
+    """
+    texts = TRANSLATIONS[section]
+    kind, step_id = result["type"], result.get("step_id")
+    provided = set(result.get("description_placeholders") or {})
+    if kind is FlowResultType.ABORT:
+        reason = result["reason"]
+        assert reason in COMMON_ABORTS or reason in texts["abort"], f"abort reason {reason!r} is not translated"
+        used = [texts["abort"].get(reason, "")]
+    elif kind is FlowResultType.SHOW_PROGRESS:
+        used = [texts["progress"][result["progress_action"]]]
+    elif kind in (FlowResultType.FORM, FlowResultType.MENU):
+        step = texts["step"].get(step_id)
+        assert step is not None, f"step {step_id!r} is not translated"
+        used = [step.get("title", ""), step.get("description", "")]
+        for error in (result.get("errors") or {}).values():
+            assert error in texts["error"], f"error {error!r} of step {step_id!r} is not translated"
+        for option in result.get("menu_options") or []:
+            assert option in step.get("menu_options", {}), f"menu option {option!r} is not translated"
+    else:
+        return
+    missing = set().union(*(_placeholders(text) for text in used)) - provided
+    assert not missing, f"{kind} {step_id or result.get('reason')!r} lacks placeholders {sorted(missing)}"
+
+
+@pytest.fixture(autouse=True)
+def flow_results_render() -> Generator[None]:
+    """Checks every config and options flow result of this integration against translations/en.json."""
+    from custom_components.better_xiaomi_cloud_map_extractor.config_flow import XiaomiCloudMapExtractorFlowHandler
+    from custom_components.better_xiaomi_cloud_map_extractor.options_flow import (
+        XiaomiCloudMapExtractorOptionsFlowHandler,
+    )
+
+    handle_step = FlowManager._async_handle_step
+
+    async def checked(self, flow, step_id, user_input):
+        result = await handle_step(self, flow, step_id, user_input)
+        if isinstance(flow, XiaomiCloudMapExtractorOptionsFlowHandler):
+            assert_renders("options", result)
+        elif isinstance(flow, XiaomiCloudMapExtractorFlowHandler):
+            assert_renders("config", result)
+        return result
+
+    with patch.object(FlowManager, "_async_handle_step", checked):
+        yield
 
 
 def make_device(**overrides) -> XiaomiCloudDeviceInfo:

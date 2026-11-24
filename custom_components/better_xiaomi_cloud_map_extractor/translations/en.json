@@ -13,7 +13,12 @@
       "invalid_captcha": "Invalid captcha provided, try again.",
       "cloud_login_error": "Could not login to Xiaomi Cloud, check the credentials.",
       "cloud_no_devices": "No vacuums found for this Xiaomi Cloud account.",
-      "invalid_vacuum": "Connection to vacuum failed, please check the configuration."
+      "invalid_vacuum": "Connection to vacuum failed, please check the configuration.",
+      "cannot_connect": "Could not reach Xiaomi Cloud. Check Home Assistant's internet connection, then submit to try again.",
+      "qr_code_unavailable": "Xiaomi did not hand out a QR code. Submit to try again in a moment, or log in with username and password instead.",
+      "qr_timeout": "The QR code expired before the login was approved. Submit to get a new code.",
+      "qr_rejected": "Xiaomi did not complete the QR login (it was declined or the code was already used). Submit to get a new code.",
+      "qr_failed": "The QR login failed unexpectedly. Submit to get a new code, or log in with username and password instead."
     },
     "flow_title": "{name}",
     "step": {
@@ -32,6 +37,10 @@
           "username": "Username"
         },
         "description": "Please provide Xiaomi Cloud credentials"
+      },
+      "auth_qr_failed": {
+        "title": "QR code login did not finish",
+        "description": "Submit to show a new QR code. To log in with username and password instead, close this dialog and start again."
       },
       "auth_captcha": {
         "data": {
@@ -92,7 +101,7 @@
       }
     },
     "progress": {
-      "wait_for_login": "Scan the QR code or use [this link]({login_link}) to log in:\n![](data:image/jpeg;base64,{qr_image_b64})"
+      "wait_for_login": "Scan the QR code with the Xiaomi Home app and approve the login there, or open [this link]({login_link}) on your phone or computer and sign in to your Xiaomi account. The code is valid for a few minutes.\n![](data:image/jpeg;base64,{qr_image_b64})"
     }
   },
   "options": {

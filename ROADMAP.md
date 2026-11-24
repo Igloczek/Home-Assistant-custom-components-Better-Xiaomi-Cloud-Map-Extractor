@@ -36,25 +36,20 @@ issues + comments + 👍; the backlog on 2026-11-24 was 141 open issues and 27 o
 counting only what still happens on v3.0.0-alpha-24. Issue and PR numbers refer to the upstream
 repository; each item names the priority it serves.
 
-1. **QR login on Home Assistant 2026.9+** (reliability). The QR flow fails on current Home Assistant and its
-   placeholders show as `MISSING_VALUE`; the login link opens a sign-in page instead of approving.
-   Import upstream PRs #796 and #795, and #766 with a timeout and without swallowing every
-   exception. Closes #779, helps #730. Touches `config_flow.py` like the two threads above, so it
-   starts after they merge.
-2. **Secrets in diagnostics and vendor logs** (reliability: a leaked session is a broken session).
+1. **Secrets in diagnostics and vendor logs** (reliability: a leaked session is a broken session).
    The cloud connector's log is covered by `tests/test_secrets_in_logs.py`; still open: diagnostics
    export the map decryption key in `device_data`. Extend the log scan to every other
    vendor's map download (Ijai is covered). Closes #778.
-3. **Event-loop blocking and update churn** (reliability). Synchronous python-miio calls run on the event loop,
+2. **Event-loop blocking and update churn** (reliability). Synchronous python-miio calls run on the event loop,
    `MiotDevice` is created without a mapping (warning spam, #791), and the map keeps refreshing while
    docked (#764) and floods the logbook (#719). Import #775 (skip #769, which it covers). Closes #791,
    #764, #719; check #655 and #601 against it.
-4. **Actionable failures everywhere** (UI). Any connector error that is not a login problem ends
+3. **Actionable failures everywhere** (UI). Any connector error that is not a login problem ends
    as an `UpdateFailed` with a log line only. Map download and parse failures that persist should
    raise a repair issue that says what to do (vacuum offline, region; `repairs.py` already does this
    for the wrong map format), and the config flow should never end in "Unknown error". Starts after
    the reauth and login threads merge, building on their error mapping.
-5. **Xiaomi models: live data and map index** (backlog). Robot position and path missing while cleaning, wrong
+4. **Xiaomi models: live data and map index** (backlog). Robot position and path missing while cleaning, wrong
    map after maps were deleted, missing walls and no-go zones (b108gl, ov43gb, ov81gl, S40 Pro).
    Import #781 (skip #750, which does the same in 976 lines) and a generalised #748 (ov21gl rooms
    with `room_id=0`, zones, walls; skip #749, wrong base). Closes #720, advances #563, #657, #702,

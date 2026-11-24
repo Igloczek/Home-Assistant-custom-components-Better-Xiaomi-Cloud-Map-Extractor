@@ -13,16 +13,20 @@ import logging
 from unittest.mock import patch
 
 import pytest
+from homeassistant.config_entries import SOURCE_USER
+from homeassistant.data_entry_flow import FlowResultType
 from miio.exceptions import DeviceException
 
 from custom_components.better_xiaomi_cloud_map_extractor.connector import XiaomiCloudMapExtractorConnector
 from custom_components.better_xiaomi_cloud_map_extractor.connector.utils.exceptions import (
     CaptchaRequiredException,
+    FailedConnectionException,
     FailedLoginException,
     TwoFactorAuthRequiredException,
 )
 from custom_components.better_xiaomi_cloud_map_extractor.connector.vacuums.base.model import VacuumApi
 from custom_components.better_xiaomi_cloud_map_extractor.connector.xiaomi_cloud.connector import XiaomiCloudConnector
+from custom_components.better_xiaomi_cloud_map_extractor.const import DOMAIN
 
 from .fake_xiaomi import (
     ACCOUNT,
@@ -156,16 +160,51 @@ async def test_renewal_from_restored_config(debug_log) -> None:
 # Error pages echo what they were sent; failure branches must not log their bodies.
 
 
-async def test_failed_qr_long_poll(debug_log) -> None:
+@pytest.mark.parametrize(
+    ("status", "expected"),
+    [(500, FailedConnectionException), (403, FailedLoginException)],
+    ids=["outage", "refused"],
+)
+async def test_failed_qr_long_poll(debug_log, status: int, expected: type[Exception]) -> None:
     cloud = FakeXiaomiCloud()
     cloud.qr_login("qr-service-token")
     cloud.on("GET", f"{ACCOUNT}/longPolling/poll",
-             lambda r: FakeResponse(status=500, body=f"error for {r.url}"))
+             lambda r: FakeResponse(status=status, body=f'{{"code": 70016, "desc": "error for {r.url}"}}'))
     connector = XiaomiCloudConnector(cloud.session_creator, server="de")
     await connector.login_with_qr_get_code()
 
-    with pytest.raises(FailedLoginException):
+    with pytest.raises(expected):
         await connector.login_with_qr_wait_for_completion()
+    assert_no_secrets(debug_log)
+
+
+@pytest.mark.usefixtures("map_connector")
+@pytest.mark.parametrize("approved", [True, False], ids=["approved", "refused"])
+async def test_qr_login_flow(hass, debug_log, approved: bool) -> None:
+    """The whole QR config flow, as Home Assistant runs it, incl. the login link it resolves."""
+    cloud = vacuum_cloud()
+    cloud.qr_login("qr-service-token")
+    if not approved:
+        cloud.on("GET", f"{ACCOUNT}/longPolling/poll",
+                 lambda r: FakeResponse(status=200, body=f'{{"code": 70016, "desc": "refused {r.url}"}}'))
+    with (
+        patch(
+            "custom_components.better_xiaomi_cloud_map_extractor.config_flow.async_create_clientsession",
+            lambda hass: cloud.session_creator(),
+        ),
+        patch("custom_components.better_xiaomi_cloud_map_extractor.config_flow.save_connector_config"),
+    ):
+        result = await hass.config_entries.flow.async_init(DOMAIN, context={"source": SOURCE_USER})
+        result = await hass.config_entries.flow.async_configure(result["flow_id"], {"next_step_id": "auth_qr"})
+        await hass.async_block_till_done()
+        result = await hass.config_entries.flow.async_configure(result["flow_id"])
+        if approved:
+            result = await hass.config_entries.flow.async_configure(
+                result["flow_id"], {"host": "192.168.1.14", "token": "0" * 32, "used_map_api": "VIOMI"}
+            )
+            await hass.async_block_till_done()
+
+    assert result["type"] is (FlowResultType.CREATE_ENTRY if approved else FlowResultType.FORM)
     assert_no_secrets(debug_log)
 
 

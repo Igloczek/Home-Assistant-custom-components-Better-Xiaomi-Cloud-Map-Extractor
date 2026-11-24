@@ -29,6 +29,9 @@ SERVICE_LOGIN = f"{ACCOUNT}/pass/serviceLogin"
 SERVICE_LOGIN_AUTH2 = f"{ACCOUNT}/pass/serviceLoginAuth2"
 STS = "https://sts.api.io.mi.com/sts"
 API = "https://de.api.io.mi.com/app"
+QR_LOGIN_URL = f"{ACCOUNT}/longPolling/loginUrl"
+QR_LONG_POLL = f"{ACCOUNT}/longPolling/poll"
+QR_LINK = f"{ACCOUNT}/longPolling/login"
 
 USER_ID = "1615523263"
 C_USER_ID = "cUser-abc"
@@ -109,6 +112,8 @@ class FakeXiaomiCloud:
         self.requests: list[Request] = []
         self.valid_service_tokens: set[str] = set()
         self.ssecurity = SSECURITY
+        # Requests to these endpoints wait until the event is set, like a long poll Xiaomi holds open.
+        self.gates: dict[str, asyncio.Event] = {}
 
     # --- session factory -------------------------------------------------------------
     def session_creator(self) -> "FakeSession":
@@ -139,6 +144,9 @@ class FakeXiaomiCloud:
             if request.cookies.get("serviceToken") not in self.valid_service_tokens:
                 # Mi Home answers an expired session with 401 and a plain JSON body.
                 return FakeResponse(status=401, body='{"code":3,"message":"auth err"}')
+            if request.cookies.get("cUserId") != C_USER_ID:
+                # Without the cUserId cookie Mi Home answers an error instead of the account's homes (#796).
+                return FakeResponse(body='{"code":-8,"message":"user not found"}')
             nonce = request.params["_nonce"]
             signed_nonce = base64.b64encode(
                 hashlib.sha256(base64.b64decode(request.params["ssecurity"]) + base64.b64decode(nonce)).digest()
@@ -252,9 +260,13 @@ class FakeXiaomiCloud:
 
         self.on("GET", STS, sts)
 
-    def qr_login(self, service_token: str) -> None:
-        """serviceLogin without a session, the QR code, and the long poll the app completes."""
-        long_poll = f"{ACCOUNT}/longPolling/poll"
+    def qr_login(self, service_token: str, *, timeout: int = 300) -> None:
+        """serviceLogin without a session, the QR code, and the long poll the app completes.
+
+        Like the real cloud, the long poll answers with the session but no cUserId cookie; the cUserId
+        only comes in its JSON. ``loginUrl`` redirects to serviceLogin with ``_json=true``, which a
+        signed-out browser gets as a JSON document instead of the sign-in page (#766).
+        """
         self.on(
             "GET",
             SERVICE_LOGIN,
@@ -270,24 +282,50 @@ class FakeXiaomiCloud:
         )
         self.on(
             "GET",
-            f"{ACCOUNT}/longPolling/loginUrl",
+            QR_LOGIN_URL,
             lambda r: json_response(
                 {
                     "code": 0,
                     "qr": f"{ACCOUNT}/qr.png",
-                    "lp": f"{long_poll}?ticket=qr-poll-ticket",
-                    "loginUrl": f"{ACCOUNT}/login?ticket=qr-login-ticket",
+                    "lp": f"{QR_LONG_POLL}?ticket=qr-poll-ticket",
+                    "loginUrl": f"{QR_LINK}?ticket=qr-login-ticket",
+                    "timeout": timeout,
                 }
             ),
         )
         self.on("GET", f"{ACCOUNT}/qr.png", lambda r: FakeResponse(body=b"\x89PNG-qr-image"))
         self.on(
             "GET",
-            long_poll,
+            QR_LINK,
+            lambda r: FakeResponse(
+                status=302,
+                headers={
+                    "Location": str(
+                        URL(SERVICE_LOGIN).with_query(
+                            {
+                                "sid": "xiaomiio",
+                                "_json": "true",
+                                "callback": f"{STS}?d=qr",
+                                "followup": f"{ACCOUNT}/longPolling/followup?ticket=qr-login-ticket",
+                            }
+                        )
+                    )
+                },
+            ),
+        )
+        self.qr_scanned()
+        self.sts_issuing(service_token)
+
+    def qr_scanned(self) -> None:
+        """The long poll answers with the session once the app approved the login."""
+        self.on(
+            "GET",
+            QR_LONG_POLL,
             lambda r: json_response(
                 {
                     "code": 0,
                     "userId": int(USER_ID),
+                    "cUserId": C_USER_ID,
                     "ssecurity": self.ssecurity,
                     "passToken": PASS_TOKEN,
                     "location": f"{STS}?d=qr&clientSign=client-sign-value",
@@ -295,7 +333,9 @@ class FakeXiaomiCloud:
                 set_cookies={"userId": (USER_ID, THIRTY_DAYS), "passToken": (PASS_TOKEN, THIRTY_DAYS)},
             ),
         )
-        self.sts_issuing(service_token)
+
+    def qr_long_poll(self, handler: Handler) -> None:
+        self.on("GET", QR_LONG_POLL, handler)
 
     def password_login_count(self) -> int:
         return len(self.calls(SERVICE_LOGIN_AUTH2))
@@ -311,6 +351,8 @@ class FakeSession:
 
     async def get(self, url, **kwargs) -> FakeResponse:
         await asyncio.sleep(0)  # a real request yields to the event loop, so concurrent updates interleave
+        if (gate := self._cloud.gates.get(str(URL(str(url)).with_query(None)))) is not None:
+            await gate.wait()
         return self._request("GET", url, **kwargs)
 
     async def post(self, url, **kwargs) -> FakeResponse:
