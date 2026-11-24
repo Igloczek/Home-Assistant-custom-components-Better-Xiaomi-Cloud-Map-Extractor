@@ -44,11 +44,9 @@ repository; each item names the priority it serves.
    `MiotDevice` is created without a mapping (warning spam, #791), and the map keeps refreshing while
    docked (#764) and floods the logbook (#719). Import #775 (skip #769, which it covers). Closes #791,
    #764, #719; check #655 and #601 against it.
-3. **Actionable failures everywhere** (UI). Any connector error that is not a login problem ends
-   as an `UpdateFailed` with a log line only. Map download and parse failures that persist should
-   raise a repair issue that says what to do (vacuum offline, region; `repairs.py` already does this
-   for the wrong map format), and the config flow should never end in "Unknown error". Starts after
-   the reauth and login threads merge, building on their error mapping.
+3. **Repairs for failures that persist** (UI). Every config flow step and map update failure has
+   a specific translated message; still open: a Repairs issue that says what to do when the same
+   failure lasts (vacuum offline, wrong region), like `repairs.py` does for the wrong map format.
 4. **Xiaomi models: live data and map index** (backlog). Robot position and path missing while cleaning, wrong
    map after maps were deleted, missing walls and no-go zones (b108gl, ov43gb, ov81gl, S40 Pro).
    Import #781 (skip #750, which does the same in 976 lines) and a generalised #748 (ov21gl rooms

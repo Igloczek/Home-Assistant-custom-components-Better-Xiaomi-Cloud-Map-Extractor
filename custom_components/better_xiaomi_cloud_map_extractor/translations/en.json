@@ -11,14 +11,16 @@
     },
     "error": {
       "invalid_captcha": "Invalid captcha provided, try again.",
-      "cloud_login_error": "Could not login to Xiaomi Cloud, check the credentials.",
+      "cloud_login_error": "Xiaomi rejected the login. Check the username and password.",
       "cloud_no_devices": "No vacuums found for this Xiaomi Cloud account.",
       "invalid_vacuum": "Connection to vacuum failed, please check the configuration.",
       "cannot_connect": "Could not reach Xiaomi Cloud. Check Home Assistant's internet connection, then submit to try again.",
       "qr_code_unavailable": "Xiaomi did not hand out a QR code. Submit to try again in a moment, or log in with username and password instead.",
       "qr_timeout": "The QR code expired before the login was approved. Submit to get a new code.",
       "qr_rejected": "Xiaomi did not complete the QR login (it was declined or the code was already used). Submit to get a new code.",
-      "qr_failed": "The QR login failed unexpectedly. Submit to get a new code, or log in with username and password instead."
+      "qr_failed": "The QR login failed unexpectedly. Submit to get a new code, or log in with username and password instead.",
+      "unexpected_response": "Xiaomi answered in a way this integration does not understand. Try again in a few minutes; if it keeps happening, report it on the integration's issue tracker.",
+      "session_rejected": "Xiaomi accepted the login but then refused the session. Submit to log in again."
     },
     "flow_title": "{name}",
     "step": {
@@ -79,6 +81,10 @@
         "data_description": {
           "select_vacuum": "[server] Name - model code (MAC address)"
         }
+      },
+      "devices_failed": {
+        "title": "Could not load your vacuums",
+        "description": "The login worked, but the list of vacuums could not be loaded from Xiaomi Cloud. Submit to try again."
       },
       "import_original": {
         "title": "Import from {original_name}",
@@ -726,6 +732,24 @@
     },
     "device_not_found": {
       "message": "The vacuum was not found in the Xiaomi Cloud account. Open the re-authentication in Settings to log in again."
+    },
+    "cloud_unavailable": {
+      "message": "Xiaomi Cloud could not be reached. The map updates again on its own once it answers."
+    },
+    "login_retry_later": {
+      "message": "Logging in to Xiaomi Cloud failed a moment ago; Home Assistant waits before trying again so Xiaomi does not ask for a captcha."
+    },
+    "map_download_failed": {
+      "message": "The map could not be downloaded from Xiaomi Cloud. It is retried on the next update."
+    },
+    "map_parse_failed": {
+      "message": "The downloaded map could not be read. It is retried on the next update."
+    },
+    "vacuum_unreachable": {
+      "message": "The vacuum did not answer on the local network. Check that it is on and that the IP address in the integration is right."
+    },
+    "unexpected_error": {
+      "message": "The map update failed unexpectedly. It is retried on the next update; if it keeps happening, report it on the integration's issue tracker with a debug log."
     }
   }
 }

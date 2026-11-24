@@ -6,7 +6,7 @@ from asyncio import Task
 from typing import Any, Self, Mapping
 
 import voluptuous as vol
-from aiohttp import ClientSession
+from aiohttp import ClientError, ClientSession
 from homeassistant.config_entries import ConfigEntry, ConfigFlow, ConfigFlowResult, SOURCE_REAUTH, SOURCE_USER
 from homeassistant.const import (
     CONF_DEVICE_ID,
@@ -40,6 +40,7 @@ from .connector.utils.exceptions import (
     FailedLoginException,
     FailedConnectionException,
     QrLoginTimeoutException,
+    RetryLaterException,
 )
 from .connector.vacuums.base.model import VacuumApi
 from .connector.xiaomi_cloud.connector import XiaomiCloudConnector, XiaomiCloudDeviceInfo
@@ -79,6 +80,29 @@ from .types import XiaomiCloudMapExtractorConfigEntry
 
 _LOGGER = logging.getLogger(__name__)
 
+# Errors that mean Xiaomi could not be reached, whether or not the connector wrapped them.
+CONNECTION_ERRORS = (FailedConnectionException, RetryLaterException, ClientError, TimeoutError)
+
+
+def login_error(error: Exception) -> str:
+    """The form error for a failed login: what the user can do about it."""
+    if isinstance(error, CONNECTION_ERRORS):
+        return "cannot_connect"
+    if isinstance(error, XiaomiCloudMapExtractorException):
+        return "cloud_login_error"
+    _LOGGER.error("Xiaomi answered the login in an unexpected way", exc_info=error)
+    return "unexpected_response"
+
+
+def device_list_error(error: Exception) -> str:
+    """The form error for a device list that failed right after logging in."""
+    if isinstance(error, CONNECTION_ERRORS):
+        return "cannot_connect"
+    if isinstance(error, FailedLoginException):
+        return "session_rejected"
+    _LOGGER.error("Xiaomi answered the device list in an unexpected way", exc_info=error)
+    return "unexpected_response"
+
 
 # noinspection PyTypeChecker,PyBroadException
 class XiaomiCloudMapExtractorFlowHandler(ConfigFlow, domain=DOMAIN):
@@ -96,6 +120,7 @@ class XiaomiCloudMapExtractorFlowHandler(ConfigFlow, domain=DOMAIN):
         self._wait_for_login_task: Task | None = None
         self._qr_placeholders: dict[str, str] = {}
         self._qr_error: str | None = None
+        self._devices_error: str = "cannot_connect"
         self._original: ConfigEntry | None = None
         self._reauth_issue: AuthIssue | None = None
 
@@ -303,12 +328,8 @@ class XiaomiCloudMapExtractorFlowHandler(ConfigFlow, domain=DOMAIN):
             except TwoFactorAuthRequiredException as e:
                 self._two_factor_exception = e
                 return await self.async_step_auth_two_factor()
-            except XiaomiCloudMapExtractorException:
-                errors["base"] = "cloud_login_error"
-            except Exception as e:
-                _LOGGER.error("Unexpected exception while attempting Miio cloud login")
-                _LOGGER.error(e, exc_info=True)
-                return self.async_abort(reason="unknown")
+            except Exception as e:  # noqa: BLE001 - every error becomes a message on the form
+                errors["base"] = login_error(e)
 
             if not errors:
                 return await self._after_auth()
@@ -395,15 +416,11 @@ class XiaomiCloudMapExtractorFlowHandler(ConfigFlow, domain=DOMAIN):
         return await self._after_auth()
 
     async def _after_auth(self: Self) -> ConfigFlowResult:
-
         try:
             devices_raw = await self._connector.get_devices()
-        except Exception as e:
-            _LOGGER.error(
-                "Unexpected exception while attempting to Miio cloud get devices"
-            )
-            _LOGGER.error(e, exc_info=True)
-            return self.async_abort(reason="unknown")
+        except Exception as e:  # noqa: BLE001 - every error becomes a message on the retry form
+            self._devices_error = device_list_error(e)
+            return await self.async_step_devices_failed()
 
         self._cloud_vacuums = [
             device for device in devices_raw if "vacuum" in device.spec_type
@@ -417,6 +434,16 @@ class XiaomiCloudMapExtractorFlowHandler(ConfigFlow, domain=DOMAIN):
             return await self.async_step_confirm_data()
 
         return await self.async_step_select_vacuum()
+
+    async def async_step_devices_failed(
+            self: Self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Logged in, but the device list failed: submitting tries again (or logs in again)."""
+        if user_input is not None:
+            if self._devices_error == "session_rejected":
+                return await self.async_step_auth_method_selection()
+            return await self._after_auth()
+        return self.async_show_form(step_id="devices_failed", errors={"base": self._devices_error})
 
     async def async_step_select_vacuum(
             self, user_input: dict[str, Any] | None = None
@@ -571,12 +598,8 @@ class XiaomiCloudMapExtractorFlowHandler(ConfigFlow, domain=DOMAIN):
             except TwoFactorAuthRequiredException as e:
                 self._two_factor_exception = e
                 return await self.async_step_auth_two_factor()
-            except XiaomiCloudMapExtractorException:
-                errors["base"] = "cloud_login_error"
-            except Exception as e:
-                _LOGGER.error("Unexpected exception while attempting Miio cloud login")
-                _LOGGER.error(e, exc_info=True)
-                return self.async_abort(reason="unknown")
+            except Exception as e:  # noqa: BLE001 - every error becomes a message on the form
+                errors["base"] = login_error(e)
         captcha_image_data = self._captcha_exception.image_data
         captcha_image_b64 = base64.b64encode(captcha_image_data).decode("utf-8")
 
@@ -616,12 +639,8 @@ class XiaomiCloudMapExtractorFlowHandler(ConfigFlow, domain=DOMAIN):
             except TwoFactorAuthRequiredException as e:
                 self._two_factor_exception = e
                 return await self.async_step_auth_two_factor()
-            except XiaomiCloudMapExtractorException:
-                errors["base"] = "cloud_login_error"
-            except Exception as e:
-                _LOGGER.error("Unexpected exception while attempting Miio cloud login")
-                _LOGGER.error(e, exc_info=True)
-                return self.async_abort(reason="unknown")
+            except Exception as e:  # noqa: BLE001 - every error becomes a message on the form
+                errors["base"] = login_error(e)
 
         return self.async_show_form(
             step_id="auth_two_factor",

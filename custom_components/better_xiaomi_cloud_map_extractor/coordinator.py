@@ -2,6 +2,9 @@ import logging
 from dataclasses import dataclass
 from typing import Self
 
+from miio import DeviceException
+
+from aiohttp import ClientError
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
@@ -16,6 +19,10 @@ from .connector.utils.exceptions import (
     InvalidCredentialsException,
     CaptchaRequiredException,
     DeviceNotFoundException,
+    FailedConnectionException,
+    FailedMapDownloadException,
+    FailedMapParseException,
+    RetryLaterException,
 )
 from .const import DOMAIN, DEFAULT_UPDATE_INTERVAL
 from .repairs import async_check_map_format
@@ -40,6 +47,22 @@ def auth_issue_for(err: XiaomiCloudMapExtractorException) -> AuthIssue:
     if isinstance(err, (DeviceNotFoundException, InvalidDeviceTokenException)):
         return AuthIssue("device_not_found")
     return AuthIssue("session_expired")
+
+
+def update_failure_key(err: Exception) -> str:
+    """Why a map update failed, as a translated message (`exceptions` in translations/en.json)."""
+    if isinstance(err, RetryLaterException):
+        return "login_retry_later"
+    if isinstance(err, (FailedConnectionException, ClientError, TimeoutError)):
+        return "cloud_unavailable"
+    if isinstance(err, FailedMapDownloadException):
+        return "map_download_failed"
+    if isinstance(err, FailedMapParseException):
+        return "map_parse_failed"
+    if isinstance(err, DeviceException):
+        return "vacuum_unreachable"
+    _LOGGER.error("Unexpected error while updating the map", exc_info=err)
+    return "unexpected_error"
 
 
 class XiaomiCloudMapExtractorDataUpdateCoordinator(DataUpdateCoordinator[XiaomiCloudMapExtractorData]):
@@ -70,8 +93,9 @@ class XiaomiCloudMapExtractorDataUpdateCoordinator(DataUpdateCoordinator[XiaomiC
             raise ConfigEntryAuthFailed(
                 str(err), translation_domain=DOMAIN, translation_key=self.auth_issue.reason
             ) from err
-        except XiaomiCloudMapExtractorException as err:
-            raise UpdateFailed(str(err)) from err
+        except Exception as err:  # noqa: BLE001 - every failure gets a translated message
+            key = update_failure_key(err)
+            raise UpdateFailed(str(err) or key, translation_domain=DOMAIN, translation_key=key) from err
         self.auth_issue = None
         if self.config_entry is not None:
             async_check_map_format(self.hass, self.config_entry, data.status)
