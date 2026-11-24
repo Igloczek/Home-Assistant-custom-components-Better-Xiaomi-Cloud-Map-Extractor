@@ -43,8 +43,8 @@ repository; each item names the priority it serves.
    starts after they merge.
 2. **Secrets in diagnostics and vendor logs** (reliability: a leaked session is a broken session).
    The cloud connector's log is covered by `tests/test_secrets_in_logs.py`; still open: diagnostics
-   export the map decryption key in `device_data`. Extend the log scan to every vendor's map
-   download. Closes #778.
+   export the map decryption key in `device_data`. Extend the log scan to every other
+   vendor's map download (Ijai is covered). Closes #778.
 3. **Event-loop blocking and update churn** (reliability). Synchronous python-miio calls run on the event loop,
    `MiotDevice` is created without a mapping (warning spam, #791), and the map keeps refreshing while
    docked (#764) and floods the logbook (#719). Import #775 (skip #769, which it covers). Closes #791,

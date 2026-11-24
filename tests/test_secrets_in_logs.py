@@ -6,17 +6,22 @@ is searched for each secret the fake handed out.
 
 from __future__ import annotations
 
+import dataclasses
 import datetime
 import hashlib
 import logging
+from unittest.mock import patch
 
 import pytest
+from miio.exceptions import DeviceException
 
+from custom_components.better_xiaomi_cloud_map_extractor.connector import XiaomiCloudMapExtractorConnector
 from custom_components.better_xiaomi_cloud_map_extractor.connector.utils.exceptions import (
     CaptchaRequiredException,
     FailedLoginException,
     TwoFactorAuthRequiredException,
 )
+from custom_components.better_xiaomi_cloud_map_extractor.connector.vacuums.base.model import VacuumApi
 from custom_components.better_xiaomi_cloud_map_extractor.connector.xiaomi_cloud.connector import XiaomiCloudConnector
 
 from .fake_xiaomi import (
@@ -24,16 +29,21 @@ from .fake_xiaomi import (
     NEW_SSECURITY,
     PASS_TOKEN,
     SSECURITY,
+    USER_ID,
     VERIFY_CONTEXT,
     FakeResponse,
     FakeXiaomiCloud,
 )
+from .ijai_map import MAC as IJAI_MAC
+from .ijai_map import WIFI_SN, encrypt_map, map_key
 from .test_cloud_session import stored_config
 from .test_session_lifecycle import (  # noqa: F401
+    DEVICE_ID,
     MAP_URL,
     MAP_URL_SIGNATURE,
     SessionSaver,
     make_connector,
+    map_configuration,
     no_map_parsing,
     stored_session,
     vacuum_cloud,
@@ -56,6 +66,12 @@ SECRETS = {
     "signed map URL": MAP_URL_SIGNATURE,
     "captcha image": "JFIF",
 }
+IJAI_MODEL = "ijai.vacuum.v3"
+IJAI_DEVICE_TOKEN = "f00dfeed" * 4
+IJAI_SECRETS = {
+    "device token": IJAI_DEVICE_TOKEN,
+    "map key": map_key(IJAI_MODEL, WIFI_SN, USER_ID, DEVICE_ID, IJAI_MAC).hex(),
+}
 
 
 @pytest.fixture
@@ -68,7 +84,7 @@ def assert_no_secrets(caplog: pytest.LogCaptureFixture) -> None:
     records = caplog.records
     assert records, "the scenario logged nothing, so it proves nothing"
     log = "\n".join(f"{record.getMessage()} {record.exc_text or ''}" for record in records)
-    leaked = {name for name, secret in SECRETS.items() if secret in log}
+    leaked = {name for name, secret in {**SECRETS, **IJAI_SECRETS}.items() if secret in log}
     assert not leaked, f"secrets in the debug log: {sorted(leaked)}"
 
 
@@ -175,4 +191,46 @@ async def test_refused_map_download(debug_log) -> None:
     connector = make_connector(cloud, stored_session(expires_in=datetime.timedelta(days=20)), SessionSaver())
 
     await connector.get_data()
+    assert_no_secrets(debug_log)
+
+
+@pytest.mark.parametrize("vacuum_on_lan", [True, False], ids=["serial from the vacuum", "serial from the cloud"])
+async def test_ijai_map_download(debug_log, vacuum_on_lan: bool) -> None:
+    """The Ijai map key is built from the device token's vacuum: neither may reach the log."""
+    cloud = vacuum_cloud()
+    cloud.valid_service_tokens.add("stored-service-token")
+    cloud.encrypted_api(
+        "/v2/home/home_device_list",
+        {"result": {"device_info": [{
+            "did": DEVICE_ID, "name": "Ijai", "model": IJAI_MODEL, "token": IJAI_DEVICE_TOKEN,
+            "localip": "192.0.2.10", "mac": IJAI_MAC,
+        }]}},
+    )
+    cloud.encrypted_api(
+        "/v2/home/get_interim_file_url_pro", {"result": {"url": f"{MAP_URL}?Expires=1&Signature={MAP_URL_SIGNATURE}"}}
+    )
+    cloud.encrypted_api(f"/v2/home/rpc/{DEVICE_ID}", {"result": [
+        {"did": DEVICE_ID, "siid": 1, "piid": 3, "code": 0, "value": WIFI_SN},
+    ]})
+    raw_map = encrypt_map(IJAI_MODEL, device_id=DEVICE_ID, owner_id=USER_ID)
+    cloud.on("GET", MAP_URL, lambda r: FakeResponse(body=raw_map))
+    config = dataclasses.replace(
+        map_configuration(), used_api=VacuumApi.IJAI, model=IJAI_MODEL, token=IJAI_DEVICE_TOKEN, mac=IJAI_MAC,
+        host="192.0.2.10",
+    )
+    connector = XiaomiCloudMapExtractorConnector(
+        cloud.session_creator, config, stored_session(expires_in=datetime.timedelta(days=20)), SessionSaver()
+    )
+
+    with patch(
+        "custom_components.better_xiaomi_cloud_map_extractor.connector.vacuums.vacuum_ijai.MiotDevice"
+    ) as miot:
+        if vacuum_on_lan:
+            miot.return_value.get_property_by.return_value = [{"siid": 1, "piid": 3, "code": 0, "value": WIFI_SN}]
+        else:
+            miot.return_value.get_property_by.side_effect = DeviceException("Unable to discover the device")
+        data = await connector.get_data()
+
+    assert data.map_data is not None and data.map_data.rooms
+    assert bool(cloud.calls(f"https://de.api.io.mi.com/app/v2/home/rpc/{DEVICE_ID}")) is not vacuum_on_lan
     assert_no_secrets(debug_log)
