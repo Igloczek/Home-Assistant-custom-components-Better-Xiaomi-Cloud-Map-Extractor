@@ -9,8 +9,8 @@ from homeassistant.config_entries import SOURCE_REAUTH, ConfigEntryState
 from homeassistant.core import HomeAssistant
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.xiaomi_cloud_map_extractor.config_flow import XiaomiCloudMapExtractorFlowHandler
-from custom_components.xiaomi_cloud_map_extractor.connector.utils.exceptions import (
+from custom_components.better_xiaomi_cloud_map_extractor.config_flow import XiaomiCloudMapExtractorFlowHandler
+from custom_components.better_xiaomi_cloud_map_extractor.connector.utils.exceptions import (
     CaptchaRequiredException,
     DeviceNotFoundException,
     FailedLoginException,
@@ -20,7 +20,7 @@ from custom_components.xiaomi_cloud_map_extractor.connector.utils.exceptions imp
     InvalidDeviceTokenException,
     TwoFactorAuthRequiredException,
 )
-from custom_components.xiaomi_cloud_map_extractor.const import DOMAIN
+from custom_components.better_xiaomi_cloud_map_extractor.const import DOMAIN
 
 from .const import ENTRY_DATA, MAC
 

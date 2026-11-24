@@ -6,8 +6,8 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from custom_components.xiaomi_cloud_map_extractor.connector.utils.exceptions import FailedConnectionException
-from custom_components.xiaomi_cloud_map_extractor.connector.xiaomi_cloud.connector import XiaomiCloudConnector
+from custom_components.better_xiaomi_cloud_map_extractor.connector.utils.exceptions import FailedConnectionException
+from custom_components.better_xiaomi_cloud_map_extractor.connector.xiaomi_cloud.connector import XiaomiCloudConnector
 
 
 @pytest.mark.parametrize(

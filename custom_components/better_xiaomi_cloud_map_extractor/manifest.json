@@ -1,5 +1,5 @@
 {
-  "domain": "xiaomi_cloud_map_extractor",
+  "domain": "better_xiaomi_cloud_map_extractor",
   "name": "Better Xiaomi Cloud Map Extractor",
   "codeowners": [
     "@Igloczek"

@@ -32,15 +32,15 @@ The differences from the original are listed in [FORK.md](FORK.md), released cha
 
 ### Manual
 
-Download [`xiaomi_cloud_map_extractor.zip`](https://github.com/Igloczek/Home-Assistant-custom-components-Better-Xiaomi-Cloud-Map-Extractor/releases/latest/download/xiaomi_cloud_map_extractor.zip)
-and extract it into `config/custom_components/xiaomi_cloud_map_extractor`:
+Download [`better_xiaomi_cloud_map_extractor.zip`](https://github.com/Igloczek/Home-Assistant-custom-components-Better-Xiaomi-Cloud-Map-Extractor/releases/latest/download/better_xiaomi_cloud_map_extractor.zip)
+and extract it into `config/custom_components/better_xiaomi_cloud_map_extractor`:
 
 ```bash
-mkdir -p custom_components/xiaomi_cloud_map_extractor
-cd custom_components/xiaomi_cloud_map_extractor
-wget https://github.com/Igloczek/Home-Assistant-custom-components-Better-Xiaomi-Cloud-Map-Extractor/releases/latest/download/xiaomi_cloud_map_extractor.zip
-unzip xiaomi_cloud_map_extractor.zip
-rm xiaomi_cloud_map_extractor.zip
+mkdir -p custom_components/better_xiaomi_cloud_map_extractor
+cd custom_components/better_xiaomi_cloud_map_extractor
+wget https://github.com/Igloczek/Home-Assistant-custom-components-Better-Xiaomi-Cloud-Map-Extractor/releases/latest/download/better_xiaomi_cloud_map_extractor.zip
+unzip better_xiaomi_cloud_map_extractor.zip
+rm better_xiaomi_cloud_map_extractor.zip
 ```
 
 Restart Home Assistant afterwards.
@@ -134,7 +134,7 @@ integration version and a debug log. To turn on debug logging, add this to `conf
 logger:
   default: info
   logs:
-    custom_components.xiaomi_cloud_map_extractor: debug
+    custom_components.better_xiaomi_cloud_map_extractor: debug
 ```
 
 Debug logs can contain account tokens. Check the log before posting it and remove anything that

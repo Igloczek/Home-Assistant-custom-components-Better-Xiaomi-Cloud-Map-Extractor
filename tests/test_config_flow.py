@@ -10,13 +10,13 @@ from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResultType
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.xiaomi_cloud_map_extractor.config_flow import XiaomiCloudMapExtractorFlowHandler
-from custom_components.xiaomi_cloud_map_extractor.connector.utils.exceptions import (
+from custom_components.better_xiaomi_cloud_map_extractor.config_flow import XiaomiCloudMapExtractorFlowHandler
+from custom_components.better_xiaomi_cloud_map_extractor.connector.utils.exceptions import (
     CaptchaRequiredException,
     FailedLoginException,
     TwoFactorAuthRequiredException,
 )
-from custom_components.xiaomi_cloud_map_extractor.const import (
+from custom_components.better_xiaomi_cloud_map_extractor.const import (
     CONF_CAPTCHA_CODE,
     CONF_COLORS,
     CONF_DRAWABLES,

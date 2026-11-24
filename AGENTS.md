@@ -14,7 +14,7 @@ The domain stays `xiaomi_cloud_map_extractor` so the fork is a drop-in replaceme
 
 ## Project map
 
-- Home Assistant custom integration in `custom_components/xiaomi_cloud_map_extractor/`.
+- Home Assistant custom integration in `custom_components/better_xiaomi_cloud_map_extractor/`.
 - Setup and config: `__init__.py` (entry → `XiaomiCloudMapExtractorConnectorConfiguration`), `config_flow.py` (cloud login by credentials or QR, captcha, two-factor, vacuum selection, reauth, YAML import), `options_flow.py`, `legacy.py` (v2 YAML schema and import).
 - Runtime: `coordinator.py` maps connector exceptions to `ConfigEntryAuthFailed` (reauth) or `UpdateFailed` (retry); entities in `image.py`, `camera.py`, `sensor.py`, `binary_sensor.py`, `button.py`, `switch.py`.
 - Cloud access: `connector/xiaomi_cloud/connector.py` (login, sessions, device discovery, encrypted API calls); the session is persisted per MAC by `store.py`.
@@ -60,7 +60,7 @@ Agents drive this project: they investigate, reproduce, build, test, open pull r
 
 ## GitHub releases
 
-- `.github/workflows/release.yaml` tests the tagged commit, sets the manifest `version` and attaches `xiaomi_cloud_map_extractor.zip` when a GitHub release is published. Check it when changing packaging, and check `hacs.json` (`zip_release`, `filename`) with it.
+- `.github/workflows/release.yaml` tests the tagged commit, sets the manifest `version` and attaches `better_xiaomi_cloud_map_extractor.zip` when a GitHub release is published. Check it when changing packaging, and check `hacs.json` (`zip_release`, `filename`) with it.
 - Releases use the fork's own `vX.Y.Z` tags in sequence from the last release (`gh release list --limit 1`); upstream's `v3.0.0-alpha-N` tags are history. The first fork version is the maintainer's call. Check the tag is free (`git ls-remote --tags origin vX.Y.Z`) before `gh release create`.
 - Every release adds its `CHANGELOG.md` section in the same push, crediting imported upstream pull requests and their authors.
 - A change we cannot verify ourselves goes out as a pre-release first: keep the pull request open, push a `vX.Y.Z-beta.N` tag on its head, publish it with `--prerelease` so the stable release stays latest, and check the uploaded zip carries the change. Ask the reporter on the fork's issue to have their AI agent install it (HACS → Redownload → pick the beta version), test it and report back, with a short prompt that only links that comment, plus the manual install and revert steps and exactly what to report. Merge and release the stable version after they confirm.

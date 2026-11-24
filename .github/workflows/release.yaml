@@ -5,7 +5,7 @@ on:
     types: [published]
 
 env:
-  COMPONENT_NAME: xiaomi_cloud_map_extractor
+  COMPONENT_NAME: better_xiaomi_cloud_map_extractor
 
 permissions:
   contents: write
@@ -39,7 +39,7 @@ jobs:
           cat "$manifest"
 
       - name: Zip the integration
-        # HACS (hacs.json zip_release) unpacks this archive into custom_components/xiaomi_cloud_map_extractor/,
+        # HACS (hacs.json zip_release) unpacks this archive into custom_components/better_xiaomi_cloud_map_extractor/,
         # so the files sit at the archive root.
         run: |
           cd "custom_components/${COMPONENT_NAME}"
