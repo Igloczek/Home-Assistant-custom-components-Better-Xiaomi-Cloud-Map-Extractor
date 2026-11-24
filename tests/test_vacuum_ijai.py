@@ -10,7 +10,7 @@ from __future__ import annotations
 import logging
 from collections.abc import Callable
 from typing import Any
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, call, patch
 
 import pytest
 from miio.exceptions import DeviceException
@@ -24,6 +24,7 @@ from custom_components.better_xiaomi_cloud_map_extractor.connector.model import 
 )
 from custom_components.better_xiaomi_cloud_map_extractor.connector.utils.exceptions import (
     FailedConnectionException,
+    FailedMapDownloadException,
     FailedMapParseException,
 )
 from custom_components.better_xiaomi_cloud_map_extractor.connector.vacuums.base.model import VacuumConfig
@@ -91,7 +92,7 @@ def ijai() -> Callable[..., tuple[IjaiCloudVacuum, FakeCloud]]:
         model: str,
         raw_map: bytes | None = None,
         *,
-        local: str = "healthy",
+        local: str | dict[str, Any] = "healthy",
         urls: dict[str, Any] | None = None,
         cloud_properties: Any = None,
         logged_in_id: str = OWNER_ID,
@@ -110,7 +111,8 @@ def ijai() -> Callable[..., tuple[IjaiCloudVacuum, FakeCloud]]:
         if local == UNREACHABLE:
             miot.get_property_by.side_effect = DeviceException("Unable to discover the device 192.0.2.10")
         else:
-            miot.get_property_by.side_effect = lambda siid, piid: LOCAL[local][f"{siid}-{piid}"]
+            answers = LOCAL[local] if isinstance(local, str) else local
+            miot.get_property_by.side_effect = lambda siid, piid: answers[f"{siid}-{piid}"]
         device_info = XiaomiCloudDeviceInfo(
             device_id=DEVICE_ID,
             name="Vacuum",
@@ -134,11 +136,112 @@ def ijai() -> Callable[..., tuple[IjaiCloudVacuum, FakeCloud]]:
         active.stop()
 
 
+# Vacuums that worked on v3.0.0-alpha-24 -----------------------------------------------------
+#
+# v3.0.0-alpha-24 (688fe3e, vacuum-map-parser-ijai 0.1.0) asked only the "pro" endpoint, read the
+# serial from properties 1/3, 1/5 and 7/45 in that order with stricter rules, and used the full MD5
+# digest of serial + home owner uid + cloud device id as the key for every model. A vacuum that
+# worked there must make the same requests and decrypt with the same key. These tests also pass
+# on the alpha-24 vacuum code with parser 0.1.0.
+
+IJAI_MODELS = [
+    *(f"ijai.vacuum.v{n}" for n in (1, 2, 3, 10, 13, 14, 15, 16, 17, 18, 19)),
+    "xiaomi.vacuum.b106eu",
+    "xiaomi.vacuum.c103",
+    "xiaomi.vacuum.d106gl",
+]
+
+
+def _properties(p13: Any = None, p15: Any = None, p745: Any = None) -> dict[str, Any]:
+    def answer(siid: int, piid: int, value: Any) -> list[dict[str, Any]]:
+        if value is None:
+            return [{"did": f"{siid}-{piid}", "siid": siid, "piid": piid, "code": -4003}]
+        return [{"did": f"{siid}-{piid}", "siid": siid, "piid": piid, "code": 0, "value": value}]
+
+    return {"1-3": answer(1, 3, p13), "1-5": answer(1, 5, p15), "7-45": answer(7, 45, p745)}
+
+
+@pytest.mark.parametrize("model", IJAI_MODELS)
+async def test_alpha_24_vacuum_makes_the_same_requests_and_key(ijai, model: str) -> None:
+    vacuum, cloud = ijai(model, encrypt_map(model, hex_key=True))
+
+    map_data, _ = await vacuum.get_map()
+
+    assert map_data.image is not None
+    assert [url for url in cloud.calls if url != ACTION_URL] == [PRO_URL]
+    cloud.connector.get_raw_map_data.assert_awaited_once_with(MAP_URL)
+    assert vacuum._miot_device.get_property_by.call_args_list == [call(1, 3)]
+    cloud.connector.get_other_info.assert_not_awaited()
+    assert vacuum.additional_data()["enc_key"] == map_key(model, WIFI_SN, OWNER_ID, DEVICE_ID, hex_key=True).hex()
+
+
+OTHER_SN = "ZYXWVU987654TSRQPO"
+
+
+@pytest.mark.parametrize(
+    ("properties", "serial", "reads"),
+    [
+        pytest.param(_properties("ABCDEF123456GHIJKL"), WIFI_SN, [(1, 3)], id="1/3"),
+        pytest.param(_properties("", WIFI_SN), WIFI_SN, [(1, 3), (1, 5)], id="1/5"),
+        pytest.param(
+            _properties("ABCDE12345FGHIJ6789", WIFI_SN), WIFI_SN, [(1, 3), (1, 5)], id="1/5 over a 19-character 1/3"
+        ),
+        pytest.param(
+            _properties("", "", f'["1","{OTHER_SN}","{WIFI_SN}","0"]'),
+            WIFI_SN, [(1, 3), (1, 5), (7, 45)], id="7/45 last match",
+        ),
+        pytest.param(
+            _properties("", "", f'["1","{WIFI_SN};{OWNER_ID}","{OTHER_SN}","0"]'),
+            OTHER_SN, [(1, 3), (1, 5), (7, 45)], id="7/45 last match after the owner entry",
+        ),
+        pytest.param(
+            _properties("", "", f'["1","{WIFI_SN}","12345/A1BC2D3E456789","ABCDE12345FGHIJ6789"]'),
+            WIFI_SN, [(1, 3), (1, 5), (7, 45)], id="7/45 over a slash and a 19-character serial",
+        ),
+    ],
+)
+async def test_alpha_24_serial_is_still_chosen(
+    ijai, properties: dict[str, Any], serial: str, reads: list[tuple[int, int]]
+) -> None:
+    model = "ijai.vacuum.v3"
+    vacuum, cloud = ijai(model, encrypt_map(model, wifi_sn=serial, hex_key=True), local=properties)
+
+    map_data, _ = await vacuum.get_map()
+
+    assert map_data.image is not None
+    assert vacuum._wifi_info_sn == serial
+    assert vacuum._miot_device.get_property_by.call_args_list == [call(*read) for read in reads]
+    cloud.connector.get_other_info.assert_not_awaited()
+
+
+@pytest.mark.parametrize("model", IJAI_MODELS)
+def test_alpha_24_key_is_tried_first(ijai, model: str) -> None:
+    vacuum, _ = ijai(model)
+
+    assert vacuum._map_key_id_candidates()[0] == (OWNER_ID, DEVICE_ID, True)
+
+
+@pytest.mark.parametrize("model", IJAI_MODELS)
+def test_key_derivation_matches_the_parser(model: str) -> None:
+    """The integration derives keys itself to try both key types; it must agree with the parser's."""
+    # Imported here: the tests above also run against the alpha-24 code and parser 0.1.0, which lack these.
+    from vacuum_map_parser_ijai.aes_decryptor import gen_md5_key
+    from vacuum_map_parser_ijai.status_mapping import is_EncryptKeyTypeHex_model
+
+    from custom_components.better_xiaomi_cloud_map_extractor.connector.vacuums.vacuum_ijai import (
+        map_key as map_key_from_integration,
+    )
+
+    assert map_key_from_integration(WIFI_SN, OWNER_ID, DEVICE_ID, model, MAC, is_EncryptKeyTypeHex_model(model)) == (
+        gen_md5_key(WIFI_SN, OWNER_ID, DEVICE_ID, model, MAC)
+    )
+
+
 # Map download --------------------------------------------------------------------------------
 
 
-async def test_v1_downloads_the_map_from_the_standard_endpoint(ijai) -> None:
-    """ijai.vacuum.v1 is not a K3 model: its map is on the standard endpoint (upstream PR #725, issue #742).
+async def test_v1_falls_back_to_the_standard_endpoint(ijai) -> None:
+    """ijai.vacuum.v1 keeps its map on the standard endpoint (upstream PRs #725 and #782, issue #742).
 
     The "pro" endpoint answers code -8 for it, and the integration asked only that one.
     """
@@ -152,7 +255,7 @@ async def test_v1_downloads_the_map_from_the_standard_endpoint(ijai) -> None:
     map_data, _ = await vacuum.get_map()
 
     assert map_data.image is not None
-    assert cloud.calls == [STANDARD_URL]
+    assert cloud.calls == [PRO_URL, STANDARD_URL]
 
 
 async def test_k3_model_falls_back_to_the_standard_endpoint(ijai) -> None:
@@ -168,25 +271,14 @@ async def test_k3_model_falls_back_to_the_standard_endpoint(ijai) -> None:
     assert cloud.calls == [PRO_URL, STANDARD_URL]
 
 
-async def test_non_k3_model_uses_the_standard_endpoint(ijai) -> None:
-    """Models outside the Mi Home plugin's K3 list read the standard endpoint (upstream PR #725)."""
+async def test_no_map_on_either_endpoint_is_a_download_failure(ijai) -> None:
     vacuum, cloud = ijai(
-        "ijai.vacuum.v10",
-        urls={STANDARD_URL: CLOUD["interim_file_url"], PRO_URL: CLOUD["interim_file_url_pro_no_storage"]},
+        "ijai.vacuum.v3",
+        urls={STANDARD_URL: CLOUD["interim_file_url_pro_no_storage"], PRO_URL: CLOUD["interim_file_url_pro_no_storage"]},
     )
 
-    map_data, _ = await vacuum.get_map()
-
-    assert map_data.image is not None
-    assert cloud.calls == [STANDARD_URL]
-
-
-async def test_k3_model_uses_the_pro_endpoint(ijai) -> None:
-    vacuum, cloud = ijai("ijai.vacuum.v17")
-
-    await vacuum.get_map()
-
-    assert cloud.calls == [PRO_URL]
+    with pytest.raises(FailedMapDownloadException):
+        await vacuum.get_map()
 
 
 async def test_s12_requests_a_realtime_map_upload_through_the_cloud(ijai) -> None:

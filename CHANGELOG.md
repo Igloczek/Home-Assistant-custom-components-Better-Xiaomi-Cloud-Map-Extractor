@@ -20,9 +20,10 @@ next to the original as `better_xiaomi_cloud_map_extractor`.
   format) download and decrypt their map. Fixes "Padding is incorrect",
   `FailedMapDownloadException`, "Failed to get wifi_sn from vacuum" and "sequence item 0: expected
   str instance, NoneType found":
-  - the map key type and map endpoint follow the Mi Home plugin, with `vacuum-map-parser-ijai`
-    0.1.1 (upstream PR #725 by maksp86);
-  - the other map endpoint is tried when the first one has no map (upstream PRs #782 by
+  - vacuums whose map already worked make the same requests and use the same key as before;
+  - the map key type of the Mi Home plugin is tried, with `vacuum-map-parser-ijai` 0.1.1
+    (upstream PR #725 by maksp86);
+  - the standard map endpoint is tried when the "pro" one has no map (upstream PRs #725, #782 by
     Korkuttum and #787 by ave-tipsy);
   - WiFi serial numbers of 19 characters, with a slash, or reported as `null` are found, and are
     read through the Xiaomi cloud when Home Assistant cannot reach the vacuum (upstream PRs #782

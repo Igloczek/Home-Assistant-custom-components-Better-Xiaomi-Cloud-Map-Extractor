@@ -1,16 +1,19 @@
 import asyncio
+import base64
+import binascii
 import json
 import logging
 import re
 import zlib
 from typing import Self, Any
 
+from Crypto.Hash import MD5
 from miio.miot_device import MiotDevice
 from miio.exceptions import DeviceException
 from vacuum_map_parser_base.map_data import MapData
 from vacuum_map_parser_ijai.map_data_parser import IjaiMapDataParser
-from vacuum_map_parser_ijai.status_mapping import get_status_mapping, is_K3_model
-from vacuum_map_parser_ijai.aes_decryptor import gen_md5_key
+from vacuum_map_parser_ijai.status_mapping import get_status_mapping
+from vacuum_map_parser_ijai.aes_decryptor import aes_decrypt, aes_encrypt
 from vacuum_map_parser_ijai.RobotMap_pb2 import RobotMap
 
 from .base.vacuum_v2 import BaseXiaomiCloudVacuumV2
@@ -26,12 +29,18 @@ OFF_UPDATES = 3
 # and the same vacuum switches between them from one map to the next. These are tried after
 # the cloud device id.
 MAP_KEY_FALLBACK_DEVICE_IDS = [str(i) for i in range(10)]
+# The key is either the MD5 digest as 16 bytes ("hex") or its middle 16 hex digits. v3.0.0-alpha-24
+# (vacuum-map-parser-ijai 0.1.0) used the digest for every model; 0.1.1 uses it only for the
+# Mi Home plugin's list. The digest goes first, so a vacuum that decrypted before still does.
+MAP_KEY_TYPES_HEX = [True, False]
 DECRYPT_ERRORS = (ValueError, zlib.error)
 
 # Properties that may hold the WiFi serial number used in the map key: siid 1 piid 3 on
 # 2019-2021 vacuums, siid 1 piid 5 on newer ones, and the multi-value siid 7 piid 45 on all.
 WIFI_SN_PROPERTIES = [(1, 3), (1, 5), (7, 45)]
 WIFI_SN_IN_MULTI_PROPERTY = re.compile(r"[0-9A-Z/]*[A-Z][0-9A-Z/]*")
+# v3.0.0-alpha-24 accepted only these lengths; 19 (ijai.vacuum.v1) is tried after its rules.
+ALPHA_24_WIFI_SN_LEN = [18, 20]
 
 # Models that only upload a fresh map when asked to, like the Mi Home app does: action
 # "upload-by-maptype" (siid 10, aiid 6) with map type 0 (real-time map). Without it the cloud keeps
@@ -50,8 +59,8 @@ class IjaiCloudVacuum(BaseXiaomiCloudVacuumV2):
         self._host = vacuum_config.host
         self._mac = vacuum_config.device_info.mac
         self._wifi_info_sn = None
-        # (owner id, device id) the last map was encrypted with; tried first next time.
-        self._map_key_ids: tuple[str, str] | None = None
+        # (owner id, device id, hex key) the last map was encrypted with; tried first next time.
+        self._map_key_ids: tuple[str, str, bool] | None = None
 
         self._miot_device = MiotDevice(self._host, self._token, timeout=2)
 
@@ -101,13 +110,12 @@ class IjaiCloudVacuum(BaseXiaomiCloudVacuumV2):
         action = REALTIME_UPLOAD_ACTION.get(self.model)
         if action is not None:
             await self._request_realtime_upload(*action)
-        if is_K3_model(self.model):
-            # K3 models serve the map from the "pro" endpoint; fall back to the standard one.
-            url = await self.get_fallback_map_url(map_name)
-            if url is not None:
-                return url
-        # The standard endpoint first, then the "pro" one. ijai.vacuum.v1 and v3 answer the
-        # "pro" endpoint with code -8 ("get none fileStorageConfig of the model and bucket").
+        # The "pro" endpoint first: v3.0.0-alpha-24 asked only that one, for every model. Then the
+        # standard one: ijai.vacuum.v1 and v3 answer "pro" with code -8 ("get none
+        # fileStorageConfig of the model and bucket").
+        url = await self.get_fallback_map_url(map_name)
+        if url is not None:
+            return url
         return await super().get_map_url(map_name)
 
     async def _request_realtime_upload(self, siid: int, aiid: int) -> None:
@@ -159,16 +167,41 @@ class IjaiCloudVacuum(BaseXiaomiCloudVacuumV2):
         return self._wifi_info_sn_from_properties(values)
 
     def get_wifi_info_sn(self) -> str | None:
+        # Read the properties one by one and stop at the first v3.0.0-alpha-24 match, as it did.
         values = {}
         for siid, piid in WIFI_SN_PROPERTIES:
             data = self._miot_device.get_property_by(siid, piid)
             values[(siid, piid)] = data[0].get("value") if data and isinstance(data[0], dict) else None
-            wifi_info_sn = self._wifi_info_sn_from_properties(values)
+            wifi_info_sn = self._alpha_24_wifi_info_sn(values)
             if wifi_info_sn:
                 return wifi_info_sn
-        return None
+        return self._wifi_info_sn_from_properties(values)
+
+    def _alpha_24_wifi_info_sn(self, values: dict[tuple[int, int], Any]) -> str | None:
+        # The serial v3.0.0-alpha-24 picked, so a vacuum that worked keeps the same map key.
+        for prop in [(1, 3), (1, 5)]:
+            value = values.get(prop)
+            if isinstance(value, str) and len(value) in ALPHA_24_WIFI_SN_LEN and value.isupper():
+                return value
+        multi_value = values.get((7, 45))
+        if not isinstance(multi_value, str):
+            return None
+        wifi_info_sn = None
+        for prop in multi_value.split(','):
+            cleaned_prop = prop.replace('"', '')
+            if str(self._user_id) in cleaned_prop:
+                cleaned_prop = cleaned_prop.split(';')[0]
+            if (
+                    len(cleaned_prop) in ALPHA_24_WIFI_SN_LEN
+                    and cleaned_prop.isalnum()
+                    and cleaned_prop.isupper()):
+                wifi_info_sn = cleaned_prop
+        return wifi_info_sn
 
     def _wifi_info_sn_from_properties(self, values: dict[tuple[int, int], Any]) -> str | None:
+        wifi_info_sn = self._alpha_24_wifi_info_sn(values)
+        if wifi_info_sn:
+            return wifi_info_sn
         for prop in [(1, 3), (1, 5)]:
             value = values.get(prop)
             if (
@@ -202,34 +235,34 @@ class IjaiCloudVacuum(BaseXiaomiCloudVacuumV2):
             return None
         return str(user_id) if user_id else None
 
-    def _map_key_id_candidates(self) -> list[tuple[str, str]]:
-        # On a vacuum shared from another account the map can be encrypted with the uid of the
-        # logged-in account instead of the home owner's.
+    def _map_key_id_candidates(self) -> list[tuple[str, str, bool]]:
+        # The first candidate is the key v3.0.0-alpha-24 used. On a vacuum shared from another
+        # account the map can be encrypted with the uid of the logged-in account instead of the
+        # home owner's.
         owner_ids = dict.fromkeys(uid for uid in (str(self._user_id), self._logged_in_user_id()) if uid)
         device_ids = dict.fromkeys([str(self._device_id), *MAP_KEY_FALLBACK_DEVICE_IDS])
-        candidates = [(owner_id, device_id) for owner_id in owner_ids for device_id in device_ids]
+        candidates = [
+            (owner_id, device_id, hex_key)
+            for owner_id in owner_ids for device_id in device_ids for hex_key in MAP_KEY_TYPES_HEX
+        ]
         if self._map_key_ids is not None:
             candidates.insert(0, self._map_key_ids)
         return list(dict.fromkeys(candidates))
 
     def decode_and_parse(self, raw_map: bytes) -> MapData:
         last_error: Exception | None = None
-        for owner_id, device_id in self._map_key_id_candidates():
+        for owner_id, device_id, hex_key in self._map_key_id_candidates():
+            key = map_key(self._wifi_info_sn, owner_id, device_id, self.model, self._mac, hex_key)
             try:
-                decoded_map = self.map_data_parser.unpack_map(
-                    raw_map,
-                    wifi_sn=self._wifi_info_sn,
-                    owner_id=owner_id,
-                    device_id=device_id,
-                    model=self.model,
-                    device_mac=self._mac)
+                decoded_map = unpack_map(raw_map, key, hex_key)
             except DECRYPT_ERRORS as err:
                 last_error = err
                 continue
-            if (owner_id, device_id) != self._map_key_ids:
-                _LOGGER.debug("Map decrypted with the %s owner id and device id %s",
-                              "home" if owner_id == str(self._user_id) else "logged-in", device_id)
-                self._map_key_ids = (owner_id, device_id)
+            if (owner_id, device_id, hex_key) != self._map_key_ids:
+                _LOGGER.debug("Map decrypted with the %s owner id, device id %s and the %s key",
+                              "home" if owner_id == str(self._user_id) else "logged-in", device_id,
+                              "digest" if hex_key else "short")
+                self._map_key_ids = (owner_id, device_id, hex_key)
             return self.map_data_parser.parse(_with_current_map_info(decoded_map))
 
         # Keep the last map instead of making the entities unavailable.
@@ -240,9 +273,31 @@ class IjaiCloudVacuum(BaseXiaomiCloudVacuumV2):
         super_data = super().additional_data()
         if self._wifi_info_sn is None:
             return super_data
-        owner_id, device_id = self._map_key_ids or (str(self._user_id), str(self._device_id))
-        enc_key = gen_md5_key(self._wifi_info_sn, owner_id, device_id, self.model, self._mac)
+        owner_id, device_id, hex_key = self._map_key_ids or (str(self._user_id), str(self._device_id), True)
+        enc_key = map_key(self._wifi_info_sn, owner_id, device_id, self.model, self._mac, hex_key)
         return {**super_data, "enc_key": enc_key}
+
+
+def map_key(wifi_sn: str, owner_id: str, device_id: str, model: str, mac: str, hex_key: bool) -> str:
+    # vacuum_map_parser_ijai.aes_decryptor.gen_md5_key with the key type as a parameter instead of
+    # taken from the parser's model list.
+    model_suffix = model.split(".")[-1]
+    if len(model_suffix) > 4:
+        model_suffix = model_suffix[-4:]
+    elif len(model_suffix) in (2, 3):
+        model_suffix = model_suffix.rjust(4, "0")
+    encrypted = aes_encrypt("+".join([wifi_sn, owner_id, device_id]), mac.lower().replace(":", "") + model_suffix)
+    digest = MD5.new(encrypted.encode("utf-8")).hexdigest()
+    return digest if hex_key else digest[8:-8].upper()
+
+
+def unpack_map(raw_map: bytes, key: str, hex_key: bool) -> bytes:
+    # IjaiMapDataParser.unpack_map with an explicit key.
+    try:
+        raw_map = base64.b64decode(raw_map, validate=True)
+    except binascii.Error:
+        pass
+    return zlib.decompress(aes_decrypt(raw_map, key, hex_key))
 
 
 def _with_current_map_info(decoded_map: bytes) -> bytes:

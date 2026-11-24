@@ -65,12 +65,17 @@ def build_map(map_id: int = 1, listed_maps: list[int] | None = None) -> bytes:
     return robot_map.SerializeToString()
 
 
-def map_key(model: str, wifi_sn: str, owner_id: str, device_id: str, mac: str = MAC) -> bytes:
+def map_key(
+    model: str, wifi_sn: str, owner_id: str, device_id: str, mac: str = MAC, *, hex_key: bool | None = None
+) -> bytes:
+    """The AES key; `hex_key` defaults to the model's key type in vacuum-map-parser-ijai 0.1.1."""
     model_key = model.split(".")[-1][-4:].rjust(4, "0")
     aes_key = (mac.replace(":", "").lower() + model_key).encode()
     plain = pad("+".join([wifi_sn, owner_id, device_id]).encode(), AES.block_size, "pkcs7")
     digest = MD5.new(base64.b64encode(AES.new(aes_key, AES.MODE_ECB).encrypt(plain))).hexdigest()
-    if model.split(".")[-1] in HEX_KEY_MODELS:
+    if hex_key is None:
+        hex_key = model.split(".")[-1] in HEX_KEY_MODELS
+    if hex_key:
         return bytes.fromhex(digest)
     return digest[8:-8].upper().encode()
 
@@ -82,7 +87,8 @@ def encrypt_map(
     owner_id: str = OWNER_ID,
     wifi_sn: str = WIFI_SN,
     robot_map: bytes | None = None,
+    hex_key: bool | None = None,
 ) -> bytes:
     plain = zlib.compress(build_map() if robot_map is None else robot_map).hex().encode()
-    key = map_key(model, wifi_sn, owner_id, device_id)
+    key = map_key(model, wifi_sn, owner_id, device_id, hex_key=hex_key)
     return AES.new(key, AES.MODE_ECB).encrypt(pad(plain, AES.block_size, "pkcs7"))
