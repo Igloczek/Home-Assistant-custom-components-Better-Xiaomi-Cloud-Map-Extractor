@@ -9,6 +9,7 @@ assert what was (and was not) sent, e.g. that no password login happened.
 
 from __future__ import annotations
 
+import asyncio
 import base64
 import hashlib
 import json
@@ -35,6 +36,9 @@ SSECURITY = base64.b64encode(b"0123456789abcdef").decode()
 NEW_SSECURITY = base64.b64encode(b"fedcba9876543210").decode()
 PASS_TOKEN = "V1:pass-token-from-login"
 THIRTY_DAYS = 30 * 24 * 60 * 60
+VERIFY_CONTEXT = "ctx123"
+# What a load balancer in front of Xiaomi answers when the backend is down: not JSON, not 200.
+BAD_GATEWAY_PAGE = "<html><head><title>502 Bad Gateway</title></head><body>nginx</body></html>"
 
 
 @dataclass
@@ -85,6 +89,15 @@ def json_response(payload: Any, **kwargs: Any) -> FakeResponse:
     return FakeResponse(body="&&&START&&&" + json.dumps(payload), **kwargs)
 
 
+def bad_gateway(_request: "Request | None" = None) -> FakeResponse:
+    return FakeResponse(status=502, body=BAD_GATEWAY_PAGE)
+
+
+def html_page(_request: "Request | None" = None) -> FakeResponse:
+    """A 200 that is not what the API promised, e.g. a captive portal or a maintenance page."""
+    return FakeResponse(status=200, body="<html><body>Service maintenance</body></html>")
+
+
 Handler = Callable[[Request], FakeResponse]
 
 
@@ -124,6 +137,7 @@ class FakeXiaomiCloud:
 
         def handler(request: Request) -> FakeResponse:
             if request.cookies.get("serviceToken") not in self.valid_service_tokens:
+                # Mi Home answers an expired session with 401 and a plain JSON body.
                 return FakeResponse(status=401, body='{"code":3,"message":"auth err"}')
             nonce = request.params["_nonce"]
             signed_nonce = base64.b64encode(
@@ -202,6 +216,87 @@ class FakeXiaomiCloud:
             "POST", f"{ACCOUNT}/identity/auth/sendEmailTicket", lambda r: json_response({"code": 0})
         )
 
+    def email_verification(self, service_token: str) -> None:
+        """The identity flow after the user typed the emailed code: verifyEmail, result/check, Auth2/end, STS."""
+        end = f"{ACCOUNT}/pass/serviceLoginAuth2/end"
+        self.on(
+            "POST",
+            f"{ACCOUNT}/identity/auth/verifyEmail",
+            lambda r: json_response(
+                {"code": 0, "location": f"{ACCOUNT}/identity/result/check?sid=xiaomiio&context={VERIFY_CONTEXT}"}
+            ),
+        )
+        self.on(
+            "GET",
+            f"{ACCOUNT}/identity/result/check",
+            lambda r: FakeResponse(status=302, headers={"Location": f"{end}?context={VERIFY_CONTEXT}&t=end-ticket"}),
+        )
+        self.on(
+            "GET",
+            end,
+            lambda r: FakeResponse(
+                status=302,
+                headers={
+                    "extension-pragma": json.dumps({"ssecurity": self.ssecurity, "psecurity": "psecurity-value"}),
+                    "Location": f"{STS}?d=verified&clientSign=client-sign-value",
+                },
+            ),
+        )
+
+        def sts(request: Request) -> FakeResponse:
+            self.valid_service_tokens.add(service_token)
+            return FakeResponse(
+                body="ok",
+                set_cookies={"serviceToken": (service_token, None), "userId": (USER_ID, THIRTY_DAYS)},
+            )
+
+        self.on("GET", STS, sts)
+
+    def qr_login(self, service_token: str) -> None:
+        """serviceLogin without a session, the QR code, and the long poll the app completes."""
+        long_poll = f"{ACCOUNT}/longPolling/poll"
+        self.on(
+            "GET",
+            SERVICE_LOGIN,
+            lambda r: json_response(
+                {
+                    "code": 70016,
+                    "_sign": "sign-for-qr",
+                    "qs": "%3Fsid%3Dxiaomiio",
+                    "callback": STS,
+                    "location": f"{ACCOUNT}/fe/service/login?serviceParam=service-param",
+                }
+            ),
+        )
+        self.on(
+            "GET",
+            f"{ACCOUNT}/longPolling/loginUrl",
+            lambda r: json_response(
+                {
+                    "code": 0,
+                    "qr": f"{ACCOUNT}/qr.png",
+                    "lp": f"{long_poll}?ticket=qr-poll-ticket",
+                    "loginUrl": f"{ACCOUNT}/login?ticket=qr-login-ticket",
+                }
+            ),
+        )
+        self.on("GET", f"{ACCOUNT}/qr.png", lambda r: FakeResponse(body=b"\x89PNG-qr-image"))
+        self.on(
+            "GET",
+            long_poll,
+            lambda r: json_response(
+                {
+                    "code": 0,
+                    "userId": int(USER_ID),
+                    "ssecurity": self.ssecurity,
+                    "passToken": PASS_TOKEN,
+                    "location": f"{STS}?d=qr&clientSign=client-sign-value",
+                },
+                set_cookies={"userId": (USER_ID, THIRTY_DAYS), "passToken": (PASS_TOKEN, THIRTY_DAYS)},
+            ),
+        )
+        self.sts_issuing(service_token)
+
     def password_login_count(self) -> int:
         return len(self.calls(SERVICE_LOGIN_AUTH2))
 
@@ -215,9 +310,11 @@ class FakeSession:
         pass
 
     async def get(self, url, **kwargs) -> FakeResponse:
+        await asyncio.sleep(0)  # a real request yields to the event loop, so concurrent updates interleave
         return self._request("GET", url, **kwargs)
 
     async def post(self, url, **kwargs) -> FakeResponse:
+        await asyncio.sleep(0)
         return self._request("POST", url, **kwargs)
 
     def _request(self, method, url, *, params=None, cookies=None, data=None, **_kwargs) -> FakeResponse:

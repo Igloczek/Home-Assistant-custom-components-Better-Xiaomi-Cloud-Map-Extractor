@@ -15,6 +15,24 @@ class FailedConnectionException(XiaomiCloudMapExtractorException):
         return f"Could not connect to Xiaomi Cloud: {type(self.base_exception).__name__} {self.base_exception}".strip()
 
 
+class UnexpectedResponseError(Exception):
+    """Xiaomi answered with something other than its API's JSON: a 5xx, an HTML error page, an undecodable body."""
+
+    def __init__(self, status: int) -> None:
+        super().__init__(status)
+        self.status = status
+
+    def __str__(self) -> str:
+        return f"unexpected response (HTTP {self.status})"
+
+
+class RetryLaterException(XiaomiCloudMapExtractorException):
+    """A password login failed moments ago; trying again now would only make Xiaomi ask for a captcha."""
+
+    def __str__(self) -> str:
+        return "Waiting before logging in to Xiaomi Cloud again"
+
+
 class DeviceNotFoundException(XiaomiCloudMapExtractorException):
     pass
 

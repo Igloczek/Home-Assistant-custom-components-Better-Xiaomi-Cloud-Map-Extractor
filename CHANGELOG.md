@@ -18,6 +18,10 @@ next to the original as `better_xiaomi_cloud_map_extractor`.
 - Re-authentication no longer fails with "Unknown error occurred" when the vacuum's IP address
   differs from the stored one (for example a setup imported from YAML). Picking a different vacuum
   during re-authentication now stops with a message instead of rewriting the setup.
+- A Xiaomi outage (an error page or HTTP 5xx) no longer asks you to log in again or reports the
+  vacuum as missing; the map update is retried, and a failed background login is not repeated
+  every few seconds. Debug logs no longer contain session tokens, verification links or the
+  signed map URL.
 
 ### Changed
 
