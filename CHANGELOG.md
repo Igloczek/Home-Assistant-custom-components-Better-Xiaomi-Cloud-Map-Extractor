@@ -1,6 +1,12 @@
 # Changelog
 
-## Unreleased
+## 0.1.1 - 2026-11-24
+
+### Added
+
+- When a vacuum of another vendor (Roborock, Dreame, Viomi, ...) is set to the Xiaomi map format
+  and its map cannot be read, Settings → Repairs offers to switch it to its own format in one
+  click. Vacuums whose map works are never touched.
 
 ### Fixed
 
@@ -23,7 +29,6 @@ next to the original as `better_xiaomi_cloud_map_extractor`.
 - When Xiaomi does need you, re-authentication says why: separate screens for a captcha and for
   identity verification (with the link to open), a one-click "log in again with the saved
   username and password", and a two-factor step that shows the verification link.
-
 - Import from Xiaomi Cloud Map Extractor: vacuums set up in the original integration move over
   with their settings, Xiaomi login, device and entity ids, so dashboards and automations keep
   working. This includes vacuums the original imported from v2 YAML; one whose Xiaomi lookup
