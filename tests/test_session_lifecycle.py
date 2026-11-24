@@ -30,6 +30,7 @@ from .fake_xiaomi import API, PASS_TOKEN, SERVICE_LOGIN, SSECURITY, USER_ID, Fak
 
 DEVICE_ID = "428789378"
 MAP_URL = "https://maps.example.com/map/0"
+MAP_URL_SIGNATURE = "map-url-signature"  # the interim map URL is signed: it must not reach the log
 
 
 def map_configuration() -> XiaomiCloudMapExtractorConnectorConfiguration:
@@ -88,7 +89,7 @@ def vacuum_cloud() -> FakeXiaomiCloud:
             }
         },
     )
-    cloud.encrypted_api("/v2/home/get_interim_file_url", {"result": {"url": MAP_URL}})
+    cloud.encrypted_api("/v2/home/get_interim_file_url", {"result": {"url": f"{MAP_URL}?Expires=1&Signature={MAP_URL_SIGNATURE}"}})
     cloud.on("GET", MAP_URL, lambda r: FakeResponse(body=b"raw-map-bytes"))
     return cloud
 
