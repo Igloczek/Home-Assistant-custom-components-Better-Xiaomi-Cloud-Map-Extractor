@@ -1,5 +1,19 @@
 # Agent guide
 
+## North star
+
+A Home Assistant user's vacuum map just keeps working, and when it can't, Home Assistant tells them exactly what to do, in one click. Nobody ever has to read logs.
+
+Priorities, in order:
+
+1. **Reliability** of the cloud session and the map download.
+2. **Every failure actionable in the UI:** re-authentication and repairs, clear messages, never "Unknown error".
+3. **Drop-in from the original:** the new domain installs side by side, and the import keeps entity ids and dashboards.
+4. **Clear the upstream backlog.**
+5. **Test-first, CI green.**
+
+When two pieces of work compete, the one higher on this list goes first. [`ROADMAP.md`](ROADMAP.md) is ranked by it.
+
 ## Fork relationship
 
 - This repository is Igloczek's hard fork of `PiotrMachowski/Home-Assistant-custom-components-Xiaomi-Cloud-Map-Extractor`, published as **Better Xiaomi Cloud Map Extractor**. Upstream is abandoned; its v3 line (`dev_extracted_libraries`, v3.0.0-alpha-24) is the baseline, and the legacy v2 line is frozen on the `v2` branch.
@@ -64,7 +78,7 @@ Agents drive this project: they investigate, reproduce, build, test, open pull r
 - Releases use the fork's own `vX.Y.Z` tags in sequence from the last release (`gh release list --limit 1`); upstream's `v3.0.0-alpha-N` tags are history. The first fork version is the maintainer's call. Check the tag is free (`git ls-remote --tags origin vX.Y.Z`) before `gh release create`.
 - Every release adds its `CHANGELOG.md` section in the same push, crediting imported upstream pull requests and their authors.
 - A change we cannot verify ourselves goes out as a pre-release first: keep the pull request open, push a `vX.Y.Z-beta.N` tag on its head, publish it with `--prerelease` so the stable release stays latest, and check the uploaded zip carries the change. Ask the reporter on the fork's issue to have their AI agent install it (HACS → Redownload → pick the beta version), test it and report back, with a short prompt that only links that comment, plus the manual install and revert steps and exactly what to report. Merge and release the stable version after they confirm.
-- Run `gh` in the authorized local environment.
+- Run `gh` in the authorized local environment. `gh repo set-default` points at the fork (`Igloczek/Home-Assistant-custom-components-Better-Xiaomi-Cloud-Map-Extractor`). A pull request tool once opened pull requests on upstream by mistake: after creating any pull request, check its URL is on the fork, and if a tool targets upstream, use `gh pr create -R Igloczek/Home-Assistant-custom-components-Better-Xiaomi-Cloud-Map-Extractor` instead.
 
 ## Privacy
 

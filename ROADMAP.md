@@ -22,35 +22,43 @@ with a test that fails first (see [AGENTS.md](AGENTS.md)).
 
 ## Next, in order
 
-The upstream backlog on 2026-11-24 was 141 open issues and 27 open pull requests. Clusters are ranked
-by how many users they hit (issues + comments + 👍 on upstream), restricted to what still happens on
-v3.0.0-alpha-24. Issue and PR numbers refer to the upstream repository.
+Ranked by the north star in [AGENTS.md](AGENTS.md#north-star): reliability of the cloud session and
+map download first, then failures the UI makes actionable, then the drop-in from the original, then
+the rest of the upstream backlog. Within a priority, work that hits more users goes first (upstream
+issues + comments + 👍; the backlog on 2026-11-24 was 141 open issues and 27 open pull requests),
+counting only what still happens on v3.0.0-alpha-24. Issue and PR numbers refer to the upstream
+repository; each item names the priority it serves.
 
-1. **QR login on Home Assistant 2026.9+.** The QR flow fails on current Home Assistant and its
+1. **QR login on Home Assistant 2026.9+** (reliability). The QR flow fails on current Home Assistant and its
    placeholders show as `MISSING_VALUE`; the login link opens a sign-in page instead of approving.
    Import upstream PRs #796 and #795, and #766 with a timeout and without swallowing every
    exception. Closes #779, helps #730. Touches `config_flow.py` like the two threads above, so it
    starts after they merge.
-2. **Secrets in logs and diagnostics.** The debug log prints `ssecurity`/`psecurity`
+2. **Secrets in logs and diagnostics** (reliability: a leaked session is a broken session). The debug log prints `ssecurity`/`psecurity`
    (`connector.py`, extension-pragma branch) and other session data, and users paste debug logs into
    public issues; diagnostics export the map decryption key in `device_data`. Redact session
    secrets in every log line and in diagnostics, with a test that scans log output. Closes #778.
-3. **Ijai maps (the largest v3 cluster).** `Padding is incorrect`, `FailedMapDownloadException`,
+3. **Ijai maps, the largest v3 cluster** (reliability of the map download). `Padding is incorrect`, `FailedMapDownloadException`,
    `Failed to get wifi_sn`, `expected str, NoneType` on ijai v1/v2/v3/v17/v18, S10, S12, X20 Max.
    Import #725 first (parser author: isK3, hex key type), then one combined change from #782 (URL
    fallback, wifi_sn length), #792 (alternate key ids; or #785/#787 for the device_id "0" case), #789
    (shared devices, S12 live map) and #786. Needs scrubbed map fixtures from reporters; ships as a
    pre-release. Closes #682, #696, #698, #703, #709, #714, #742, #759.
-4. **Event-loop blocking and update churn.** Synchronous python-miio calls run on the event loop,
+4. **Event-loop blocking and update churn** (reliability). Synchronous python-miio calls run on the event loop,
    `MiotDevice` is created without a mapping (warning spam, #791), and the map keeps refreshing while
    docked (#764) and floods the logbook (#719). Import #775 (skip #769, which it covers). Closes #791,
    #764, #719; check #655 and #601 against it.
-5. **Xiaomi map format: decryption key and API choice.** "Incorrect AES key length": the key is
+5. **Xiaomi map format: decryption key and API choice** (reliability, and an actionable message for the wrong map format). "Incorrect AES key length": the key is
    derived from `model.replace("xiaomi", "mi")` (`vacuum_xiaomi.py`), which is the wrong length for
    names like `xiaomi.vacuum.c107`, and Roborock users who pick the Xiaomi format get the same error.
    Fix the key derivation and warn when the chosen map format does not match the model. Closes #731,
    #732, #733, #763.
-6. **Xiaomi models: live data and map index.** Robot position and path missing while cleaning, wrong
+6. **Actionable failures everywhere** (UI). Any connector error that is not a login problem ends
+   as an `UpdateFailed` with a log line only. Map download and parse failures that persist should
+   raise a repair issue that says what to do (wrong map format, vacuum offline, region), and the
+   config flow should never end in "Unknown error". Starts after the reauth and login threads merge,
+   building on their error mapping.
+7. **Xiaomi models: live data and map index** (backlog). Robot position and path missing while cleaning, wrong
    map after maps were deleted, missing walls and no-go zones (b108gl, ov43gb, ov81gl, S40 Pro).
    Import #781 (skip #750, which does the same in 976 lines) and a generalised #748 (ov21gl rooms
    with `room_id=0`, zones, walls; skip #749, wrong base). Closes #720, advances #563, #657, #702,
@@ -62,6 +70,9 @@ v3.0.0-alpha-24. Issue and PR numbers refer to the upstream repository.
   (#746, reported on alpha-24). Needs a captured map from a reporter.
 - **Roidmi sdj60**: port v2 PR #768 to `vacuum_roidmi.py` (#572).
 - **Ijai rendering**: #794 (fit to explored area), without the bundled font if possible.
+- **Drop-in follow-ups**: verify the import on a real Home Assistant with the original installed
+  and then removed (the pytest suite covers the registry moves); decide whether to raise a repair
+  issue that points original users at the import once this integration is running.
 - **Small imports**: #786 (`as_list_of_dict` with ints) if not folded into the Ijai change; #591 if
   `scripts/` keeps shipping; check #636 (homes without `share_home_list`) against v3 discovery.
 - **README for v3 in depth**: options flow, every entity and attribute, and the card integration.
