@@ -29,17 +29,28 @@ Switching keeps a user's setup (`migration.py`):
 
 - **Import.** When `xiaomi_cloud_map_extractor` config entries exist that are not set up here, the
   setup menu offers **Import from Xiaomi Cloud Map Extractor**, and once the integration runs, the
-  remaining ones appear under **Discovered**. The import copies the entry's data, options and title
-  and the stored cloud session (`.storage/xiaomi_cloud_map_extractor_<mac>`); no new login is
-  needed.
+  remaining ones appear under **Discovered**, whether or not the original is installed and loaded.
+  The import copies the entry's data, options and title and the stored cloud session
+  (`.storage/xiaomi_cloud_map_extractor_<mac>`); no new login is needed. It then disables the
+  original's entry (`disabled_by=user`) and waits for it to unload; the import step says so before
+  the user confirms.
 - **Entity ids.** At setup, before the platforms load, the original's entity registry entries for
   that vacuum move to this integration (`async_update_entity_platform`), then its device
-  (`async_update_device`), so entity ids, names, areas and customisations stay and dashboards,
-  automations and the map card keep working.
-- **The original stays untouched while it can run.** Nothing is imported or moved while the
-  original integration is installed (`async_get_integration` finds it): the import shows "remove
-  Xiaomi Cloud Map Extractor in HACS and restart" and changes nothing. The original config entry and
-  its storage file are never modified or deleted; the user deletes the leftover entry afterwards.
+  (`async_update_device`), so entity ids, names, areas, registry options and customisations stay and
+  dashboards, automations and the map card keep working. Entities and the device that disabling the
+  original marked `disabled_by=config_entry` are enabled again; entities disabled by the user or the
+  integration stay disabled.
+- **Only disabled, never deleted or edited.** Home Assistant refuses to uninstall the original while
+  it has entries, and deleting an entry deletes the entities still linked to it, so the import
+  cannot wait for the user to remove the original. It disables the entry instead, on the user's
+  explicit confirm; the entry's data, options and storage file are never changed or deleted.
+  Nothing is taken from an original entry that can still load it (enabled, with the original
+  installed). A Repairs issue (`original_left_<entry_id>`, raised again at startup) then tells the
+  user to delete the disabled entry and uninstall the original; it goes away once the entry is
+  deleted or enabled. Deleting the entry removes only what is still linked to it, so nothing that
+  moved is lost.
+- **Enabling the original again** takes nothing back: it sets the vacuum up again next to this
+  integration with its own device and new entity ids (`…_2`), and this integration keeps working.
 - **Which vacuum an entry is for** (`migration.vacuum_mac`): its unique id, or for entries the
   original imported from v2 YAML (source `import`, no unique id, titled "Xiaomi Cloud Map
   Extractor") the MAC in `data`. The imported entry gets that MAC as unique id, and the import list
@@ -53,8 +64,9 @@ Switching keeps a user's setup (`migration.py`):
   is already set up here.
 - Proof: `tests/test_import_original.py`, run over every entry shape alpha-24 leaves
   (`tests/original_entries.py`: UI flow, YAML import, YAML import without MAC), with all 26
-  registry entries, the device and the storage file; original installed and not installed;
-  discovery; legacy YAML; removing the leftover entry.
+  registry entries, the device and the storage file; the original not installed, and installed and
+  loaded (`install_original`, a stand-in that loads and unloads like alpha-24); discovery; legacy
+  YAML; deleting the disabled entry; enabling it again.
 
 ## Versioning
 
@@ -83,7 +95,7 @@ implement it and the proof that must still pass.
 | Area | Behaviour in this fork | Why |
 | --- | --- | --- |
 | <a id="project-identity"></a>Project identity | The domain is `better_xiaomi_cloud_map_extractor` and the manifest and HACS name **Better Xiaomi Cloud Map Extractor**; `documentation`, `issue_tracker` and `codeowners` point at the fork; the README, issue forms and re-authentication text carry the fork's name, and `brand/icon.png` (256 px) and `brand/icon@2x.png` (512 px) give it its own icon, which Home Assistant 2026.3+ and HACS read from the integration folder. | The fork installs next to the original without a collision and has its own tracker. |
-| <a id="import-original"></a>Import from the original | Original `xiaomi_cloud_map_extractor` entries are offered for import (menu and discovery); the entry, options and cloud session are copied and the device and entities move over with their ids, never while the original is installed. See **Compatibility**. | Switching must not cost users their setup, entity ids or dashboards. |
+| <a id="import-original"></a>Import from the original | Original `xiaomi_cloud_map_extractor` entries are offered for import (menu and discovery); the entry, options and cloud session are copied, the original entry is disabled (never deleted or edited) on the user's confirm, and the device and entities move over with their ids, also while the original is installed. See **Compatibility**. | Switching must not cost users their setup, entity ids or dashboards, and Home Assistant only uninstalls the original once its entries are deleted. |
 | <a id="test-suite"></a>Test suite | `tests/` runs on `pytest-homeassistant-custom-component` with the Xiaomi cloud and the vacuum mocked: the config flow (credentials, captcha, two-factor, several vacuums, duplicates, errors, reauth of every entry shape), setup and unload, and which connector errors start re-authentication. `requirements_test.txt` pins the test harness and lists the integration's requirements. | Upstream has no tests. |
 | <a id="ci"></a>CI and lint | `tests.yml` runs `ruff check .` (correctness rules, `pyproject.toml`) and `pytest` on Python 3.14 for pushes to and pull requests against `master`. HACS validation runs every check, including `issues` (the repository has HACS topics). `manifest.json` does not list `Pillow`, which Home Assistant provides and hassfest forbids in custom integrations, and asks for at least core's version of each `vacuum-map-parser-*` package that Home Assistant core also uses (`roborock>=0.1.5`), so it follows core's updates; the test requirements pin that version. There is no `dev` branch and no master→dev automerge job, and upstream's `lint_python` job (whose steps mostly ended in `|| true`) is replaced. | Upstream CI could not fail on a real problem, and the fork lands every change on `master`. |
 | <a id="release-packaging"></a>Release packaging | `release.yaml` runs lint and tests on the released commit, sets the manifest `version` to the tag without its `v`, and attaches `better_xiaomi_cloud_map_extractor.zip` with the integration files at the archive root, as `hacs.json` (`zip_release`) expects. | A release must not ship a commit that fails the suite, and HACS installs from that zip. |

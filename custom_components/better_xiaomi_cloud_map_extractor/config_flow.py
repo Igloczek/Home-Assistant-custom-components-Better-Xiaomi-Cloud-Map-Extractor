@@ -66,7 +66,7 @@ from .const import (
 from .legacy import create_config_entry_data_from_yaml
 from .migration import (
     async_copy_original_session,
-    async_original_installed,
+    async_disable_original,
     importable_original_entries,
     vacuum_mac,
 )
@@ -212,9 +212,7 @@ class XiaomiCloudMapExtractorFlowHandler(ConfigFlow, domain=DOMAIN):
         if user_input is not None:
             self._original = next((e for e in originals if e.entry_id == user_input["original_entry"]), None)
             if self._original is not None:
-                if (result := await self._async_import_original()) is not None:
-                    return result
-                errors["base"] = "original_installed"
+                return await self._async_import_original()
         schema = vol.Schema({
             vol.Required("original_entry", default=originals[0].entry_id): SelectSelector(
                 SelectSelectorConfig(
@@ -245,25 +243,19 @@ class XiaomiCloudMapExtractorFlowHandler(ConfigFlow, domain=DOMAIN):
     async def async_step_import_original_confirm(
             self: Self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
-        errors: dict[str, str] = {}
         if user_input is not None:
-            if (result := await self._async_import_original()) is not None:
-                return result
-            errors["base"] = "original_installed"
+            return await self._async_import_original()
         return self.async_show_form(
             step_id="import_original_confirm",
-            errors=errors,
             description_placeholders={"name": self._original_label(self._original), "original_name": ORIGINAL_NAME},
         )
 
-    async def _async_import_original(self: Self) -> ConfigFlowResult | None:
-        """Copy the original entry and its cloud session; None while the original is installed.
+    async def _async_import_original(self: Self) -> ConfigFlowResult:
+        """Copy the original entry and its cloud session, and disable the original entry.
 
-        Entity ids move over at setup (`migration.async_adopt_original_entities`). The original
-        entry itself is left as it is.
+        The user confirmed this step, which says the original entry will be disabled. The device and
+        entities move over when the new entry sets up (`migration.async_adopt_original_entities`).
         """
-        if await async_original_installed(self.hass):
-            return None
         original = self._original
         if original not in importable_original_entries(self.hass):
             return self.async_abort(reason="already_configured")
@@ -273,6 +265,7 @@ class XiaomiCloudMapExtractorFlowHandler(ConfigFlow, domain=DOMAIN):
         self._abort_if_unique_id_configured()
         if (mac := vacuum_mac(original)) is not None:
             await async_copy_original_session(self.hass, mac)
+        await async_disable_original(self.hass, original)
         return self.async_create_entry(title=original.title, data=dict(original.data), options=dict(original.options))
 
     async def async_step_auth_saved_credentials(

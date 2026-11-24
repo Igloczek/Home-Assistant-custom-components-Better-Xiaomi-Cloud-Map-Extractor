@@ -12,8 +12,14 @@ from homeassistant.const import (
     CONF_MODEL,
     CONF_DEVICE_ID
 )
-from homeassistant.config_entries import SOURCE_INTEGRATION_DISCOVERY
-from homeassistant.core import HomeAssistant
+from homeassistant.config_entries import (
+    SIGNAL_CONFIG_ENTRY_CHANGED,
+    SOURCE_INTEGRATION_DISCOVERY,
+    ConfigEntry,
+    ConfigEntryChange,
+)
+from homeassistant.core import HomeAssistant, callback
+from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers import discovery_flow
 from homeassistant.helpers.typing import ConfigType
@@ -29,6 +35,7 @@ from .connector.model import XiaomiCloudMapExtractorConnectorConfiguration
 from .connector.xiaomi_cloud.connector import XiaomiCloudConnectorConfig
 from .connector.vacuums.base.model import VacuumApi
 from .const import (
+    ORIGINAL_DOMAIN,
     CONF_SERVER,
     CONF_USED_MAP_API,
     PLATFORMS,
@@ -46,7 +53,12 @@ from .const import (
     DOMAIN,
 )
 from .coordinator import XiaomiCloudMapExtractorDataUpdateCoordinator
-from .migration import async_adopt_original_entities, importable_original_entries
+from .migration import (
+    async_adopt_original_entities,
+    async_flag_leftover_originals,
+    async_original_changed,
+    importable_original_entries,
+)
 from .store import restore_connector_config, save_connector_config
 from .types import XiaomiCloudMapExtractorConfigEntry, XiaomiCloudMapExtractorRuntimeData
 
@@ -57,6 +69,15 @@ CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     """Offer every vacuum still set up in the original integration under "Discovered"."""
+
+    @callback
+    def original_changed(change: ConfigEntryChange, changed: ConfigEntry) -> None:
+        if changed.domain == ORIGINAL_DOMAIN:
+            async_original_changed(hass, changed, removed=change is ConfigEntryChange.REMOVED)
+
+    async_dispatcher_connect(hass, SIGNAL_CONFIG_ENTRY_CHANGED, original_changed)
+    async_flag_leftover_originals(hass)
+
     for original in importable_original_entries(hass):
         discovery_flow.async_create_flow(
             hass,

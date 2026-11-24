@@ -2,22 +2,26 @@
 
 The fork has its own domain so it can be installed next to the original. A user who switches keeps
 their setup: the config flow copies an original config entry (data, options, title) and its stored
-cloud session, and setup moves the original's entity registry entries to this integration so entity
-ids, names and customisations stay the same.
+cloud session, disables the original entry, and setup moves the original's device and entity
+registry entries to this integration so entity ids, names and customisations stay the same.
 
-Nothing here runs while the original integration is installed: its entries and entities are never
-touched while it can load them.
+The import works while the original is installed and loaded: Home Assistant only lets the user
+uninstall it once its entries are deleted, and deleting an entry deletes the entities still linked
+to it. The original's entry is only ever disabled (`disabled_by=user`, reversible), on the user's
+explicit confirm; its data, options and storage are never changed or deleted. Entities and devices
+are only taken from an original entry that cannot load them: disabled, or its integration removed.
 """
 
 from __future__ import annotations
 
 import logging
 
-from homeassistant.config_entries import ConfigEntry
+from homeassistant.config_entries import ConfigEntry, ConfigEntryDisabler
 from homeassistant.const import CONF_HOST, CONF_MAC
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
+from homeassistant.helpers import issue_registry as ir
 from homeassistant.helpers.device_registry import format_mac
 from homeassistant.helpers.storage import Store
 from homeassistant.loader import IntegrationNotFound, async_get_integration
@@ -67,6 +71,52 @@ def importable_original_entries(hass: HomeAssistant) -> list[ConfigEntry]:
     ]
 
 
+def original_left_issue_id(original: ConfigEntry) -> str:
+    return f"original_left_{original.entry_id}"
+
+
+async def async_disable_original(hass: HomeAssistant, original: ConfigEntry) -> None:
+    """Disable the original's entry so its device and entities can move here; waits for its unload.
+
+    A Repairs issue then tells the user they can delete the disabled entry and uninstall the
+    original; it goes away when the entry is deleted or enabled again (`async_original_changed`).
+    """
+    if original.disabled_by is None:
+        await hass.config_entries.async_set_disabled_by(original.entry_id, ConfigEntryDisabler.USER)
+    _async_create_original_left_issue(hass, original)
+
+
+def async_flag_leftover_originals(hass: HomeAssistant) -> None:
+    """At startup: raise the issue again for every disabled original entry imported here."""
+    importable = importable_original_entries(hass)
+    for original in hass.config_entries.async_entries(ORIGINAL_DOMAIN):
+        if original.disabled_by is not None and original not in importable:
+            _async_create_original_left_issue(hass, original)
+
+
+def _async_create_original_left_issue(hass: HomeAssistant, original: ConfigEntry) -> None:
+    ir.async_create_issue(
+        hass,
+        DOMAIN,
+        original_left_issue_id(original),
+        is_fixable=False,
+        is_persistent=False,
+        severity=ir.IssueSeverity.WARNING,
+        translation_key="original_left",
+        translation_placeholders={"name": original.title},
+    )
+
+
+def async_original_changed(hass: HomeAssistant, original: ConfigEntry, removed: bool) -> None:
+    """Drop the leftover issue once the original's entry is deleted or enabled again."""
+    if removed or original.disabled_by is None:
+        ir.async_delete_issue(hass, DOMAIN, original_left_issue_id(original))
+
+
+def _original_can_load(original: ConfigEntry, installed: bool) -> bool:
+    return installed and original.disabled_by is None
+
+
 async def async_copy_original_session(hass: HomeAssistant, mac: str) -> None:
     """Copy the original's stored cloud session for this vacuum, if there is one.
 
@@ -84,16 +134,21 @@ async def async_adopt_original_entities(hass: HomeAssistant, entry: ConfigEntry)
     Runs at setup before the platforms add entities. Entity unique ids (`<device_id>_<entity
     domain>_<key>`) are the same in both integrations, so only the platform and config entry
     change. Originals are matched by the vacuum's MAC (`vacuum_mac`), so entries the original
-    imported from YAML (no unique id) are found too. Skipped while the original integration is
-    installed, and for any entity that is loaded or already exists in this integration.
+    imported from YAML (no unique id) are found too. Only taken from an original entry that cannot
+    load them (disabled, or the original removed), and never an entity that already exists here.
+
+    Disabling the original entry marked its enabled entities and device `disabled_by=config_entry`;
+    they are enabled again here, so each keeps the state it had in the original.
     """
     if (mac := vacuum_mac(entry)) is None:
         return
     originals = [
         original for original in hass.config_entries.async_entries(ORIGINAL_DOMAIN) if vacuum_mac(original) == mac
     ]
-    if not originals or await async_original_installed(hass):
+    if not originals:
         return
+    installed = await async_original_installed(hass)
+    originals = [original for original in originals if not _original_can_load(original, installed)]
 
     devices = dr.async_get(hass)
     registry = er.async_get(hass)
@@ -112,6 +167,8 @@ async def async_adopt_original_entities(hass: HomeAssistant, entry: ConfigEntry)
             except ValueError as err:
                 _LOGGER.warning("Could not take over %s: %s", registry_entry.entity_id, err)
                 continue
+            if registry_entry.disabled_by is er.RegistryEntryDisabler.CONFIG_ENTRY:
+                registry.async_update_entity(registry_entry.entity_id, disabled_by=None)
             _LOGGER.info("Took over %s from %s", registry_entry.entity_id, ORIGINAL_DOMAIN)
         # A device belongs to one config entry; move it after its entities (moving it first would
         # drop entities still on the original entry) so its name, area and labels stay.
@@ -120,9 +177,10 @@ async def async_adopt_original_entities(hass: HomeAssistant, entry: ConfigEntry)
                 (DOMAIN, value) if domain == ORIGINAL_DOMAIN else (domain, value)
                 for domain, value in device.identifiers
             }
+            disabled_by = None if device.disabled_by is dr.DeviceEntryDisabler.CONFIG_ENTRY else device.disabled_by
             try:
                 devices.async_update_device(
-                    device.id, new_config_entry_id=entry.entry_id, new_identifiers=identifiers
+                    device.id, new_config_entry_id=entry.entry_id, new_identifiers=identifiers, disabled_by=disabled_by
                 )
             except (ValueError, dr.DeviceIdentifierCollisionError, dr.DeviceConnectionCollisionError) as err:
                 _LOGGER.warning("Could not take over device %s: %s", device.name, err)

@@ -24,7 +24,7 @@ When two pieces of work compete, the one higher on this list goes first. [`ROADM
 
 ## Compatibility
 
-The fork's domain is `better_xiaomi_cloud_map_extractor`, so it installs next to the original `xiaomi_cloud_map_extractor`. Users switch with the import in `migration.py` (FORK.md "Compatibility"), which keeps their entity ids. Keep upstream's config entry keys and entity unique ids (`<device_id>_<entity domain>_<key>`): the import relies on them. A change that needs a new key adds a config entry migration (`VERSION`/`MINOR_VERSION` and `async_migrate_entry`) with a test that loads an entry written by v3.0.0-alpha-24 (`688fe3e`). Never modify or delete the original integration's entries or files, and never move anything from it while it is installed.
+The fork's domain is `better_xiaomi_cloud_map_extractor`, so it installs next to the original `xiaomi_cloud_map_extractor`. Users switch with the import in `migration.py` (FORK.md "Compatibility"), which keeps their entity ids. Keep upstream's config entry keys and entity unique ids (`<device_id>_<entity domain>_<key>`): the import relies on them. A change that needs a new key adds a config entry migration (`VERSION`/`MINOR_VERSION` and `async_migrate_entry`) with a test that loads an entry written by v3.0.0-alpha-24 (`688fe3e`). Never delete the original integration's entries or files, and never change their data or options. The one exception: the import may disable (`disabled_by=user`, reversible) the original's entry for the vacuum being imported, only after the user confirms the step that says so, and then move that entry's device and entities. Never take anything from an original entry that can still load it (enabled, with the original installed).
 
 ## Project map
 
