@@ -68,6 +68,7 @@ from .migration import (
     async_copy_original_session,
     async_disable_original,
     importable_original_entries,
+    unique_id_taken,
     vacuum_mac,
 )
 from .options_flow import XiaomiCloudMapExtractorOptionsFlowHandler
@@ -116,6 +117,8 @@ class XiaomiCloudMapExtractorFlowHandler(ConfigFlow, domain=DOMAIN):
             vacuum_mac(entry) == format_mac(mac) for entry in self._async_current_entries(include_ignore=False)
         ):
             return self.async_abort(reason="already_configured")
+        if mac is not None and not unique_id_taken(self.hass, format_mac(mac)):
+            await self.async_set_unique_id(format_mac(mac), raise_on_progress=False)
         return self.async_create_entry(
             title=NAME,
             data=data,

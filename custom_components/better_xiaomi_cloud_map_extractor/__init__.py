@@ -56,6 +56,7 @@ from .const import (
 from .coordinator import XiaomiCloudMapExtractorDataUpdateCoordinator
 from .migration import (
     async_adopt_original_entities,
+    async_fill_unique_id,
     async_flag_leftover_originals,
     async_original_changed,
     importable_original_entries,
@@ -91,6 +92,7 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: XiaomiCloudMapExtractorConfigEntry) -> bool:
+    async_fill_unique_id(hass, entry)
     await async_adopt_original_entities(hass, entry)
     xcme_configuration = to_configuration(entry)
 
