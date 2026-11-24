@@ -40,14 +40,10 @@ repository; each item names the priority it serves.
    The cloud connector's log is covered by `tests/test_secrets_in_logs.py`; still open: diagnostics
    export the map decryption key in `device_data`. Extend the log scan to every other
    vendor's map download (Ijai is covered). Closes #778.
-2. **Event-loop blocking and update churn** (reliability). Synchronous python-miio calls run on the event loop,
-   `MiotDevice` is created without a mapping (warning spam, #791), and the map keeps refreshing while
-   docked (#764) and floods the logbook (#719). Import #775 (skip #769, which it covers). Closes #791,
-   #764, #719; check #655 and #601 against it.
-3. **Repairs for failures that persist** (UI). Every config flow step and map update failure has
+2. **Repairs for failures that persist** (UI). Every config flow step and map update failure has
    a specific translated message; still open: a Repairs issue that says what to do when the same
    failure lasts (vacuum offline, wrong region), like `repairs.py` does for the wrong map format.
-4. **Xiaomi models: live data and map index** (backlog). Robot position and path missing while cleaning, wrong
+3. **Xiaomi models: live data and map index** (backlog). Robot position and path missing while cleaning, wrong
    map after maps were deleted, missing walls and no-go zones (b108gl, ov43gb, ov81gl, S40 Pro).
    Import #781 (skip #750, which does the same in 976 lines) and a generalised #748 (ov21gl rooms
    with `room_id=0`, zones, walls; skip #749, wrong base). Closes #720, advances #563, #657, #702,
@@ -68,6 +64,15 @@ When both hold, an agent brings the maintainer one question, "ready for 1.0.0?",
 the triage table, the fixed issues, the module map and the test coverage.
 
 ## Later
+
+- **Dreame: ask for a fresh map** (#655). On non-encrypted Dreame models (`dreame.vacuum.p2008`)
+  `get_map_name` asks the vacuum for a new map with python-miio `call_action("map_view")`, but
+  python-miio maps `map_view` as a property, not an action, so it raises before anything is sent and
+  the cloud keeps the map from the last upload (old robot position). Needs a Dreame owner to confirm
+  the right action (siid 6, aiid 1 as the encrypted models use through the cloud?); pre-release.
+- **Xiaomi and Roborock without the local network.** Both read the map name over the LAN, so a
+  vacuum that is not reachable from Home Assistant gets no map at all; a cloud fallback for the map
+  name (as Ijai does for the WiFi serial) would fix it. Related: #601 (rockrobo.vacuum.v1, v2).
 
 - **Dreame encrypted maps** ("incorrect header check" on p2140/p2150/r22xx) and Viomi V5 Pro
   (#746, reported on alpha-24). Needs a captured map from a reporter.

@@ -1,4 +1,5 @@
 import asyncio
+import dataclasses
 import hashlib
 import logging
 from collections.abc import Awaitable, Callable
@@ -46,6 +47,11 @@ _LOGGER = logging.getLogger(__name__)
 RENEWAL_RETRY_INTERVAL = timedelta(hours=1)
 # Nor is a password login that failed: repeating it every 10 s is what makes Xiaomi ask for a captcha.
 PASSWORD_LOGIN_RETRY_INTERVAL = timedelta(minutes=15)
+# A vacuum that cannot report whether it moves (no status over the local network) gets its map
+# downloaded every update only while the map changes. After this many identical downloads it is
+# checked once per UNCHANGED_MAP_CHECK_INTERVAL until it changes again (upstream #764, #719).
+UNCHANGED_MAP_DOWNLOADS = 3
+UNCHANGED_MAP_CHECK_INTERVAL = timedelta(minutes=1)
 
 SessionSaver = Callable[[XiaomiCloudConnectorConfig], Awaitable[None]]
 
@@ -98,15 +104,18 @@ class XiaomiCloudMapExtractorConnector:
         self._forced_refresh = False
         self._auto_update = True
         self._last_hash = None
+        self._unchanged_downloads = 0
+        self._last_download: datetime | None = None
 
     async def get_data(self: Self) -> XiaomiCloudMapExtractorData:
         async with self._lock:
-            if self._should_get_map():
+            if await self._should_get_map():
                 _LOGGER.debug("Downloading new map.")
                 await self._get_map()
             else:
                 _LOGGER.debug("Using cached map.")
-            return self._map_cache
+            # A copy: the coordinator compares it with the previous one to skip unchanged updates.
+            return dataclasses.replace(self._map_cache)
 
     async def _update(self: Self) -> None:
         if self._cloud_connector is None:
@@ -140,7 +149,7 @@ class XiaomiCloudMapExtractorConnector:
         if map_data is None:
             raise FailedMapDownloadException()
         self._map_cache.map_data = map_data
-        self._map_cache.map_image = to_image(map_data)
+        self._map_cache.map_image = await asyncio.to_thread(to_image, map_data)
         self._map_cache.map_data_raw = map_raw_data
 
     async def _ensure_session(self: Self) -> None:
@@ -217,17 +226,25 @@ class XiaomiCloudMapExtractorConnector:
             _LOGGER.error("Failed to retrieve model")
             raise DeviceNotFoundException()
 
-    def _should_get_map(self: Self) -> bool:
+    async def _should_get_map(self: Self) -> bool:
         if self._forced_refresh:
             self._forced_refresh = False
             return True
+        if self._vacuum_connector is None or self._map_cache.map_data is None:
+            return True
+        if not self._auto_update:
+            return False
+        moving = await self._vacuum_connector.should_update_map()
+        if moving is not None:
+            return moving
         return (
-            self._map_cache is None or
-            self._vacuum_connector is None or
-            (self._vacuum_connector.should_update_map and self._auto_update)
+            self._unchanged_downloads < UNCHANGED_MAP_DOWNLOADS
+            or self._last_download is None
+            or datetime.now() - self._last_download >= UNCHANGED_MAP_CHECK_INTERVAL
         )
 
     async def _get_map(self: Self) -> None:
+        self._last_download = datetime.now()
         try:
             await self._update()
             self._map_cache.status = XiaomiCloudMapExtractorConnectorStatus.OK
@@ -237,8 +254,10 @@ class XiaomiCloudMapExtractorConnector:
                 _LOGGER.debug("Old hash: '%s', New hash: '%s'", self._last_hash, new_hash)
                 self._last_hash = new_hash
                 self._map_cache.last_real_update_timestamp = self._map_cache.last_successful_update_timestamp
+                self._unchanged_downloads = 0
             else:
                 _LOGGER.debug("Hash not changed: '%s'", self._last_hash)
+                self._unchanged_downloads += 1
 
         except DeviceNotFoundException as e:
             self._map_cache.status = XiaomiCloudMapExtractorConnectorStatus.DEVICE_NOT_FOUND

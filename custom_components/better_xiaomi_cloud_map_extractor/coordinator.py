@@ -74,8 +74,9 @@ class XiaomiCloudMapExtractorDataUpdateCoordinator(DataUpdateCoordinator[XiaomiC
     ) -> None:
         self.connector = connector
         self.auth_issue: AuthIssue | None = None
+        # always_update=False: an update that brings the same map and status writes no state.
         super().__init__(hass, _LOGGER, name=DOMAIN, update_interval=DEFAULT_UPDATE_INTERVAL,
-                         update_method=self.update_data)
+                         update_method=self.update_data, always_update=False)
 
     async def update_data(self: Self) -> XiaomiCloudMapExtractorData:
         try:
