@@ -16,10 +16,13 @@ with a test that fails first (see [AGENTS.md](AGENTS.md)).
 
 - **Re-authentication crash.** Reauth reaches `confirm_data` without an existing entry and ends in
   "Unknown error occurred". Includes upstream #730 and the regression test from upstream PR #754.
-- **Cloud login robustness.** Session renewal with the `passToken` (upstream PR #777, #697) and
-  a reauth flow that explains captcha and account verification (#780: the link) are in review.
-  Still open: PR #793 (cloud region selection), #700, #712 and the `verifyEmail` finish location
-  in #780.
+- **Cloud login robustness.** Telling a Xiaomi outage (5xx, HTML, undecodable body) from a refusal,
+  keeping the session through a failed login, and throttling background password logins are in
+  review. Still open: PR #793 (cloud region selection), #700, #712 and the `verifyEmail` finish
+  location in #780. Unverified: an unencrypted API answer with code 2 or 3, or the message
+  `invalid signature`, is treated as an expired session (renewal, then password login). That
+  mirrors other Xiaomi cloud clients, not a captured response; replace it with a scrubbed capture
+  of what Xiaomi really sends for an expired `serviceToken`.
 
 ## Next, in order
 
@@ -35,10 +38,10 @@ repository; each item names the priority it serves.
    Import upstream PRs #796 and #795, and #766 with a timeout and without swallowing every
    exception. Closes #779, helps #730. Touches `config_flow.py` like the two threads above, so it
    starts after they merge.
-2. **Secrets in logs and diagnostics** (reliability: a leaked session is a broken session). The debug log prints `ssecurity`/`psecurity`
-   (`connector.py`, extension-pragma branch) and other session data, and users paste debug logs into
-   public issues; diagnostics export the map decryption key in `device_data`. Redact session
-   secrets in every log line and in diagnostics, with a test that scans log output. Closes #778.
+2. **Secrets in diagnostics and vendor logs** (reliability: a leaked session is a broken session).
+   The cloud connector's log is covered by `tests/test_secrets_in_logs.py`; still open: diagnostics
+   export the map decryption key in `device_data`, and `vacuum_ijai.py` logs the device token
+   (with the Ijai work). Extend the log scan to every vendor's map download. Closes #778.
 3. **Ijai maps, the largest v3 cluster** (reliability of the map download). `Padding is incorrect`, `FailedMapDownloadException`,
    `Failed to get wifi_sn`, `expected str, NoneType` on ijai v1/v2/v3/v17/v18, S10, S12, X20 Max.
    Import #725 first (parser author: isK3, hex key type), then one combined change from #782 (URL

@@ -1,3 +1,4 @@
+import asyncio
 import hashlib
 import logging
 from collections.abc import Awaitable, Callable
@@ -16,6 +17,7 @@ from .utils.exceptions import (
     DeviceNotFoundException,
     FailedConnectionException,
     InvalidCredentialsException,
+    RetryLaterException,
     SessionExpiredException,
     InvalidDeviceTokenException,
     TwoFactorAuthRequiredException,
@@ -42,6 +44,8 @@ _LOGGER = logging.getLogger(__name__)
 
 # A proactive renewal that Xiaomi turned down is not retried on every 10 s update.
 RENEWAL_RETRY_INTERVAL = timedelta(hours=1)
+# Nor is a password login that failed: repeating it every 10 s is what makes Xiaomi ask for a captcha.
+PASSWORD_LOGIN_RETRY_INTERVAL = timedelta(minutes=15)
 
 SessionSaver = Callable[[XiaomiCloudConnectorConfig], Awaitable[None]]
 
@@ -80,6 +84,9 @@ class XiaomiCloudMapExtractorConnector:
         self._config = config
         self._on_session_changed = on_session_changed
         self._last_renewal_attempt: datetime | None = None
+        self._last_failed_password_login: datetime | None = None
+        # The scheduled update and the refresh button can overlap; one session recovery at a time.
+        self._lock = asyncio.Lock()
         self._connector_config = connector_config
         self._session_creator = session_creator
         self._cloud_connector = None
@@ -93,12 +100,13 @@ class XiaomiCloudMapExtractorConnector:
         self._last_hash = None
 
     async def get_data(self: Self) -> XiaomiCloudMapExtractorData:
-        if self._should_get_map():
-            _LOGGER.debug("Downloading new map.")
-            await self._get_map()
-        else:
-            _LOGGER.debug("Using cached map.")
-        return self._map_cache
+        async with self._lock:
+            if self._should_get_map():
+                _LOGGER.debug("Downloading new map.")
+                await self._get_map()
+            else:
+                _LOGGER.debug("Using cached map.")
+            return self._map_cache
 
     async def _update(self: Self) -> None:
         if self._cloud_connector is None:
@@ -171,8 +179,16 @@ class XiaomiCloudMapExtractorConnector:
     async def _login_with_password(self: Self) -> None:
         if self._config.username is None or self._config.password is None:
             raise FailedLoginException()
+        if (self._last_failed_password_login is not None
+                and datetime.now() - self._last_failed_password_login < PASSWORD_LOGIN_RETRY_INTERVAL):
+            raise RetryLaterException()
         _LOGGER.info("Logging in to Xiaomi Cloud with the stored credentials")
-        await self._cloud_connector.login_with_credentials(self._config.username, self._config.password)
+        try:
+            await self._cloud_connector.login_with_credentials(self._config.username, self._config.password)
+        except Exception:
+            self._last_failed_password_login = datetime.now()
+            raise
+        self._last_failed_password_login = None
         if not self._cloud_connector.has_service_token():
             _LOGGER.error("Not authenticated!")
             raise FailedLoginException()
