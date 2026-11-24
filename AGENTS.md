@@ -10,7 +10,7 @@
 
 ## Compatibility
 
-The domain stays `xiaomi_cloud_map_extractor` so the fork is a drop-in replacement: config entries, entity ids, options and dashboards of v3-alpha users keep working. Do not rename the domain, the folder, the release zip, config entry keys, entity unique ids or storage keys. A change that needs a new key adds a config entry migration (`VERSION`/`MINOR_VERSION` and `async_migrate_entry`) with a test that loads an entry written by v3.0.0-alpha-24.
+The fork's domain is `better_xiaomi_cloud_map_extractor`, so it installs next to the original `xiaomi_cloud_map_extractor`. Users switch with the import in `migration.py` (FORK.md "Compatibility"), which keeps their entity ids. Keep upstream's config entry keys and entity unique ids (`<device_id>_<entity domain>_<key>`): the import relies on them. A change that needs a new key adds a config entry migration (`VERSION`/`MINOR_VERSION` and `async_migrate_entry`) with a test that loads an entry written by v3.0.0-alpha-24. Never modify or delete the original integration's entries or files, and never move anything from it while it is installed.
 
 ## Project map
 

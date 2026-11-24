@@ -12,7 +12,11 @@ from homeassistant.const import (
     CONF_MODEL,
     CONF_DEVICE_ID
 )
+from homeassistant.config_entries import SOURCE_INTEGRATION_DISCOVERY
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers import config_validation as cv
+from homeassistant.helpers import discovery_flow
+from homeassistant.helpers.typing import ConfigType
 from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers.aiohttp_client import async_create_clientsession
 from vacuum_map_parser_base.config.color import ColorsPalette, SupportedColor
@@ -37,16 +41,33 @@ from .const import (
     CONF_IMAGE_CONFIG_TRIM_RIGHT,
     CONF_IMAGE_CONFIG_TRIM_TOP,
     CONF_IMAGE_CONFIG_TRIM_BOTTOM,
-    CONF_ROOM_COLORS
+    CONF_ROOM_COLORS,
+    DOMAIN,
 )
 from .coordinator import XiaomiCloudMapExtractorDataUpdateCoordinator
+from .migration import async_adopt_original_entities, importable_original_entries
 from .store import restore_connector_config
 from .types import XiaomiCloudMapExtractorConfigEntry, XiaomiCloudMapExtractorRuntimeData
 
 _LOGGER = logging.getLogger(__name__)
 
+CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
+
+
+async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
+    """Offer every vacuum still set up in the original integration under "Discovered"."""
+    for original in importable_original_entries(hass):
+        discovery_flow.async_create_flow(
+            hass,
+            DOMAIN,
+            context={"source": SOURCE_INTEGRATION_DISCOVERY},
+            data={"entry_id": original.entry_id},
+        )
+    return True
+
 
 async def async_setup_entry(hass: HomeAssistant, entry: XiaomiCloudMapExtractorConfigEntry) -> bool:
+    await async_adopt_original_entities(hass, entry)
     xcme_configuration = to_configuration(entry)
 
     def session_creator() -> ClientSession:

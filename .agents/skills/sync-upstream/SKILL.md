@@ -15,9 +15,12 @@ Read these before touching the tree:
 2. [`fork-differences.md`](fork-differences.md): each area mapped to its files and proof.
 3. [`AGENTS.md`](../../../AGENTS.md): local checks, the test rule and who decides what ships.
 
-The compatibility promise is permanent unless the maintainer changes it: the domain
-`xiaomi_cloud_map_extractor`, the folder, `xiaomi_cloud_map_extractor.zip`, config entry keys,
-entity unique ids and storage names stay exactly as they are.
+The compatibility promise is permanent unless the maintainer changes it: the fork's domain
+`better_xiaomi_cloud_map_extractor`, its folder and zip, upstream's config entry keys and entity
+unique ids, and the import from the original (`migration.py`) stay exactly as they are. Upstream
+files live in `custom_components/xiaomi_cloud_map_extractor/`; apply them to
+`custom_components/better_xiaomi_cloud_map_extractor/` (for a patch:
+`git apply --directory` or `sed` the paths, then `git apply`).
 
 ## 1. Preflight
 

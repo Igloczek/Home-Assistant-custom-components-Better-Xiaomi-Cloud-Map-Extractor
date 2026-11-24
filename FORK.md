@@ -18,12 +18,33 @@ released changes in [CHANGELOG.md](CHANGELOG.md).
 
 ## Compatibility
 
-The integration domain `xiaomi_cloud_map_extractor`, the folder
-`custom_components/xiaomi_cloud_map_extractor`, the release asset `xiaomi_cloud_map_extractor.zip`,
-the config entry data and options keys, entity unique ids and the storage file names keep their
-upstream names and meaning. The fork is a drop-in replacement for the v3 alphas: existing config
-entries, entity ids and dashboards keep working without setting the vacuum up again. Changing any of
-these needs the maintainer's explicit decision and a migration.
+The fork has its own domain, `better_xiaomi_cloud_map_extractor` (folder
+`custom_components/better_xiaomi_cloud_map_extractor`, release asset
+`better_xiaomi_cloud_map_extractor.zip`, storage `.storage/better_xiaomi_cloud_map_extractor_<mac>`),
+so it installs next to the original `xiaomi_cloud_map_extractor` without either overwriting the
+other. Config entry data and options keys, entity unique ids (`<device_id>_<entity domain>_<key>`)
+and entity names are the same as upstream's v3.0.0-alpha-24.
+
+Switching keeps a user's setup (`migration.py`):
+
+- **Import.** When `xiaomi_cloud_map_extractor` config entries exist that are not set up here, the
+  setup menu offers **Import from Xiaomi Cloud Map Extractor**, and once the integration runs, the
+  remaining ones appear under **Discovered**. The import copies the entry's data, options and title
+  and the stored cloud session (`.storage/xiaomi_cloud_map_extractor_<mac>`); no new login is
+  needed.
+- **Entity ids.** At setup, before the platforms load, the original's entity registry entries for
+  that vacuum move to this integration (`async_update_entity_platform`), then its device
+  (`async_update_device`), so entity ids, names, areas and customisations stay and dashboards,
+  automations and the map card keep working.
+- **The original stays untouched while it can run.** Nothing is imported or moved while the
+  original integration is installed (`async_get_integration` finds it): the import shows "remove
+  Xiaomi Cloud Map Extractor in HACS and restart" and changes nothing. The original config entry and
+  its storage file are never modified or deleted; the user deletes the leftover entry afterwards.
+- **Not imported:** original entries without a unique id (v2 YAML imports whose cloud lookup
+  failed). Legacy YAML keeps working by changing `platform: xiaomi_cloud_map_extractor` to
+  `platform: better_xiaomi_cloud_map_extractor`; it is then imported like upstream's.
+- Proof: `tests/test_import_original.py` (an alpha-24 entry, registry entries, device and storage
+  file; original installed and not installed; discovery; removing the leftover entry).
 
 ## Upstream snapshot
 
@@ -43,7 +64,8 @@ implement it and the proof that must still pass.
 
 | Area | Behaviour in this fork | Why |
 | --- | --- | --- |
-| <a id="project-identity"></a>Project identity | The manifest and HACS name are **Better Xiaomi Cloud Map Extractor**; `documentation`, `issue_tracker` and `codeowners` point at the fork; the README, issue forms and re-authentication text carry the fork's name. The domain and the other names under **Compatibility** stay upstream's. | The fork needs its own identity and tracker without breaking installed setups. |
+| <a id="project-identity"></a>Project identity | The domain is `better_xiaomi_cloud_map_extractor` and the manifest and HACS name **Better Xiaomi Cloud Map Extractor**; `documentation`, `issue_tracker` and `codeowners` point at the fork; the README, issue forms and re-authentication text carry the fork's name. | The fork installs next to the original without a collision and has its own tracker. |
+| <a id="import-original"></a>Import from the original | Original `xiaomi_cloud_map_extractor` entries are offered for import (menu and discovery); the entry, options and cloud session are copied and the device and entities move over with their ids, never while the original is installed. See **Compatibility**. | Switching must not cost users their setup, entity ids or dashboards. |
 | <a id="test-suite"></a>Test suite | `tests/` runs on `pytest-homeassistant-custom-component` with the Xiaomi cloud and the vacuum mocked: the config flow (credentials, captcha, two-factor, several vacuums, duplicates, errors), setup and unload, and which connector errors start re-authentication. `requirements_test.txt` pins the test harness and lists the integration's requirements. | Upstream has no tests. |
 | <a id="ci"></a>CI and lint | `tests.yml` runs `ruff check .` (correctness rules, `pyproject.toml`) and `pytest` on Python 3.14 for pushes to and pull requests against `master`. HACS validation runs every check, including `issues` (the repository has HACS topics). `manifest.json` does not list `Pillow`, which Home Assistant provides and hassfest forbids in custom integrations. There is no `dev` branch and no master→dev automerge job, and upstream's `lint_python` job (whose steps mostly ended in `|| true`) is replaced. | Upstream CI could not fail on a real problem, and the fork lands every change on `master`. |
 | <a id="release-packaging"></a>Release packaging | `release.yaml` runs lint and tests on the released commit, sets the manifest `version` to the tag without its `v`, and attaches `better_xiaomi_cloud_map_extractor.zip` with the integration files at the archive root, as `hacs.json` (`zip_release`) expects. | A release must not ship a commit that fails the suite, and HACS installs from that zip. |

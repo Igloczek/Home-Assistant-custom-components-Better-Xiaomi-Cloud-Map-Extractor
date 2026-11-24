@@ -7,6 +7,10 @@ NAME: Final = "Better Xiaomi Cloud Map Extractor"
 
 DOMAIN: Final = "better_xiaomi_cloud_map_extractor"
 
+# The original integration this fork can import setups from (see migration.py).
+ORIGINAL_DOMAIN: Final = "xiaomi_cloud_map_extractor"
+ORIGINAL_NAME: Final = "Xiaomi Cloud Map Extractor"
+
 PLATFORMS: list[Platform] = [
     Platform.CAMERA,
     Platform.IMAGE,

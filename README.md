@@ -47,18 +47,25 @@ Restart Home Assistant afterwards.
 
 ## Coming from Xiaomi Cloud Map Extractor
 
-This fork is a drop-in replacement for the original v3 alphas. It keeps the integration domain
-`xiaomi_cloud_map_extractor`, so your configured vacuums, entity ids, options and dashboards keep
-working without being set up again.
+This integration has its own name (`better_xiaomi_cloud_map_extractor`), so it can be installed next
+to the original. Your vacuums move over with their settings, Xiaomi login and entity ids, so
+dashboards, automations and the map card keep working:
 
-Both versions install into the same `custom_components/xiaomi_cloud_map_extractor` folder, so only
-one can be installed. In HACS, remove the original repository's download first (keep the
-integration's configuration), then install this one as above and restart.
+1. In HACS, remove **Xiaomi Cloud Map Extractor** (its configuration stays), install this one as
+   above, and restart Home Assistant.
+2. Go to **Settings → Devices & services → Add integration → Better Xiaomi Cloud Map Extractor** and
+   pick **Import from Xiaomi Cloud Map Extractor**. Further vacuums then show up under
+   **Discovered**.
+3. Delete the old Xiaomi Cloud Map Extractor entry, which Home Assistant now lists as not loaded.
 
-Coming from v2 (YAML `camera:` configuration)? The YAML entry is imported into a configured
-integration on start. Remove the YAML afterwards (Home Assistant shows a repair notice), and log in
-again if Home Assistant asks you to re-authenticate. The v2
-documentation stays on the [`v2` branch](https://github.com/Igloczek/Home-Assistant-custom-components-Better-Xiaomi-Cloud-Map-Extractor/tree/v2#readme).
+The import refuses to run while the original is still installed, and it never changes the original's
+own configuration.
+
+Coming from v2 (YAML `camera:` configuration)? Change `platform: xiaomi_cloud_map_extractor` to
+`platform: better_xiaomi_cloud_map_extractor`. The entry is imported into a configured integration
+on start. Remove the YAML afterwards (Home Assistant shows a repair notice), and log in again if
+Home Assistant asks you to re-authenticate. The v2 documentation stays on the
+[`v2` branch](https://github.com/Igloczek/Home-Assistant-custom-components-Better-Xiaomi-Cloud-Map-Extractor/tree/v2#readme).
 
 ## Setup
 

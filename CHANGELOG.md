@@ -2,8 +2,14 @@
 
 ## Unreleased
 
-First release of this fork under its own name, based on upstream v3.0.0-alpha-24. Existing v3
-setups keep working: the integration domain, config entries and entity ids are unchanged.
+First release of this fork under its own name, based on upstream v3.0.0-alpha-24. It installs
+next to the original as `better_xiaomi_cloud_map_extractor`.
+
+### Added
+
+- Import from Xiaomi Cloud Map Extractor: vacuums set up in the original integration move over
+  with their settings, Xiaomi login, device and entity ids, so dashboards and automations keep
+  working.
 
 ### Fixed
 
@@ -12,5 +18,5 @@ setups keep working: the integration domain, config entries and entity ids are u
 
 ### Changed
 
-- The integration is named **Better Xiaomi Cloud Map Extractor**, and bugs go to this fork's issue
-  tracker.
+- The integration is named **Better Xiaomi Cloud Map Extractor** (domain
+  `better_xiaomi_cloud_map_extractor`), and bugs go to this fork's issue tracker.

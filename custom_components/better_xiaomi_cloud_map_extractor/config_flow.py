@@ -7,7 +7,7 @@ from typing import Any, Self, Mapping
 
 import voluptuous as vol
 from aiohttp import ClientSession
-from homeassistant.config_entries import ConfigFlow, ConfigFlowResult, SOURCE_REAUTH
+from homeassistant.config_entries import ConfigEntry, ConfigFlow, ConfigFlowResult, SOURCE_REAUTH, SOURCE_USER
 from homeassistant.const import (
     CONF_DEVICE_ID,
     CONF_HOST,
@@ -60,8 +60,10 @@ from .const import (
     CONF_CAPTCHA_CODE,
     CONF_TWO_FACTOR_CODE,
     NAME,
+    ORIGINAL_NAME,
 )
 from .legacy import create_config_entry_data_from_yaml
+from .migration import async_copy_original_session, async_original_installed, importable_original_entries
 from .options_flow import XiaomiCloudMapExtractorOptionsFlowHandler
 from .store import save_connector_config
 from .types import XiaomiCloudMapExtractorConfigEntry
@@ -83,6 +85,7 @@ class XiaomiCloudMapExtractorFlowHandler(ConfigFlow, domain=DOMAIN):
         self._captcha_exception: CaptchaRequiredException | None = None
         self._two_factor_exception: TwoFactorAuthRequiredException | None = None
         self._wait_for_login_task: Task | None = None
+        self._original: ConfigEntry | None = None
 
     @staticmethod
     @callback
@@ -130,13 +133,83 @@ class XiaomiCloudMapExtractorFlowHandler(ConfigFlow, domain=DOMAIN):
     async def async_step_auth_method_selection(
             self: Self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
+        menu_options = ["auth_credentials", "auth_qr"]
+        if self.source == SOURCE_USER and importable_original_entries(self.hass):
+            menu_options.insert(0, "import_original")
         return self.async_show_menu(
             step_id="auth_method_selection",
-            menu_options=[
-                "auth_credentials",
-                "auth_qr"
-            ],
+            menu_options=menu_options,
         )
+
+    async def async_step_import_original(
+            self: Self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Pick a vacuum set up in the original Xiaomi Cloud Map Extractor and import it."""
+        originals = importable_original_entries(self.hass)
+        if not originals:
+            return self.async_abort(reason="no_original_entries")
+        errors: dict[str, str] = {}
+        if user_input is not None:
+            self._original = next((e for e in originals if e.entry_id == user_input["original_entry"]), None)
+            if self._original is not None:
+                if (result := await self._async_import_original()) is not None:
+                    return result
+                errors["base"] = "original_installed"
+        schema = vol.Schema({
+            vol.Required("original_entry", default=originals[0].entry_id): SelectSelector(
+                SelectSelectorConfig(
+                    options=[SelectOptionDict(value=e.entry_id, label=e.title) for e in originals],
+                    mode=SelectSelectorMode.LIST,
+                ))
+        })
+        return self.async_show_form(
+            step_id="import_original",
+            data_schema=schema,
+            errors=errors,
+            description_placeholders={"original_name": ORIGINAL_NAME},
+        )
+
+    async def async_step_integration_discovery(
+            self: Self, discovery_info: Mapping[str, Any]
+    ) -> ConfigFlowResult:
+        """A vacuum is still set up in the original integration (started by async_setup)."""
+        original = self.hass.config_entries.async_get_entry(discovery_info["entry_id"])
+        if original is None or original not in importable_original_entries(self.hass):
+            return self.async_abort(reason="no_original_entries")
+        await self.async_set_unique_id(original.unique_id)
+        self._abort_if_unique_id_configured()
+        self._original = original
+        self.context["title_placeholders"] = {"name": original.title}
+        return await self.async_step_import_original_confirm()
+
+    async def async_step_import_original_confirm(
+            self: Self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        errors: dict[str, str] = {}
+        if user_input is not None:
+            if (result := await self._async_import_original()) is not None:
+                return result
+            errors["base"] = "original_installed"
+        return self.async_show_form(
+            step_id="import_original_confirm",
+            errors=errors,
+            description_placeholders={"name": self._original.title, "original_name": ORIGINAL_NAME},
+        )
+
+    async def _async_import_original(self: Self) -> ConfigFlowResult | None:
+        """Copy the original entry and its cloud session; None while the original is installed.
+
+        Entity ids move over at setup (`migration.async_adopt_original_entities`). The original
+        entry itself is left as it is.
+        """
+        if await async_original_installed(self.hass):
+            return None
+        original = self._original
+        await self.async_set_unique_id(original.unique_id, raise_on_progress=False)
+        self._abort_if_unique_id_configured()
+        if (mac := original.data.get(CONF_MAC)) is not None:
+            await async_copy_original_session(self.hass, mac)
+        return self.async_create_entry(title=original.title, data=dict(original.data), options=dict(original.options))
 
     async def async_step_auth_credentials(
             self: Self, user_input: dict[str, Any] | None = None

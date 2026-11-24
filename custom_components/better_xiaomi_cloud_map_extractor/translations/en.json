@@ -5,19 +5,22 @@
       "already_in_progress": "Configuration flow is already in progress",
       "unknown": "Unexpected error",
       "cloud_no_devices": "No vacuums found for this Xiaomi Cloud account.",
-      "reauth_successful": "Re-authentication was successful"
+      "reauth_successful": "Re-authentication was successful",
+      "no_original_entries": "Every vacuum from Xiaomi Cloud Map Extractor is already set up here."
     },
     "error": {
       "invalid_captcha": "Invalid captcha provided, try again.",
       "cloud_login_error": "Could not login to Xiaomi Cloud, check the credentials.",
       "cloud_no_devices": "No vacuums found for this Xiaomi Cloud account.",
-      "invalid_vacuum": "Connection to vacuum failed, please check the configuration."
+      "invalid_vacuum": "Connection to vacuum failed, please check the configuration.",
+      "original_installed": "Xiaomi Cloud Map Extractor is still installed. Remove it in HACS (keep its configuration) and restart Home Assistant, then import again. Its entities keep their ids only after it is removed."
     },
     "flow_title": "{name}",
     "step": {
       "auth_method_selection": {
         "description": "Choose login method.",
         "menu_options": {
+          "import_original": "Import from Xiaomi Cloud Map Extractor",
           "auth_credentials": "Credentials",
           "auth_qr": "QR code/login link"
         }
@@ -66,6 +69,17 @@
         "data_description": {
           "select_vacuum": "[server] Name - model code (MAC address)"
         }
+      },
+      "import_original": {
+        "title": "Import from {original_name}",
+        "description": "Copies the vacuum's settings, map options and Xiaomi cloud session from {original_name}. Its entities keep their entity ids, so dashboards and automations keep working. The original entry is left untouched; delete it afterwards.",
+        "data": {
+          "original_entry": "Vacuum"
+        }
+      },
+      "import_original_confirm": {
+        "title": "Import {name}",
+        "description": "{name} is set up in {original_name}. Import its settings, map options and Xiaomi cloud session here? Its entities keep their entity ids. The original entry is left untouched; delete it afterwards."
       }
     },
     "progress": {
@@ -177,8 +191,7 @@
       },
       "room_colors_step2": {
         "description": "Choose rooms' colors.",
-        "data": {
-        }
+        "data": {}
       },
       "drawables": {
         "description": "Choose map elements to draw.",
