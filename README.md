@@ -8,8 +8,13 @@ A Home Assistant integration that downloads your robot vacuum's map from the Xia
 it as an image entity, with the robot's position, path, rooms, zones and obstacles drawn on it. It
 works with Xiaomi, Roborock (Mi Home app), Viomi, Roidmi, Dreame and Ijai vacuums.
 
-Use it with [Better Xiaomi Vacuum Map Card](https://github.com/Igloczek/lovelace-better-xiaomi-vacuum-map-card)
-to turn the map into a remote: tap rooms to clean them, draw zones, send the robot to a spot.
+Part of the **Better** family for Home Assistant vacuums, maintained together and built test-first:
+
+- **Better Xiaomi Cloud Map Extractor** (this repository): the live map image and room data from
+  the Xiaomi cloud.
+- **[Better Xiaomi Vacuum Map Card](https://github.com/Igloczek/lovelace-better-xiaomi-vacuum-map-card)**:
+  the dashboard card for this map. It turns the map into a remote: tap rooms to clean them, draw
+  zones, send the robot to a spot. Report problems with the card itself on its own issue tracker.
 
 <img src="https://raw.githubusercontent.com/Igloczek/better-xiaomi-cloud-map-extractor/master/images/map_no_rooms.png" width=48%>  <img src="https://raw.githubusercontent.com/Igloczek/better-xiaomi-cloud-map-extractor/master/images/map_rooms.png" width=48%>
 
