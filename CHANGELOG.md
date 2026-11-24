@@ -10,7 +10,9 @@ next to the original as `better_xiaomi_cloud_map_extractor`.
 - Import from Xiaomi Cloud Map Extractor: vacuums set up in the original integration move over
   with their settings, Xiaomi login, device and entity ids, so dashboards and automations keep
   working. This includes vacuums the original imported from v2 YAML; one whose Xiaomi lookup
-  failed back then asks to log in once after the import.
+  failed back then asks to log in once after the import. The import works while the original is
+  still installed: it disables the original's entry (nothing is deleted), and a repair then tells
+  you when you can delete that entry and uninstall the original.
 
 ### Fixed
 
