@@ -69,8 +69,10 @@ class XiaomiCloudMapExtractorSwitchEntity(XiaomiCloudMapExtractorEntity, SwitchE
 
     async def async_turn_on(self) -> None:
         await self.entity_description.set_fn(self.coordinator, True)
+        self.async_write_ha_state()  # a refresh with an unchanged map writes no state
         await self.coordinator.async_request_refresh()
 
     async def async_turn_off(self) -> None:
         await self.entity_description.set_fn(self.coordinator, False)
+        self.async_write_ha_state()
         await self.coordinator.async_request_refresh()

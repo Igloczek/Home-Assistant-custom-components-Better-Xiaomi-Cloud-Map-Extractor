@@ -14,6 +14,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from homeassistant.data_entry_flow import FlowManager, FlowResultType
+from homeassistant import block_async_io
 
 from custom_components.better_xiaomi_cloud_map_extractor.connector.model import (
     XiaomiCloudMapExtractorConnectorStatus,
@@ -91,6 +92,21 @@ def flow_results_render() -> Generator[None]:
 
     with patch.object(FlowManager, "_async_handle_step", checked):
         yield
+
+
+@pytest.fixture(autouse=True)
+def detect_blocking_calls() -> Generator[None]:
+    """Home Assistant's "Detected blocking call" check, as a running instance has it.
+
+    Only `bootstrap` turns it on, so the test harness runs without it. Here a blocking call
+    (`time.sleep`, `open`, ...) made on the event loop from the integration raises, like it
+    logs on a real installation. `tests/fake_miio.py` blocks like a LAN round trip does.
+    """
+    block_async_io.enable()
+    yield
+    for blocked in block_async_io._BLOCKED_CALLS.calls:
+        setattr(blocked.object, blocked.function, blocked.original_func)
+    block_async_io._BLOCKED_CALLS.calls.clear()
 
 
 def make_device(**overrides) -> XiaomiCloudDeviceInfo:

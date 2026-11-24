@@ -1,3 +1,4 @@
+import asyncio
 import base64
 import json
 import logging
@@ -73,7 +74,7 @@ class XiaomiCloudVacuum(BaseXiaomiCloudVacuumV2):
         self._token = vacuum_config.token
         self._host = vacuum_config.host
 
-        self._miot_device = MiotDevice(self._host, self._token, timeout=2)
+        self._miot_device = MiotDevice(self._host, self._token, timeout=2, mapping={})
 
         self._xiaomi_map_data_parser = XiaomiMapDataParser(
             vacuum_config.palette,
@@ -92,12 +93,14 @@ class XiaomiCloudVacuum(BaseXiaomiCloudVacuumV2):
     def _model_key(self: Self) -> str:
         return self.model[-MODEL_KEY_LENGTH:]
 
-    @property
-    def should_update_map(self: Self) -> bool:
+    async def should_update_map(self: Self) -> bool | None:
         try:
-            status_value = self._miot_device.get_property_by(self._status_mapping.siid,
-                                                             self._status_mapping.piid)[0]["value"]
+            status_value = (await asyncio.to_thread(
+                self._miot_device.get_property_by, self._status_mapping.siid, self._status_mapping.piid
+            ))[0].get("value")
 
+            if not isinstance(status_value, int):
+                return None  # not a status: on the H50 (ov43gb) this property is the firmware version
             if status_value in self._status_mapping.idle_at:
                 self._off_counter += 1
                 _LOGGER.debug(
@@ -124,11 +127,12 @@ class XiaomiCloudVacuum(BaseXiaomiCloudVacuumV2):
         return self._xiaomi_map_data_parser
     
     async def get_map_name(self: Self) -> str:
-        response = self._miot_device.get_property_by(self._vacuum_map.siid,
-                                                     self._vacuum_map.piid)[0].get("value")
+        response = (await asyncio.to_thread(
+            self._miot_device.get_property_by, self._vacuum_map.siid, self._vacuum_map.piid
+        ))[0].get("value")
 
         if response is None:
-            return super().get_map_name()
+            return await super().get_map_name()
 
         if isinstance(response, int):
             return str(response)
@@ -140,7 +144,7 @@ class XiaomiCloudVacuum(BaseXiaomiCloudVacuumV2):
                 if isinstance(response, str) and "/" in response:
                     map_name = response
             if map_name is None:
-                return super().get_map_name()
+                return await super().get_map_name()
             return map_name.split("/")[-1]
 
     async def get_map_url(self, map_name: str) -> str | None:

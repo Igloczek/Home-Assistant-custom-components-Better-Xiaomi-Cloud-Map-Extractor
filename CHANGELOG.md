@@ -1,5 +1,28 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+- No more "Detected blocking call" warnings: the status and map-name requests to the vacuum on the
+  local network, and the map decoding and drawing, run outside Home Assistant's event loop, so a slow
+  or unreachable vacuum no longer freezes Home Assistant for seconds on every update (upstream PR
+  #775 by tovisb, which also covers PR #769 by its author).
+- "Neither the class nor the parameter defines the mapping" is no longer logged at every start for
+  Xiaomi and Ijai vacuums (upstream #791).
+- A docked vacuum's map is no longer downloaded and redrawn every 10 seconds (upstream #764).
+  Vacuums that report their status stop after the usual few updates once docked; vacuums that
+  cannot (Viomi, Roidmi, Dreame, and the Xiaomi H50, whose status property holds the firmware
+  version) are downloaded every update only while the map changes, and checked once a minute after
+  three unchanged downloads.
+- Updates that bring the same map no longer write new states to the recorder and logbook (upstream
+  #719). The `last_update_timestamp` and `last_successful_update_timestamp` attributes now change
+  with the map, not with every check; diagnostics still show the last check.
+- An Ijai vacuum that Home Assistant cannot reach on the local network keeps getting new maps from
+  the cloud instead of keeping the first one.
+- A map that failed to download at startup is retried while the vacuum is docked, instead of never.
+- Roborock no longer waits after a successful map name request.
+
 ## 0.1.3 - 2026-11-24
 
 ### Fixed

@@ -1,6 +1,6 @@
 import base64
 import enum
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 from enum import IntEnum
 from typing import Self, Any
@@ -50,15 +50,20 @@ class XiaomiCloudMapExtractorConnectorConfiguration:
 
 @dataclass
 class XiaomiCloudMapExtractorData:
-    map_data: MapData | None = None
+    """Equal to the previous update when the map and the status are the same.
+
+    The coordinator skips updating the entities then, so an update that only ran again writes no
+    new state (logbook, recorder). The timestamps of that update do not count.
+    """
+    map_data: MapData | None = field(default=None, compare=False)
     map_data_raw: bytes | None = None
     map_image: bytes | None = None
     two_factor_url: str | None = None
-    last_update_timestamp: datetime | None = None
-    last_successful_update_timestamp: datetime | None = None
+    last_update_timestamp: datetime | None = field(default=None, compare=False)
+    last_successful_update_timestamp: datetime | None = field(default=None, compare=False)
     last_real_update_timestamp: datetime | None = None
     status: XiaomiCloudMapExtractorConnectorStatus = XiaomiCloudMapExtractorConnectorStatus.UNKNOWN
-    additional_vacuum_data: dict[str, Any] | None = None
+    additional_vacuum_data: dict[str, Any] | None = field(default=None, compare=False)
 
     def as_dict(self: Self) -> dict[str, Any]:
         map_data_dict = self.map_data and {
