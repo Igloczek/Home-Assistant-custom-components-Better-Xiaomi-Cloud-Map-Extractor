@@ -20,10 +20,12 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from homeassistant import config_entries
+from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
-from pytest_homeassistant_custom_component.common import MockConfigEntry
+from pytest_homeassistant_custom_component.common import MockConfigEntry, MockModule, mock_integration, mock_platform
 
 from custom_components.better_xiaomi_cloud_map_extractor.config_flow import XiaomiCloudMapExtractorFlowHandler
 from custom_components.better_xiaomi_cloud_map_extractor.const import ORIGINAL_DOMAIN
@@ -210,3 +212,57 @@ def add_original(hass: HomeAssistant, hass_storage: dict[str, Any], shape: Origi
         key = f"{ORIGINAL_DOMAIN}_{shape.mac}"
         hass_storage[key] = {"version": 1, "key": key, "data": SESSION}
     return original
+
+
+class _OriginalConfigFlow(config_entries.ConfigFlow, domain=ORIGINAL_DOMAIN):
+    """alpha-24's config flow version, so Home Assistant loads its entries without migrating them."""
+
+    VERSION = 1
+
+
+def install_original(hass: HomeAssistant) -> None:
+    """Install a stand-in for the original integration that loads its entries like alpha-24 does.
+
+    Setup registers the vacuum's device and its 26 entities under the original's platform (as the
+    original's platforms do; existing registry entries are reused) and puts the enabled ones in the
+    state machine; unload removes those states. An entry without a device id fails setup with
+    `ConfigEntryAuthFailed`, as alpha-24's `to_configuration` does.
+    """
+    loaded: dict[str, list[str]] = {}
+
+    async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+        if (device_id := entry.data["device_id"]) is None:
+            raise ConfigEntryAuthFailed
+        device = dr.async_get(hass).async_get_or_create(
+            config_entry_id=entry.entry_id,
+            connections={(dr.CONNECTION_NETWORK_MAC, entry.data["mac"])},
+            identifiers={(ORIGINAL_DOMAIN, device_id)},
+            name=entry.data["name"],
+        )
+        registry = er.async_get(hass)
+        states = loaded.setdefault(entry.entry_id, [])
+        for domain, key in ALPHA24_ENTITIES:
+            registry_entry = registry.async_get_or_create(
+                domain,
+                ORIGINAL_DOMAIN,
+                f"{device_id}_{domain}_{key}",
+                config_entry=entry,
+                device_id=device.id,
+                suggested_object_id=f"living_room_vacuum_{key}",
+                disabled_by=None if (domain, key) in ENABLED else er.RegistryEntryDisabler.INTEGRATION,
+            )
+            if not registry_entry.disabled:
+                hass.states.async_set(registry_entry.entity_id, "idle")
+                states.append(registry_entry.entity_id)
+        return True
+
+    async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+        for entity_id in loaded.pop(entry.entry_id, []):
+            hass.states.async_remove(entity_id)
+        return True
+
+    mock_integration(
+        hass,
+        MockModule(ORIGINAL_DOMAIN, async_setup_entry=async_setup_entry, async_unload_entry=async_unload_entry),
+    )
+    mock_platform(hass, f"{ORIGINAL_DOMAIN}.config_flow")

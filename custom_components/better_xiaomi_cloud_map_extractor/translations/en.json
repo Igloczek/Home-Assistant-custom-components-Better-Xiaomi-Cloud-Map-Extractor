@@ -13,8 +13,7 @@
       "invalid_captcha": "Invalid captcha provided, try again.",
       "cloud_login_error": "Could not login to Xiaomi Cloud, check the credentials.",
       "cloud_no_devices": "No vacuums found for this Xiaomi Cloud account.",
-      "invalid_vacuum": "Connection to vacuum failed, please check the configuration.",
-      "original_installed": "Xiaomi Cloud Map Extractor is still installed. Remove it in HACS (keep its configuration) and restart Home Assistant, then import again. Its entities keep their ids only after it is removed."
+      "invalid_vacuum": "Connection to vacuum failed, please check the configuration."
     },
     "flow_title": "{name}",
     "step": {
@@ -74,14 +73,14 @@
       },
       "import_original": {
         "title": "Import from {original_name}",
-        "description": "Copies the vacuum's settings, map options and Xiaomi cloud session from {original_name}. Its entities keep their entity ids, so dashboards and automations keep working. The original entry is left untouched; delete it afterwards.",
+        "description": "Moves the vacuum's settings, map options, Xiaomi cloud session, device and entities here from {original_name}. Entity ids stay the same, so dashboards and automations keep working.\n\nIts entry in {original_name} is disabled (you can enable it again); nothing is deleted. Afterwards you can delete that entry and uninstall {original_name}.",
         "data": {
           "original_entry": "Vacuum"
         }
       },
       "import_original_confirm": {
         "title": "Import {name}",
-        "description": "{name} is set up in {original_name}. Import its settings, map options and Xiaomi cloud session here? Its entities keep their entity ids. The original entry is left untouched; delete it afterwards."
+        "description": "{name} is set up in {original_name}. Move its settings, map options, Xiaomi cloud session, device and entities here? Entity ids stay the same.\n\nIts entry in {original_name} is disabled (you can enable it again); nothing is deleted."
       },
       "reauth_captcha": {
         "title": "Xiaomi asked for a captcha",
@@ -686,6 +685,10 @@
     "deprecated_yaml": {
       "description": "Configuring {integration_title} using YAML is being removed.\n\nYour existing YAML configuration has been imported into the UI automatically.\n\nRemove the `{domain}` camera from your configuration.yaml file and restart Home Assistant to fix this issue.",
       "title": "The {integration_title} YAML configuration is being removed"
+    },
+    "original_left": {
+      "title": "{name} moved from Xiaomi Cloud Map Extractor",
+      "description": "{name} now runs in Better Xiaomi Cloud Map Extractor with the same device and entity ids. Its entry in Xiaomi Cloud Map Extractor is disabled and no longer needed.\n\nTo finish switching, delete the disabled Xiaomi Cloud Map Extractor entry under Settings > Devices & services (the device and entities stay here), then uninstall Xiaomi Cloud Map Extractor."
     }
   },
   "exceptions": {
