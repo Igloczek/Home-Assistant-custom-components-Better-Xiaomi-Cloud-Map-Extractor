@@ -689,6 +689,17 @@
     "original_left": {
       "title": "{name} moved from Xiaomi Cloud Map Extractor",
       "description": "{name} now runs in Better Xiaomi Cloud Map Extractor with the same device and entity ids. Its entry in Xiaomi Cloud Map Extractor is disabled and no longer needed.\n\nTo finish switching, delete the disabled Xiaomi Cloud Map Extractor entry under Settings > Devices & services (the device and entities stay here), then uninstall Xiaomi Cloud Map Extractor."
+    },
+    "wrong_map_format": {
+      "title": "{name}: the map cannot be read in the {used_api} map format",
+      "fix_flow": {
+        "step": {
+          "confirm": {
+            "title": "Switch {name} to the {detected_api} map format",
+            "description": "The map of {name} ({model}) could not be read in the {used_api} map format. This model uses the {detected_api} format.\n\nSelect **Submit** to switch to the {detected_api} map format and reload the integration. Your entities, options and login stay as they are."
+          }
+        }
+      }
     }
   },
   "exceptions": {

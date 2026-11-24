@@ -22,6 +22,7 @@ from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers import discovery_flow
+from homeassistant.helpers import issue_registry as ir
 from homeassistant.helpers.typing import ConfigType
 from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers.aiohttp_client import async_create_clientsession
@@ -59,6 +60,7 @@ from .migration import (
     async_original_changed,
     importable_original_entries,
 )
+from .repairs import wrong_map_format_issue_id
 from .store import restore_connector_config, save_connector_config
 from .types import XiaomiCloudMapExtractorConfigEntry, XiaomiCloudMapExtractorRuntimeData
 
@@ -117,6 +119,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: XiaomiCloudMapExtractorC
 
 async def async_unload_entry(hass: HomeAssistant, entry: XiaomiCloudMapExtractorConfigEntry) -> bool:
     return await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
+
+
+async def async_remove_entry(hass: HomeAssistant, entry: XiaomiCloudMapExtractorConfigEntry) -> None:
+    ir.async_delete_issue(hass, DOMAIN, wrong_map_format_issue_id(entry.entry_id))
 
 
 async def async_reload_entry(hass: HomeAssistant, entry: XiaomiCloudMapExtractorConfigEntry) -> None:

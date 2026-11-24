@@ -18,6 +18,7 @@ from .connector.utils.exceptions import (
     DeviceNotFoundException,
 )
 from .const import DOMAIN, DEFAULT_UPDATE_INTERVAL
+from .repairs import async_check_map_format
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -72,6 +73,8 @@ class XiaomiCloudMapExtractorDataUpdateCoordinator(DataUpdateCoordinator[XiaomiC
         except XiaomiCloudMapExtractorException as err:
             raise UpdateFailed(str(err)) from err
         self.auth_issue = None
+        if self.config_entry is not None:
+            async_check_map_format(self.hass, self.config_entry, data.status)
         return data
 
     async def force_update_data(self) -> None:
