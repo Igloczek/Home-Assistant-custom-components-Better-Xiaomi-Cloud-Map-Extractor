@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## Unreleased (0.1.0)
 
 First release of this fork under its own name, based on upstream v3.0.0-alpha-24. It installs
 next to the original as `better_xiaomi_cloud_map_extractor`.

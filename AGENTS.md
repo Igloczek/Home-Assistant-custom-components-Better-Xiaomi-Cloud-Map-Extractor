@@ -62,7 +62,15 @@ A bug that reached a user is also a bug in the test suite: the suite let it thro
 
 ## Who decides what ships
 
-Agents drive this project: they investigate, reproduce, build, test, open pull requests and prepare releases without waiting to be asked. Whether a change may be merged and released depends on what kind of change it is. Sort every change into one of these classes before merging; when it is not clearly class 1, it is class 2.
+Agents drive this project: they investigate, reproduce, build, test, open pull requests and prepare releases without waiting to be asked.
+
+**During 0.x, agents merge and release any change themselves**, in any class, as often as useful, once it is verified:
+
+- The local checks pass on the exact head, and the change works end to end on the maintainer's Home Assistant at `ha.igielski.dev`. Agents may install builds there. Fix problems only in the integration, never with workarounds in that Home Assistant's configuration. Leave it working: roll back to the previous version if a build breaks it. Report what was installed and what was checked.
+- The release rules under "GitHub releases" still hold: verify before tagging, check that the tag is free, and check that the uploaded zip contains the change.
+- Batching and the class-2 stop below do not apply in 0.x. Hand-offs and reports still go in the chat, never on GitHub.
+
+**From 1.0.0** (the maintainer's call; see [ROADMAP.md](ROADMAP.md#100-criteria)), whether a change may be merged and released depends on what kind of change it is. Sort every change into one of these classes before merging; when it is not clearly class 1, it is class 2.
 
 1. **Clear bug: merge it yourself.** The report is binary (it works or it does not), the reproduction is a red test, and the fix restores documented or obviously intended behaviour with nothing visible changing beyond the fix. Merge after the local checks pass on the exact head.
 2. **Needs the maintainer's call: build it fully, then stop.** Anything that is not an obvious bug, and every change to what users see or how they set things up: config and options flow steps, wording and translations, entity names, defaults and which entities are enabled, how the map is drawn, new options or behaviour, compatibility or migrations, dependency upgrades of the map parsers. Do all the work, open the pull request, do not merge or release it, and hand it over.
@@ -70,12 +78,12 @@ Agents drive this project: they investigate, reproduce, build, test, open pull r
 
 **What a hand-off contains.** It goes in the chat with the maintainer, never on GitHub: no hand-offs, screenshots or summaries as pull request or issue comments, and short pull request descriptions. GitHub comments are only for external contributors (the pre-release flow). Present it with the chat's visualization tools: the problem and the change in a short paragraph written for a user; what it looks like (config flow screens, the rendered map) before and after; how to try it; the alternatives and your recommendation; what is proven and what is not. End with one question the maintainer can answer yes or no, or by picking an option.
 
-**Releases are batched.** Merging does not mean releasing. Before a release, check other running agent threads, open pull requests close to merging, and what `master` gained since the last tag (`git log <last tag>..origin/master`). Release on its own only for urgent breakage: setup that fails for everyone, lost configuration, or leaked credentials.
+**Releases are batched (1.0+).** Merging does not mean releasing. Before a release, check other running agent threads, open pull requests close to merging, and what `master` gained since the last tag (`git log <last tag>..origin/master`). Release on its own only for urgent breakage: setup that fails for everyone, lost configuration, or leaked credentials.
 
 ## GitHub releases
 
 - `.github/workflows/release.yaml` tests the tagged commit, sets the manifest `version` and attaches `better_xiaomi_cloud_map_extractor.zip` when a GitHub release is published. Check it when changing packaging, and check `hacs.json` (`zip_release`, `filename`) with it.
-- Releases use the fork's own `vX.Y.Z` tags in sequence from the last release (`gh release list --limit 1`); upstream's `v3.0.0-alpha-N` tags are history. The first fork version is the maintainer's call. Check the tag is free (`git ls-remote --tags origin vX.Y.Z`) before `gh release create`.
+- Releases use the fork's own `vX.Y.Z` tags, starting at `v0.1.0` and in sequence from the last release (`gh release list --limit 1`); upstream's `v3.0.0-alpha-N` tags are history. Check the tag is free (`git ls-remote --tags origin vX.Y.Z`) before `gh release create`.
 - Every release adds its `CHANGELOG.md` section in the same push, crediting imported upstream pull requests and their authors.
 - A change we cannot verify ourselves goes out as a pre-release first: keep the pull request open, push a `vX.Y.Z-beta.N` tag on its head, publish it with `--prerelease` so the stable release stays latest, and check the uploaded zip carries the change. Ask the reporter on the fork's issue to have their AI agent install it (HACS → Redownload → pick the beta version), test it and report back, with a short prompt that only links that comment, plus the manual install and revert steps and exactly what to report. Merge and release the stable version after they confirm.
 - Run `gh` in the authorized local environment. `gh repo set-default` points at the fork (`Igloczek/Home-Assistant-custom-components-Better-Xiaomi-Cloud-Map-Extractor`). A pull request tool once opened pull requests on upstream by mistake: after creating any pull request, check its URL is on the fork, and if a tool targets upstream, use `gh pr create -R Igloczek/Home-Assistant-custom-components-Better-Xiaomi-Cloud-Map-Extractor` instead.

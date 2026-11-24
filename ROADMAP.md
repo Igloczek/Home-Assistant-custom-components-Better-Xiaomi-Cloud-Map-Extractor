@@ -64,6 +64,20 @@ repository; each item names the priority it serves.
    with `room_id=0`, zones, walls; skip #749, wrong base). Closes #720, advances #563, #657, #702,
    #739.
 
+## 1.0.0 criteria
+
+1.0.0 is the maintainer's decision. It is due when both hold:
+
+1. **Upstream backlog done.** Every open upstream issue and pull request is analysed (imported,
+   fixed, ported or recorded under **Not planned** with a reason), and the biggest bugs above are
+   fixed.
+2. **Deep refactor done.** The long monolithic files are split into focused modules with clear
+   boundaries: cloud connector (login, session, encrypted API), per-vendor map APIs, coordinator,
+   entities, config flow. Tests cover everything the refactor touches.
+
+When both hold, an agent brings the maintainer one question, "ready for 1.0.0?", with the evidence:
+the triage table, the fixed issues, the module map and the test coverage.
+
 ## Later
 
 - **Dreame encrypted maps** ("incorrect header check" on p2140/p2150/r22xx) and Viomi V5 Pro

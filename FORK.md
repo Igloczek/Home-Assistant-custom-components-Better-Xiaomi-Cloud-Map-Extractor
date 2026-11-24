@@ -46,6 +46,12 @@ Switching keeps a user's setup (`migration.py`):
 - Proof: `tests/test_import_original.py` (an alpha-24 entry, registry entries, device and storage
   file; original installed and not installed; discovery; removing the leftover entry).
 
+## Versioning
+
+The fork numbers its own releases, starting at `v0.1.0`. Upstream's `v3.0.0-alpha-N` tags are
+history. 0.x releases are cut by agents once verified ([AGENTS.md](AGENTS.md#who-decides-what-ships));
+1.0.0 is the maintainer's call against the [1.0.0 criteria](ROADMAP.md#100-criteria).
+
 ## Upstream snapshot
 
 - Upstream baseline: `688fe3e` (`upstream/dev_extracted_libraries`, tag `v3.0.0-alpha-24`), reviewed
