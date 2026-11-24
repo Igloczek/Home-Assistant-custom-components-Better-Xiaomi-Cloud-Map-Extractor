@@ -1,0 +1,34 @@
+{
+  "interim_file_url_pro_no_storage": {
+    "code": -8,
+    "message": "get none fileStorageConfig of the model and bucket",
+    "result": null
+  },
+  "interim_file_url": {
+    "code": 0,
+    "message": "ok",
+    "result": {
+      "url": "https://example.invalid/map/0?token=scrubbed",
+      "obj_name": "1234567890/123456789/0",
+      "expires_time": 1767225600
+    }
+  },
+  "get_properties_v1": {
+    "code": 0,
+    "message": "ok",
+    "result": [
+      {"did": "123456789", "siid": 1, "piid": 3, "code": 0},
+      {"did": "123456789", "siid": 1, "piid": 5, "code": -4003},
+      {"did": "123456789", "siid": 7, "piid": 45, "code": 0, "value": "[\"1\",\"0\",\"ABCDE12345FGHIJ6789\",\"0\"]"}
+    ]
+  },
+  "get_properties_unknown": {
+    "code": 0,
+    "message": "ok",
+    "result": [
+      {"did": "123456789", "siid": 1, "piid": 3, "code": -4003},
+      {"did": "123456789", "siid": 1, "piid": 5, "code": -4003},
+      {"did": "123456789", "siid": 7, "piid": 45, "code": -4003}
+    ]
+  }
+}

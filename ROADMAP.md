@@ -14,6 +14,9 @@ with a test that fails first (see [AGENTS.md](AGENTS.md)).
 
 ## In progress
 
+- **Ijai maps (the largest v3 cluster).** Upstream PRs #725, #782, #787, #792, #785, #789 and #786
+  in one change, shipping as a pre-release for owners to test. Closes #682, #696, #698, #703, #709,
+  #714, #742, #759.
 - **Re-authentication crash.** Reauth reaches `confirm_data` without an existing entry and ends in
   "Unknown error occurred". Includes upstream #730 and the regression test from upstream PR #754.
 - **Cloud login robustness.** Telling a Xiaomi outage (5xx, HTML, undecodable body) from a refusal,
@@ -40,29 +43,23 @@ repository; each item names the priority it serves.
    starts after they merge.
 2. **Secrets in diagnostics and vendor logs** (reliability: a leaked session is a broken session).
    The cloud connector's log is covered by `tests/test_secrets_in_logs.py`; still open: diagnostics
-   export the map decryption key in `device_data`, and `vacuum_ijai.py` logs the device token
-   (with the Ijai work). Extend the log scan to every vendor's map download. Closes #778.
-3. **Ijai maps, the largest v3 cluster** (reliability of the map download). `Padding is incorrect`, `FailedMapDownloadException`,
-   `Failed to get wifi_sn`, `expected str, NoneType` on ijai v1/v2/v3/v17/v18, S10, S12, X20 Max.
-   Import #725 first (parser author: isK3, hex key type), then one combined change from #782 (URL
-   fallback, wifi_sn length), #792 (alternate key ids; or #785/#787 for the device_id "0" case), #789
-   (shared devices, S12 live map) and #786. Needs scrubbed map fixtures from reporters; ships as a
-   pre-release. Closes #682, #696, #698, #703, #709, #714, #742, #759.
-4. **Event-loop blocking and update churn** (reliability). Synchronous python-miio calls run on the event loop,
+   export the map decryption key in `device_data`. Extend the log scan to every other
+   vendor's map download (Ijai is covered). Closes #778.
+3. **Event-loop blocking and update churn** (reliability). Synchronous python-miio calls run on the event loop,
    `MiotDevice` is created without a mapping (warning spam, #791), and the map keeps refreshing while
    docked (#764) and floods the logbook (#719). Import #775 (skip #769, which it covers). Closes #791,
    #764, #719; check #655 and #601 against it.
-5. **Xiaomi map format: API choice** (an actionable message for the wrong map format). Roborock
+4. **Xiaomi map format: API choice** (an actionable message for the wrong map format). Roborock
    users (`rockrobo.vacuum.v1`, `roborock.vacuum.s5e`) whose entry uses the Xiaomi map format get
    "Incorrect AES key length" or a failed decryption; the Roborock format is detected automatically,
    so warn when the chosen map format does not match the model. Closes #731, #763. (The key
    derivation for short model names, #732 and #733, is fixed.)
-6. **Actionable failures everywhere** (UI). Any connector error that is not a login problem ends
+5. **Actionable failures everywhere** (UI). Any connector error that is not a login problem ends
    as an `UpdateFailed` with a log line only. Map download and parse failures that persist should
    raise a repair issue that says what to do (wrong map format, vacuum offline, region), and the
    config flow should never end in "Unknown error". Starts after the reauth and login threads merge,
    building on their error mapping.
-7. **Xiaomi models: live data and map index** (backlog). Robot position and path missing while cleaning, wrong
+6. **Xiaomi models: live data and map index** (backlog). Robot position and path missing while cleaning, wrong
    map after maps were deleted, missing walls and no-go zones (b108gl, ov43gb, ov81gl, S40 Pro).
    Import #781 (skip #750, which does the same in 976 lines) and a generalised #748 (ov21gl rooms
    with `room_id=0`, zones, walls; skip #749, wrong base). Closes #720, advances #563, #657, #702,
@@ -91,7 +88,7 @@ the triage table, the fixed issues, the module map and the test coverage.
 - **Drop-in follow-ups**: verify the import on a real Home Assistant with the original installed
   and then removed (the pytest suite covers the registry moves); decide whether to raise a repair
   issue that points original users at the import once this integration is running.
-- **Small imports**: #786 (`as_list_of_dict` with ints) if not folded into the Ijai change; #591 if
+- **Small imports**: #591 if
   `scripts/` keeps shipping; check #636 (homes without `share_home_list`) against v3 discovery.
 - **README for v3 in depth**: options flow, every entity and attribute, and the card integration.
 - **Real Home Assistant smoke test**: install the release zip into a Home Assistant container and
