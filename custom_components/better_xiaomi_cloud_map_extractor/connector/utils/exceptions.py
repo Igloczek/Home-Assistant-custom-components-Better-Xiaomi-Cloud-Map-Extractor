@@ -81,3 +81,10 @@ class CaptchaRequiredException(XiaomiCloudMapExtractorException):
 
     def __str__(self) -> str:
         return "Xiaomi requires a captcha to log in"
+
+
+class QrLoginTimeoutException(FailedLoginException):
+    """The QR code expired before the login was approved in the Xiaomi Home app."""
+
+    def __str__(self) -> str:
+        return "The QR code was not scanned in time"

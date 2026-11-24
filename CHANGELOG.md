@@ -1,5 +1,19 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+- QR code login works on Home Assistant 2026.9 and later (upstream #779): the QR code and link
+  stay visible while waiting instead of `MISSING_VALUE` (upstream PR #795 by david-romero), the
+  flow finishes once the login is approved, and the saved session keeps the `cUserId` Xiaomi needs
+  to list the vacuums after a restart (upstream PR #796 by dzabel). Works in re-authentication too.
+- The QR login link opens Xiaomi's sign-in page in a signed-out browser instead of a JSON document
+  (upstream PR #766 by stephenwilley).
+- A QR code that expires, a declined login or Xiaomi being unreachable ends in a clear message,
+  and one click shows a new code; the wait for the scan lasts as long as the code is valid
+  instead of 60 seconds.
+
 ## 0.1.1 - 2026-11-24
 
 ### Added

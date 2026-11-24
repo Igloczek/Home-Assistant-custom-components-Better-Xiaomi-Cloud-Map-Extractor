@@ -38,6 +38,8 @@ from .connector.utils.exceptions import (
     TwoFactorAuthRequiredException,
     CaptchaRequiredException,
     FailedLoginException,
+    FailedConnectionException,
+    QrLoginTimeoutException,
 )
 from .connector.vacuums.base.model import VacuumApi
 from .connector.xiaomi_cloud.connector import XiaomiCloudConnector, XiaomiCloudDeviceInfo
@@ -92,6 +94,8 @@ class XiaomiCloudMapExtractorFlowHandler(ConfigFlow, domain=DOMAIN):
         self._captcha_exception: CaptchaRequiredException | None = None
         self._two_factor_exception: TwoFactorAuthRequiredException | None = None
         self._wait_for_login_task: Task | None = None
+        self._qr_placeholders: dict[str, str] = {}
+        self._qr_error: str | None = None
         self._original: ConfigEntry | None = None
         self._reauth_issue: AuthIssue | None = None
 
@@ -320,39 +324,72 @@ class XiaomiCloudMapExtractorFlowHandler(ConfigFlow, domain=DOMAIN):
         )
 
     async def async_step_auth_qr(self: Self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
-        placeholders = {}
+        """Show a QR code and wait for the login to be approved in the Xiaomi Home app.
 
+        Home Assistant runs this step again while it waits (the placeholders must survive that), and a
+        progress step may only end with `async_show_progress_done`: failures go to `auth_qr_failed`.
+        """
         if self._wait_for_login_task is None:
-            if self._connector is None:
+            def session_creator() -> ClientSession:
+                return async_create_clientsession(self.hass)
 
-                def session_creator() -> ClientSession:
-                    return async_create_clientsession(self.hass)
-
-                self._connector = XiaomiCloudConnector(session_creator)
-
+            self._connector = XiaomiCloudConnector(session_creator)
+            self._username = None
+            self._password = None
             try:
-                qr_data = await self._connector.login_with_qr_get_code()
-                qr_image = qr_data[0]
-                login_link = qr_data[1]
-                qr_image_b64 = base64.b64encode(qr_image).decode("utf-8")
-                placeholders["qr_image_b64"] = qr_image_b64
-                placeholders["login_link"] = login_link
+                qr_image, login_link = await self._connector.login_with_qr_get_code()
+            except FailedConnectionException:
+                self._qr_error = "cannot_connect"
+                return await self.async_step_auth_qr_failed()
             except FailedLoginException:
-                return self.async_abort(reason="qr_code_unavailable")
+                self._qr_error = "qr_code_unavailable"
+                return await self.async_step_auth_qr_failed()
+            self._qr_placeholders = {
+                "qr_image_b64": base64.b64encode(qr_image).decode("utf-8"),
+                "login_link": login_link,
+            }
+            self._wait_for_login_task = self.hass.async_create_task(
+                self._connector.login_with_qr_wait_for_completion()
+            )
 
-            _wait_for_login = self._connector.login_with_qr_wait_for_completion
-            self._wait_for_login_task = self.hass.async_create_task(_wait_for_login())
-        if self._wait_for_login_task.done():
-            if self._wait_for_login_task.exception():
-                return self.async_abort(reason="cannot_connect")
-            return self.async_show_progress_done(next_step_id="after_auth")
+        if not self._wait_for_login_task.done():
+            return self.async_show_progress(
+                step_id="auth_qr",
+                progress_action="wait_for_login",
+                description_placeholders=self._qr_placeholders,
+                progress_task=self._wait_for_login_task,
+            )
 
-        return self.async_show_progress(
-            step_id="auth_qr",
-            progress_action="wait_for_login",
-            description_placeholders=placeholders,
-            progress_task=self._wait_for_login_task,
-        )
+        task, self._wait_for_login_task = self._wait_for_login_task, None
+        self._qr_error = self._qr_login_error(task)
+        if self._qr_error is not None:
+            return self.async_show_progress_done(next_step_id="auth_qr_failed")
+        return self.async_show_progress_done(next_step_id="after_auth")
+
+    @staticmethod
+    def _qr_login_error(task: Task) -> str | None:
+        if task.cancelled():
+            return "qr_timeout"
+        error = task.exception()
+        if error is None:
+            return None
+        if isinstance(error, QrLoginTimeoutException):
+            return "qr_timeout"
+        if isinstance(error, FailedConnectionException):
+            return "cannot_connect"
+        if isinstance(error, FailedLoginException):
+            return "qr_rejected"
+        # A bug, not something Xiaomi answered: keep the traceback, still let the user try again.
+        _LOGGER.error("Unexpected error during the QR code login", exc_info=error)
+        return "qr_failed"
+
+    async def async_step_auth_qr_failed(
+            self: Self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """The QR login did not finish; submitting shows a new code."""
+        if user_input is not None:
+            return await self.async_step_auth_qr()
+        return self.async_show_form(step_id="auth_qr_failed", errors={"base": self._qr_error or "qr_failed"})
 
     async def async_step_after_auth(self: Self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         return await self._after_auth()
