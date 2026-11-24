@@ -16,7 +16,7 @@ When two pieces of work compete, the one higher on this list goes first. [`ROADM
 
 ## Fork relationship
 
-- This repository is Igloczek's hard fork of `PiotrMachowski/Home-Assistant-custom-components-Xiaomi-Cloud-Map-Extractor`, published as **Better Xiaomi Cloud Map Extractor**. Upstream is abandoned; its v3 line (`dev_extracted_libraries`, v3.0.0-alpha-24) is the baseline, and the legacy v2 line is frozen on the `v2` branch.
+- This repository is Igloczek's hard fork of `PiotrMachowski/Home-Assistant-custom-components-Xiaomi-Cloud-Map-Extractor`, published as **Better Xiaomi Cloud Map Extractor**. Upstream is abandoned; its v3 line (`dev_extracted_libraries` at `688fe3e`, released as v3.0.0-alpha-24) is the baseline, and the legacy v2 line is frozen on the `v2` branch.
 - [`FORK.md`](FORK.md) holds the compatibility promise, the differences from upstream and the import rules. Read it before changing fork-specific behaviour or importing upstream code. Every row under **Active differences** is a preservation criterion.
 - Add every intentional fork-only feature or fix to `FORK.md` with what it changes and why, and add it to the [sync checklist](.agents/skills/sync-upstream/fork-differences.md).
 - [`ROADMAP.md`](ROADMAP.md) holds planned work, the upstream triage and postponed items; [`CHANGELOG.md`](CHANGELOG.md) holds released changes. Do not keep a record of completed work in a standing document.
@@ -24,7 +24,7 @@ When two pieces of work compete, the one higher on this list goes first. [`ROADM
 
 ## Compatibility
 
-The fork's domain is `better_xiaomi_cloud_map_extractor`, so it installs next to the original `xiaomi_cloud_map_extractor`. Users switch with the import in `migration.py` (FORK.md "Compatibility"), which keeps their entity ids. Keep upstream's config entry keys and entity unique ids (`<device_id>_<entity domain>_<key>`): the import relies on them. A change that needs a new key adds a config entry migration (`VERSION`/`MINOR_VERSION` and `async_migrate_entry`) with a test that loads an entry written by v3.0.0-alpha-24. Never modify or delete the original integration's entries or files, and never move anything from it while it is installed.
+The fork's domain is `better_xiaomi_cloud_map_extractor`, so it installs next to the original `xiaomi_cloud_map_extractor`. Users switch with the import in `migration.py` (FORK.md "Compatibility"), which keeps their entity ids. Keep upstream's config entry keys and entity unique ids (`<device_id>_<entity domain>_<key>`): the import relies on them. A change that needs a new key adds a config entry migration (`VERSION`/`MINOR_VERSION` and `async_migrate_entry`) with a test that loads an entry written by v3.0.0-alpha-24 (`688fe3e`). Never modify or delete the original integration's entries or files, and never move anything from it while it is installed.
 
 ## Project map
 
@@ -83,7 +83,8 @@ Agents drive this project: they investigate, reproduce, build, test, open pull r
 ## GitHub releases
 
 - `.github/workflows/release.yaml` tests the tagged commit, sets the manifest `version` and attaches `better_xiaomi_cloud_map_extractor.zip` when a GitHub release is published. Check it when changing packaging, and check `hacs.json` (`zip_release`, `filename`) with it.
-- Releases use the fork's own `vX.Y.Z` tags, starting at `v0.1.0` and in sequence from the last release (`gh release list --limit 1`); upstream's `v3.0.0-alpha-N` tags are history. Check the tag is free (`git ls-remote --tags origin vX.Y.Z`) before `gh release create`.
+- Releases use the fork's own `vX.Y.Z` tags in sequence from the last release (`gh release list --limit 1`). Check the tag is free (`git ls-remote --tags origin vX.Y.Z`) before `gh release create`.
+- The fork carries only its own `vX.Y.Z` tags, starting at `v0.1.0`; the inherited upstream tags were deleted and must never come back. In every checkout run `git config remote.upstream.tagOpt --no-tags` and `git config remote.origin.tagOpt --no-tags`, fetch upstream with `--no-tags`, never `git push --tags` (push one tag by name: `git push origin vX.Y.Z`), and refer to upstream versions by commit SHA (v3.0.0-alpha-24 is `688fe3e`).
 - Every release adds its `CHANGELOG.md` section in the same push, crediting imported upstream pull requests and their authors.
 - A change we cannot verify ourselves goes out as a pre-release first: keep the pull request open, push a `vX.Y.Z-beta.N` tag on its head, publish it with `--prerelease` so the stable release stays latest, and check the uploaded zip carries the change. Ask the reporter on the fork's issue to have their AI agent install it (HACS → Redownload → pick the beta version), test it and report back, with a short prompt that only links that comment, plus the manual install and revert steps and exactly what to report. Merge and release the stable version after they confirm.
 - Run `gh` in the authorized local environment. `gh repo set-default` points at the fork (`Igloczek/Home-Assistant-custom-components-Better-Xiaomi-Cloud-Map-Extractor`). A pull request tool once opened pull requests on upstream by mistake: after creating any pull request, check its URL is on the fork, and if a tool targets upstream, use `gh pr create -R Igloczek/Home-Assistant-custom-components-Better-Xiaomi-Cloud-Map-Extractor` instead.

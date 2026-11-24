@@ -22,12 +22,20 @@ files live in `custom_components/xiaomi_cloud_map_extractor/`; apply them to
 `custom_components/better_xiaomi_cloud_map_extractor/` (for a patch:
 `git apply --directory` or `sed` the paths, then `git apply`).
 
+## Tags
+
+The fork carries only its own `vX.Y.Z` tags, starting at `v0.1.0`. Upstream's tags were deleted and
+must never come back: fetch upstream with `--no-tags`, never run `git push --tags` (push one tag by
+name), and name upstream versions by commit SHA (v3.0.0-alpha-24 is `688fe3e`), never by tag.
+
 ## 1. Preflight
 
 ```sh
 git status --short          # must be clean
-git fetch upstream
-git fetch origin
+git config remote.upstream.tagOpt --no-tags   # once per checkout
+git config remote.origin.tagOpt --no-tags
+git fetch --no-tags upstream
+git fetch --no-tags origin
 pre=$(git rev-parse HEAD)
 git log --oneline "$pre..upstream/dev_extracted_libraries"
 ```
@@ -45,7 +53,7 @@ An upstream pull request: fetch it and cherry-pick with provenance.
 
 ```sh
 gh pr view <number> -R PiotrMachowski/Home-Assistant-custom-components-Xiaomi-Cloud-Map-Extractor --json baseRefName,commits,files
-git fetch upstream pull/<number>/head:upstream-pr-<number>
+git fetch --no-tags upstream pull/<number>/head:upstream-pr-<number>
 git cherry-pick -x <commits>
 ```
 

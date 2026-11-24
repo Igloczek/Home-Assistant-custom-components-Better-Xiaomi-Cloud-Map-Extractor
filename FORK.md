@@ -48,13 +48,15 @@ Switching keeps a user's setup (`migration.py`):
 
 ## Versioning
 
-The fork numbers its own releases, starting at `v0.1.0`. Upstream's `v3.0.0-alpha-N` tags are
-history. 0.x releases are cut by agents once verified ([AGENTS.md](AGENTS.md#who-decides-what-ships));
+The fork numbers its own releases, starting at `v0.1.0`, and carries only its own `vX.Y.Z` tags: the
+51 inherited upstream tags (v1.x, v2.x, v3.0.0-alpha-N) were deleted on 2026-11-24, before any fork
+release, and must not come back. Refer to upstream versions by commit SHA (v3.0.0-alpha-24 is
+`688fe3e`); the tag rules are in [AGENTS.md](AGENTS.md#github-releases). 0.x releases are cut by agents once verified ([AGENTS.md](AGENTS.md#who-decides-what-ships));
 1.0.0 is the maintainer's call against the [1.0.0 criteria](ROADMAP.md#100-criteria).
 
 ## Upstream snapshot
 
-- Upstream baseline: `688fe3e` (`upstream/dev_extracted_libraries`, tag `v3.0.0-alpha-24`), reviewed
+- Upstream baseline: `688fe3e` (`upstream/dev_extracted_libraries`, released upstream as v3.0.0-alpha-24), reviewed
   on 2026-11-24. Upstream's last push was 2026-02-20.
 - Upstream `master` (v2) is not a source of imports; see **Branches**.
 - Upstream open pull requests are imported one by one with `git cherry-pick -x` or as a reviewed
@@ -110,6 +112,8 @@ This checkout has an `upstream` remote. In a fresh clone:
 
 ```sh
 git remote add upstream https://github.com/PiotrMachowski/Home-Assistant-custom-components-Xiaomi-Cloud-Map-Extractor.git
+git config remote.upstream.tagOpt --no-tags
+git config remote.origin.tagOpt --no-tags
 ```
 
 Follow [the sync skill](.agents/skills/sync-upstream/SKILL.md) for the procedure.
