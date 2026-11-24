@@ -6,7 +6,8 @@
       "unknown": "Unexpected error",
       "cloud_no_devices": "No vacuums found for this Xiaomi Cloud account.",
       "reauth_successful": "Re-authentication was successful",
-      "no_original_entries": "Every vacuum from Xiaomi Cloud Map Extractor is already set up here."
+      "no_original_entries": "Every vacuum from Xiaomi Cloud Map Extractor is already set up here.",
+      "reauth_wrong_vacuum": "The selected vacuum is not the one this entry was configured for."
     },
     "error": {
       "invalid_captcha": "Invalid captcha provided, try again.",

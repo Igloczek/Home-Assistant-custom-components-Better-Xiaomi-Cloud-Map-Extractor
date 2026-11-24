@@ -12,3 +12,4 @@ that merges cleanly but breaks a row here is a failed sync.
 | [CI and lint](../../../FORK.md#ci) | `.github/workflows/tests.yml`, `hacs.yaml`, `hassfest.yaml`; `pyproject.toml` ruff rules | `ruff check .`; no `automerge.yaml`, `lint_python.yml` or `dev` triggers come back |
 | [Release packaging](../../../FORK.md#release-packaging) | `.github/workflows/release.yaml`, `hacs.json` | The workflow tests the commit and uploads `better_xiaomi_cloud_map_extractor.zip` with `manifest.json` at its root |
 | [Device list timeout](../../../FORK.md#home-device-list-timeout) | `connector/xiaomi_cloud/connector.py` `_get_devices_from_home` | `tests/test_cloud_connector.py` |
+| [Re-authentication target](../../../FORK.md#reauth-entry) | `config_flow.py` `async_step_confirm_data` (reauth and existing-entry lookup), `_unique_id_for`; `reauth_wrong_vacuum` in `translations/en.json` | `tests/test_config_flow.py` reauth and user-flow adoption tests |
