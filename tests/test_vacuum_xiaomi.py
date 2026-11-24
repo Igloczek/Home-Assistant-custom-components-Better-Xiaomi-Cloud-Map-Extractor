@@ -28,6 +28,9 @@ from vacuum_map_parser_base.config.image_config import ImageConfig
 from vacuum_map_parser_base.config.size import Sizes
 from vacuum_map_parser_xiaomi.aes_decryptor import gen_md5_key
 
+from custom_components.better_xiaomi_cloud_map_extractor.connector.utils.exceptions import (
+    FailedMapParseException,
+)
 from custom_components.better_xiaomi_cloud_map_extractor.connector.vacuums.base.model import VacuumConfig
 from custom_components.better_xiaomi_cloud_map_extractor.connector.vacuums.vacuum_xiaomi import (
     XiaomiCloudVacuum,
@@ -160,3 +163,32 @@ def test_every_known_model_had_either_a_16_byte_key_or_none() -> None:
     lengths = {len(old_model_key(m)) for m in KNOWN_XIAOMI_MODELS}
     assert lengths & set(AES_KEY_LENGTHS) == {16}
     assert all(len(m[-16:]) == 16 for m in KNOWN_XIAOMI_MODELS)
+
+
+ROBOROCK_LIKE_MAP = b"\x1f\x8b\x08\x00" + bytes(range(256)) * 4  # a gzip map, not a Xiaomi one
+
+
+@pytest.mark.parametrize("model", ["roborock.vacuum.s5e", "rockrobo.vacuum.v1", "viomi.vacuum.v8"])
+async def test_map_that_is_not_in_xiaomi_format_fails_as_a_parse_error(model: str, miot_device: MagicMock) -> None:
+    """Another vendor's map is tried, and when it does not decrypt that is a map parsing failure.
+
+    The coordinator offers the matching format only for this error, so a crypto or zlib error
+    must not escape as something else. `viomi.vacuum.v8` is shorter than an AES key.
+    """
+    vacuum, connector = make_vacuum(model, ROBOROCK_LIKE_MAP)
+
+    with pytest.raises(FailedMapParseException):
+        await vacuum.get_map()
+
+    connector.get_raw_map_data.assert_awaited_once()
+    assert "enc_key" in vacuum.additional_data()
+
+
+async def test_other_vendor_whose_map_is_in_xiaomi_format_still_works(miot_device: MagicMock) -> None:
+    """Nothing is refused by model name: if the Xiaomi format decodes, the map shows."""
+    model = "roborock.vacuum.a15"
+    vacuum, _ = make_vacuum(model, encrypt_xiaomi_map(MAP_JSON, model, DEVICE_ID))
+
+    map_data, _ = await vacuum.get_map()
+
+    assert map_data.image.dimensions.width == 10

@@ -13,7 +13,7 @@ from vacuum_map_parser_xiaomi.status_mapping import get_status_mapping
 
 from .base.model import VacuumConfig, VacuumApi
 from .base.vacuum_v2 import BaseXiaomiCloudVacuumV2
-from ..utils.exceptions import FailedConnectionException
+from ..utils.exceptions import FailedConnectionException, FailedMapParseException
 
 _LOGGER = logging.getLogger(__name__)
 OFF_UPDATES = 3
@@ -154,19 +154,24 @@ class XiaomiCloudVacuum(BaseXiaomiCloudVacuumV2):
             # Data may not be JSON-wrapped
             pass
         
-        raw_map = raw_map.hex()
-        decoded_map = self.map_data_parser.unpack_map(
-            raw_map,
-            model=self._model_key,
-            device_id=str(self._device_id),
-        )
-        return self.map_data_parser.parse(decoded_map)
+        try:
+            decoded_map = self.map_data_parser.unpack_map(
+                raw_map.hex(),
+                model=self._model_key,
+                device_id=str(self._device_id),
+            )
+            return self.map_data_parser.parse(decoded_map)
+        except Exception as err:
+            # A map in another vendor's format fails here with whatever the cipher, zlib or JSON
+            # step raises; report it as a parse failure so the coordinator can offer the right format.
+            raise FailedMapParseException(f"{self.model}: the map could not be read in the Xiaomi format") from err
     
     def additional_data(self: Self) -> dict[str, Any]:
         super_data = super().additional_data()
-        enc_key = gen_md5_key(
-            self._model_key,
-            str(self._device_id),
-        )
+        try:
+            enc_key = gen_md5_key(self._model_key, str(self._device_id))
+        except ValueError:
+            # The model is shorter than an AES key, so it is not a Xiaomi-format vacuum.
+            enc_key = None
 
         return {**super_data, "enc_key": enc_key}
