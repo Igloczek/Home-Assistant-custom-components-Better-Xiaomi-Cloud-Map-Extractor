@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+- Vacuums set up from v2 YAML (`platform: better_xiaomi_cloud_map_extractor`) get the vacuum's MAC
+  as unique id, and setup fills it in for existing ones, so Home Assistant recognises the vacuum as
+  already set up.
+- Diagnostics no longer include the map decryption key or the signed map download URL (upstream
+  #778).
+
 ## 0.1.0 - 2026-11-24
 
 First release of this fork under its own name, based on upstream v3.0.0-alpha-24. It installs
