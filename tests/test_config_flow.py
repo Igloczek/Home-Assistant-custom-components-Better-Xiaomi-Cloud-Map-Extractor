@@ -248,7 +248,8 @@ async def _reauth_until_confirm(hass: HomeAssistant, entry: MockConfigEntry) -> 
     assert result["step_id"] == "reauth_confirm"
     result = await hass.config_entries.flow.async_configure(result["flow_id"], {})
     assert result["type"] is FlowResultType.MENU
-    assert result["menu_options"] == ["auth_credentials", "auth_qr"]
+    # Reauth of an entry with stored credentials also offers logging in again with them.
+    assert result["menu_options"] == ["auth_saved_credentials", "auth_credentials", "auth_qr"]
     result = await hass.config_entries.flow.async_configure(result["flow_id"], {"next_step_id": "auth_credentials"})
     return await _submit_credentials(hass, result)
 
