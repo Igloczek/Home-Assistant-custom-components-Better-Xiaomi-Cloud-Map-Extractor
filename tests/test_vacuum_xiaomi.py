@@ -152,7 +152,6 @@ def test_models_that_worked_keep_the_same_key(model: str, miot_device: MagicMock
     """No vacuum whose map decrypted before gets a different key: the key bytes are identical."""
     vacuum, _ = make_vacuum(model, b"")
 
-    assert vacuum._model_key == old_model_key(model)
     assert vacuum.additional_data()["enc_key"] == gen_md5_key(old_model_key(model), DEVICE_ID)
 
 
