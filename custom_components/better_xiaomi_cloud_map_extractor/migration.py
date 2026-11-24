@@ -18,7 +18,7 @@ import logging
 
 from homeassistant.config_entries import ConfigEntry, ConfigEntryDisabler
 from homeassistant.const import CONF_HOST, CONF_MAC
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers import issue_registry as ir
@@ -52,6 +52,27 @@ def vacuum_mac(entry: ConfigEntry) -> str | None:
     if mac := entry.data.get(CONF_MAC):
         return format_mac(mac)
     return None
+
+
+def unique_id_taken(hass: HomeAssistant, unique_id: str, entry_id: str | None = None) -> bool:
+    """Whether an entry of this integration other than `entry_id` (ignored ones too) has this unique id."""
+    return any(
+        entry.unique_id == unique_id and entry.entry_id != entry_id
+        for entry in hass.config_entries.async_entries(DOMAIN, include_ignore=True)
+    )
+
+
+@callback
+def async_fill_unique_id(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    """Give an entry without unique id the stored MAC (`format_mac`), unless another entry has it.
+
+    Entries created by the v2 YAML import of 0.1.0 and earlier have none.
+    """
+    if entry.unique_id is not None or not (mac := entry.data.get(CONF_MAC)):
+        return
+    if unique_id_taken(hass, mac := format_mac(mac), entry.entry_id):
+        return
+    hass.config_entries.async_update_entry(entry, unique_id=mac)
 
 
 def importable_original_entries(hass: HomeAssistant) -> list[ConfigEntry]:
