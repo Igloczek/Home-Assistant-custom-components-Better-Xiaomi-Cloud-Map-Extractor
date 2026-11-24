@@ -13,6 +13,14 @@
 - A QR code that expires, a declined login or Xiaomi being unreachable ends in a clear message,
   and one click shows a new code; the wait for the scan lasts as long as the code is valid
   instead of 60 seconds.
+- Setup no longer ends in "Unknown error". When the login worked but the vacuum list could not be
+  loaded, a form says why (Xiaomi unreachable, session refused, unexpected answer) and one click
+  tries again; a login that fails because Xiaomi can't be reached says so instead of asking you to
+  check the password.
+- A Xiaomi region that is down no longer reads as "No vacuums found" during setup.
+- Every failed map update has a translated reason (Xiaomi unreachable, vacuum not answering on the
+  network, login paused to avoid a captcha, ...), including errors that used to escape as an
+  unhandled exception.
 
 ## 0.1.1 - 2026-11-24
 

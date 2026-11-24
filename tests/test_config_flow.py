@@ -100,12 +100,15 @@ async def test_login_returning_none_shows_error(hass: HomeAssistant, cloud_conne
     assert result["errors"] == {"base": "cloud_login_error"}
 
 
-async def test_unexpected_login_error_aborts(hass: HomeAssistant, cloud_connector: MagicMock) -> None:
-    cloud_connector.login_with_credentials.side_effect = RuntimeError("boom")
+async def test_unexpected_login_error_shows_error(hass: HomeAssistant, cloud_connector: MagicMock) -> None:
+    """Never "Unknown error": the form says what happened and the login can be retried."""
+    cloud_connector.login_with_credentials.side_effect = [RuntimeError("boom"), "user_id"]
     result = await _submit_credentials(hass, await _start_credentials_login(hass))
 
-    assert result["type"] is FlowResultType.ABORT
-    assert result["reason"] == "unknown"
+    assert result["type"] is FlowResultType.FORM
+    assert result["errors"] == {"base": "unexpected_response"}
+    result = await _submit_credentials(hass, result)
+    assert result["step_id"] == "confirm_data"
 
 
 async def test_captcha_then_login(hass: HomeAssistant, cloud_connector: MagicMock) -> None:
@@ -196,12 +199,14 @@ async def test_roborock_unreachable_shows_error(
     assert result["errors"] == {"base": "invalid_vacuum"}
 
 
-async def test_device_list_error_aborts(hass: HomeAssistant, cloud_connector: MagicMock) -> None:
+async def test_device_list_error_shows_retry_form(hass: HomeAssistant, cloud_connector: MagicMock) -> None:
+    """Never "Unknown error" (more cases in tests/test_actionable_failures.py)."""
     cloud_connector.get_devices.side_effect = RuntimeError("boom")
     result = await _submit_credentials(hass, await _start_credentials_login(hass))
 
-    assert result["type"] is FlowResultType.ABORT
-    assert result["reason"] == "unknown"
+    assert result["type"] is FlowResultType.FORM
+    assert result["step_id"] == "devices_failed"
+    assert result["errors"] == {"base": "unexpected_response"}
 
 
 # Reauth. The coordinator starts it when the cloud session expires or Xiaomi asks for captcha or

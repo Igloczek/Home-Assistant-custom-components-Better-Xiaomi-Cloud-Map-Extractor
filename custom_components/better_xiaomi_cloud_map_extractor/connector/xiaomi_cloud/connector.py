@@ -941,7 +941,11 @@ class XiaomiCloudConnector:
             _LOGGER.error("Failed to get devices from home: %s", e)
             return []
 
-        if (raw_devices := response["result"]["device_info"]) is None:
+        result = response.get("result") if isinstance(response, dict) else None
+        if not isinstance(result, dict):
+            # Not "no devices": Xiaomi answered without the list, so this home can't be trusted as empty.
+            raise FailedConnectionException(UnexpectedResponseError(200))
+        if (raw_devices := result.get("device_info")) is None:
             return []
         return [
             XiaomiCloudDeviceInfo(
@@ -960,13 +964,32 @@ class XiaomiCloudConnector:
         ]
 
     async def get_devices(self: Self, server: Optional[str] = None) -> list[XiaomiCloudDeviceInfo]:
-        # When a single server is asked for (map updates), errors must reach the caller: a timeout or
-        # an expired session is not the same as "this account has no such device".
-        strict = server is not None
-        countries_to_check = AVAILABLE_SERVERS if server is None else [server]
-        device_coro_list = [self._get_devices_from_server(server, strict) for server in countries_to_check]
-        device_lists = await asyncio.gather(*device_coro_list)
-        return [device for device_list in device_lists for device in device_list]
+        """The account's devices on one server, or on every server when none is given.
+
+        Errors always reach the caller for a single server (map updates): a timeout or an expired
+        session is not "this account has no such device". Across every server (setup), a region that
+        fails is skipped, but only while another one lists devices: an empty list built from failed
+        regions would read as "no vacuums in this account".
+        """
+        if server is not None:
+            return await self._get_devices_from_server(server, strict=True)
+        results = await asyncio.gather(
+            *(self._get_devices_from_server(country, strict=True) for country in AVAILABLE_SERVERS),
+            return_exceptions=True,
+        )
+        devices = [device for result in results if isinstance(result, list) for device in result]
+        failures = [result for result in results if isinstance(result, BaseException)]
+        for failure in failures:
+            if not isinstance(failure, Exception):
+                raise failure
+            _LOGGER.debug("Device list of a region failed: %s", type(failure).__name__)
+        if devices or not failures:
+            return devices
+        if session_error := next((f for f in failures if isinstance(f, SessionExpiredException)), None):
+            raise session_error
+        if connection_error := next((f for f in failures if isinstance(f, FailedConnectionException)), None):
+            raise connection_error
+        raise FailedConnectionException(failures[0])
 
     async def _get_devices_from_server(self: Self, server: str, strict: bool = False) -> list[XiaomiCloudDeviceInfo]:
         homes = await self._get_homes(server, strict)
