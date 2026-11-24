@@ -26,6 +26,7 @@ from custom_components.better_xiaomi_cloud_map_extractor.connector.utils.excepti
     FailedConnectionException,
     FailedMapDownloadException,
     FailedMapParseException,
+    SessionExpiredException,
 )
 from custom_components.better_xiaomi_cloud_map_extractor.connector.vacuums.base.model import VacuumConfig
 from custom_components.better_xiaomi_cloud_map_extractor.connector.vacuums.vacuum_ijai import IjaiCloudVacuum
@@ -303,6 +304,15 @@ async def test_failed_realtime_upload_request_still_downloads_the_map(ijai) -> N
     assert map_data.image is not None
 
 
+async def test_expired_session_on_the_upload_request_is_not_swallowed(ijai) -> None:
+    """The extractor renews the session when Xiaomi rejects it; the upload request must let that through."""
+    vacuum, cloud = ijai("xiaomi.vacuum.b106eu")
+    cloud.connector.execute_api_call_encrypted.side_effect = SessionExpiredException()
+
+    with pytest.raises(SessionExpiredException):
+        await vacuum.get_map()
+
+
 async def test_other_models_do_not_request_an_upload(ijai) -> None:
     vacuum, cloud = ijai("ijai.vacuum.v3")
 
@@ -374,6 +384,15 @@ async def test_serial_from_the_cloud_when_the_vacuum_is_not_reachable(ijai) -> N
             {"did": DEVICE_ID, "siid": 7, "piid": 45},
         ],
     )
+
+
+async def test_expired_session_on_the_cloud_serial_is_not_hidden(ijai) -> None:
+    """A rejected session while reading the serial through the cloud is renewed, not reported as a connection error."""
+    vacuum, cloud = ijai("ijai.vacuum.v3", local=UNREACHABLE)
+    cloud.connector.get_other_info.side_effect = SessionExpiredException()
+
+    with pytest.raises(SessionExpiredException):
+        await vacuum.get_map()
 
 
 async def test_no_serial_anywhere_is_a_connection_error(ijai) -> None:
@@ -464,7 +483,9 @@ async def test_undecryptable_map_keeps_the_last_map(ijai) -> None:
     model = "ijai.vacuum.v3"
     vacuum, cloud = ijai(model)
     extractor = XiaomiCloudMapExtractorConnector(MagicMock(), MagicMock(), None)
-    extractor._cloud_connector = MagicMock(is_authenticated=MagicMock(return_value=True))
+    extractor._cloud_connector = MagicMock(spec=XiaomiCloudConnector)
+    extractor._cloud_connector.has_service_token.return_value = True
+    extractor._cloud_connector.is_session_expiring.return_value = False
     extractor._vacuum_connector = vacuum
     extractor._status = XiaomiCloudMapExtractorConnectorStatus.OK
 

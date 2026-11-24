@@ -19,7 +19,11 @@ from vacuum_map_parser_ijai.RobotMap_pb2 import RobotMap
 from .base.vacuum_v2 import BaseXiaomiCloudVacuumV2
 from .base.model import VacuumConfig, VacuumApi
 from ..utils.dict_operations import path_extractor
-from ..utils.exceptions import FailedConnectionException, FailedMapParseException
+from ..utils.exceptions import (
+    FailedConnectionException,
+    FailedMapParseException,
+    XiaomiCloudMapExtractorException,
+)
 
 _LOGGER = logging.getLogger(__name__)
 OFF_UPDATES = 3
@@ -147,6 +151,8 @@ class IjaiCloudVacuum(BaseXiaomiCloudVacuumV2):
             _LOGGER.debug("Reading the WiFi serial number locally failed (%r), asking the cloud", ex)
         try:
             wifi_info_sn = await self._get_wifi_info_sn_from_cloud()
+        except XiaomiCloudMapExtractorException:
+            raise  # an expired session is renewed by the extractor
         except Exception as ex:
             raise FailedConnectionException(ex) from ex
         if not wifi_info_sn:
