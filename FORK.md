@@ -40,11 +40,21 @@ Switching keeps a user's setup (`migration.py`):
   original integration is installed (`async_get_integration` finds it): the import shows "remove
   Xiaomi Cloud Map Extractor in HACS and restart" and changes nothing. The original config entry and
   its storage file are never modified or deleted; the user deletes the leftover entry afterwards.
-- **Not imported:** original entries without a unique id (v2 YAML imports whose cloud lookup
-  failed). Legacy YAML keeps working by changing `platform: xiaomi_cloud_map_extractor` to
-  `platform: better_xiaomi_cloud_map_extractor`; it is then imported like upstream's.
-- Proof: `tests/test_import_original.py` (an alpha-24 entry, registry entries, device and storage
-  file; original installed and not installed; discovery; removing the leftover entry).
+- **Which vacuum an entry is for** (`migration.vacuum_mac`): its unique id, or for entries the
+  original imported from v2 YAML (source `import`, no unique id, titled "Xiaomi Cloud Map
+  Extractor") the MAC in `data`. The imported entry gets that MAC as unique id, and the import list
+  shows the host next to the title. A YAML-imported original without a MAC (its cloud lookup
+  failed, so it never had entities) is matched by host: it is imported as it is, and setup then asks
+  to log in once (reauth, one click with the stored credentials), which fills in the MAC, device id
+  and unique id.
+- **Legacy YAML** keeps working by changing `platform: xiaomi_cloud_map_extractor` to
+  `platform: better_xiaomi_cloud_map_extractor`; it is then imported like upstream's and takes over
+  the original's entities for the same MAC. It is skipped, without logging in, when the host or MAC
+  is already set up here.
+- Proof: `tests/test_import_original.py`, run over every entry shape alpha-24 leaves
+  (`tests/original_entries.py`: UI flow, YAML import, YAML import without MAC), with all 26
+  registry entries, the device and the storage file; original installed and not installed;
+  discovery; legacy YAML; removing the leftover entry.
 
 ## Versioning
 
@@ -82,6 +92,7 @@ implement it and the proof that must still pass.
 | <a id="cloud-session-renewal"></a>Cloud session renewal | The `passToken` Xiaomi sets on every login (credentials, QR, two-factor) is stored with the session (`pass_token` in the connector store; older stores, including sessions imported from the original, load without it or with a UTC offset on the expiration). A session close to its stored expiration, or one the API rejects (401/403 or an `auth err` body), is renewed through `serviceLogin` with that `passToken` and the map download is retried; a password login runs only when Xiaomi refuses the `passToken`. A session that can't be renewed right now keeps being used until Xiaomi rejects it, and a refused proactive renewal is retried at most hourly. Every renewal or background login is written back to the store. | Upstream logged in with the password one day before the 30-day expiry and after every restart past it, and Xiaomi answers server-side password logins with a captcha or identity check, so the map stopped every month (upstream #697, PR #777). |
 | <a id="network-errors-no-login"></a>Network errors never log in | Timeouts, connection errors and outage answers (HTTP 5xx, 408, 429, an HTML page or an undecodable body instead of Xiaomi's JSON) during login, renewal, device lookup and API calls raise `FailedConnectionException` (update retried), never a login error; only a JSON refusal from Xiaomi counts as a rejected password or `passToken`. Device lookup for the configured server no longer turns an error into "device not found". A password login runs on its own session and keeps the stored session and `passToken` until Xiaomi issues a new one; a failed one is not repeated for 15 minutes (`RetryLaterException`, update retried), and overlapping updates (refresh button and schedule) recover the session once. | A timeout or a 502 used to be reported as bad credentials or a missing device, which started reauth or a password login; a failed login wiped the session it was meant to replace, so every 10 s retry was another password login and Xiaomi answered with a captcha. |
 | <a id="no-secrets-in-logs"></a>No secrets in the log | Login, captcha, two-factor, QR, renewal and map download log statuses and codes only: no `passToken`, `ssecurity`/`psecurity`, `serviceToken`, verification context or tickets, STS `clientSign`, response bodies or the signed map URL. | Users paste debug logs into public issues (upstream #778). |
+| <a id="yaml-map-api"></a>Map API of YAML entries | An entry whose `used_map_api` is None (the v2 YAML import stores `force_api`, which is usually unset) uses the API detected from the model (`VacuumApi.configured`), in setup and in the entities' device info. | Upstream called `VacuumApi(None)`, so every YAML-imported vacuum without `force_api` failed to set up with `ValueError`. |
 | <a id="reauth-reason"></a>Re-authentication explains why | The coordinator keeps why reauth started (`AuthIssue`); the reauth flow opens with a captcha or account-verification step (with Xiaomi's verification link) when that was the cause, offers logging in again with the saved credentials, and the two-factor step shows the verification link and retries the login when submitted empty. `ConfigEntryAuthFailed` carries a translated message; captcha images, request headers and session tokens never reach the log. | The cause and the verification link were only in the log, next to a dump of the captcha image bytes. |
 | <a id="xiaomi-map-key"></a>Xiaomi map key | The Xiaomi-format map key is derived from the last 16 characters of the model (`model[-16:]`, as the Xiaomi Home map plugin does with `Device.model.slice(-16)`), for decryption and the `enc_key` attribute. | Upstream used `model.replace("xiaomi", "mi")`, which is 16 bytes only for 20-character models; `xiaomi.vacuum.c107`, `d101`, `b112` and other short names failed with "Incorrect AES key length" (upstream #732, #733). |
 

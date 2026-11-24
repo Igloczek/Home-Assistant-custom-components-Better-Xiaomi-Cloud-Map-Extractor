@@ -9,10 +9,13 @@ next to the original as `better_xiaomi_cloud_map_extractor`.
 
 - Import from Xiaomi Cloud Map Extractor: vacuums set up in the original integration move over
   with their settings, Xiaomi login, device and entity ids, so dashboards and automations keep
-  working.
+  working. This includes vacuums the original imported from v2 YAML; one whose Xiaomi lookup
+  failed back then asks to log in once after the import.
 
 ### Fixed
 
+- A vacuum imported from v2 YAML without `force_api` no longer fails to set up with
+  "None is not a valid VacuumApi"; the map API is detected from the model.
 - Setup no longer aborts with "Unknown error occurred" when the Xiaomi cloud times out while listing
   the devices of one of your homes; that home is skipped.
 - Re-authentication no longer fails with "Unknown error occurred" when the vacuum's IP address

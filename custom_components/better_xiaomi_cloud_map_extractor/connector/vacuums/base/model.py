@@ -38,6 +38,13 @@ class VacuumApi(StrEnum):
     UNSUPPORTED = "UNSUPPORTED"
 
     @staticmethod
+    def configured(used_map_api: str | None, vacuum_model: str) -> VacuumApi:
+        """The API stored in a config entry. The YAML import stores None unless the YAML set `force_api`."""
+        if used_map_api:
+            return VacuumApi(used_map_api)
+        return VacuumApi.detect(vacuum_model)
+
+    @staticmethod
     def detect(vacuum_model: str) -> VacuumApi | None:
         if vacuum_model in API_EXCEPTIONS:
             return API_EXCEPTIONS[vacuum_model]

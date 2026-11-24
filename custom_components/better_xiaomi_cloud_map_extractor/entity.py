@@ -52,7 +52,9 @@ class XiaomiCloudMapExtractorEntity(CoordinatorEntity[XiaomiCloudMapExtractorDat
         self._name = config_entry.data[CONF_NAME]
         self._device_id = config_entry.data[CONF_DEVICE_ID]
         self._server = config_entry.data[CONF_SERVER]
-        self._used_map_api = VacuumApi(config_entry.data[CONF_USED_MAP_API])
+        self._used_map_api = VacuumApi.configured(
+            config_entry.data[CONF_USED_MAP_API], config_entry.data[CONF_MODEL]
+        )
         self._attr_device_info = DeviceInfo(
             connections={(CONNECTION_NETWORK_MAC, self._mac)},
             identifiers={(DOMAIN, self._device_id)},

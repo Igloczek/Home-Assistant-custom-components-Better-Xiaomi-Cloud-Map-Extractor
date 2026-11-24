@@ -113,7 +113,7 @@ def to_configuration(entry: XiaomiCloudMapExtractorConfigEntry) -> XiaomiCloudMa
     username = entry.data[CONF_USERNAME]
     password = entry.data[CONF_PASSWORD]
     server = entry.data[CONF_SERVER]
-    used_api = VacuumApi(entry.data[CONF_USED_MAP_API])
+    used_api = VacuumApi.configured(entry.data[CONF_USED_MAP_API], model)
 
     scale = entry.options[CONF_IMAGE_CONFIG][CONF_IMAGE_CONFIG_SCALE]
     rotate = entry.options[CONF_IMAGE_CONFIG][CONF_IMAGE_CONFIG_ROTATE]
