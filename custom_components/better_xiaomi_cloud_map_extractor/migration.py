@@ -14,6 +14,7 @@ from __future__ import annotations
 import logging
 
 from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import CONF_HOST, CONF_MAC
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
@@ -35,13 +36,34 @@ async def async_original_installed(hass: HomeAssistant) -> bool:
     return True
 
 
+def vacuum_mac(entry: ConfigEntry) -> str | None:
+    """The MAC of the vacuum an entry (of either integration) is for, if the entry knows it.
+
+    Entries created by a config flow have it as unique id. Entries created by the YAML import (the
+    original's or this one's) have no unique id and only store it in `data`, or not at all when the
+    import's cloud lookup failed.
+    """
+    if entry.unique_id is not None:
+        return entry.unique_id
+    if mac := entry.data.get(CONF_MAC):
+        return format_mac(mac)
+    return None
+
+
 def importable_original_entries(hass: HomeAssistant) -> list[ConfigEntry]:
-    """Original config entries for vacuums that are not set up in this integration yet."""
-    configured = {entry.unique_id for entry in hass.config_entries.async_entries(DOMAIN, include_ignore=True)}
+    """Original config entries for vacuums that are not set up in this integration yet.
+
+    An original entry without a MAC (YAML import whose cloud lookup failed) is matched by host, as
+    the YAML import itself does.
+    """
+    ours = hass.config_entries.async_entries(DOMAIN, include_ignore=True)
+    macs = {mac for entry in ours if (mac := vacuum_mac(entry)) is not None}
+    hosts = {host for entry in ours if (host := entry.data.get(CONF_HOST)) is not None}
     return [
         entry
         for entry in hass.config_entries.async_entries(ORIGINAL_DOMAIN, include_ignore=False)
-        if entry.unique_id is not None and entry.unique_id not in configured
+        if ((mac := vacuum_mac(entry)) is not None and mac not in macs)
+        or (mac is None and entry.data.get(CONF_HOST) not in hosts)
     ]
 
 
@@ -61,13 +83,14 @@ async def async_adopt_original_entities(hass: HomeAssistant, entry: ConfigEntry)
 
     Runs at setup before the platforms add entities. Entity unique ids (`<device_id>_<entity
     domain>_<key>`) are the same in both integrations, so only the platform and config entry
-    change. Skipped while the original integration is installed, and for any entity that is
-    loaded or already exists in this integration.
+    change. Originals are matched by the vacuum's MAC (`vacuum_mac`), so entries the original
+    imported from YAML (no unique id) are found too. Skipped while the original integration is
+    installed, and for any entity that is loaded or already exists in this integration.
     """
+    if (mac := vacuum_mac(entry)) is None:
+        return
     originals = [
-        original
-        for original in hass.config_entries.async_entries(ORIGINAL_DOMAIN)
-        if original.unique_id is not None and original.unique_id == entry.unique_id
+        original for original in hass.config_entries.async_entries(ORIGINAL_DOMAIN) if vacuum_mac(original) == mac
     ]
     if not originals or await async_original_installed(hass):
         return

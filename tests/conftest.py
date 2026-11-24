@@ -20,6 +20,7 @@ from custom_components.better_xiaomi_cloud_map_extractor.connector.xiaomi_cloud.
 )
 
 from .const import VACUUM_DEVICE
+from .original_entries import ALL_SHAPES, SHAPES_WITH_MAC, OriginalShape
 
 
 @pytest.fixture(autouse=True)
@@ -68,3 +69,15 @@ def map_connector() -> Generator[MagicMock]:
         )
         connector.is_auto_updating = MagicMock(return_value=True)
         yield connector
+
+
+@pytest.fixture(params=ALL_SHAPES, ids=lambda shape: shape.name)
+def original_shape(request: pytest.FixtureRequest) -> OriginalShape:
+    """Every shape of entry the original integration leaves behind (tests/original_entries.py)."""
+    return request.param
+
+
+@pytest.fixture(params=SHAPES_WITH_MAC, ids=lambda shape: shape.name)
+def original_with_mac(request: pytest.FixtureRequest) -> OriginalShape:
+    """Original entries that know their vacuum's MAC, so they have entities and a device."""
+    return request.param
