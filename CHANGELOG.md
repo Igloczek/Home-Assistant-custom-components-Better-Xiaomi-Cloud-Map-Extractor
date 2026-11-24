@@ -1,11 +1,18 @@
 # Changelog
 
-## Unreleased (0.1.0)
+## 0.1.0 - 2026-11-24
 
 First release of this fork under its own name, based on upstream v3.0.0-alpha-24. It installs
 next to the original as `better_xiaomi_cloud_map_extractor`.
 
 ### Added
+
+- The Xiaomi cloud session renews itself with the stored passToken instead of logging in again
+  with your password, so the map keeps working past the session's 30 days without a captcha or
+  identity check (upstream PR #777 by chrodriguez). The session is saved after every renewal.
+- When Xiaomi does need you, re-authentication says why: separate screens for a captcha and for
+  identity verification (with the link to open), a one-click "log in again with the saved
+  username and password", and a two-factor step that shows the verification link.
 
 - Import from Xiaomi Cloud Map Extractor: vacuums set up in the original integration move over
   with their settings, Xiaomi login, device and entity ids, so dashboards and automations keep
@@ -16,6 +23,9 @@ next to the original as `better_xiaomi_cloud_map_extractor`.
 
 ### Fixed
 
+- Xiaomi-format maps no longer fail with "Incorrect AES key length" on models such as
+  xiaomi.vacuum.c107, d101 or b112: the key is the last 16 characters of the model, as in the
+  Xiaomi Home app. Models whose map already worked use the same key as before.
 - A vacuum imported from v2 YAML without `force_api` no longer fails to set up with
   "None is not a valid VacuumApi"; the map API is detected from the model.
 - Ijai vacuums (ijai.vacuum.v1, v3, v17, v18, Xiaomi S10, S12, S20 and others on the Ijai map
