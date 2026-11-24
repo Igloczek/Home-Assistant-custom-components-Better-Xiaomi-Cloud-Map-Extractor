@@ -26,6 +26,7 @@ from Crypto.Util.Padding import pad
 from vacuum_map_parser_base.config.color import ColorsPalette
 from vacuum_map_parser_base.config.image_config import ImageConfig
 from vacuum_map_parser_base.config.size import Sizes
+from vacuum_map_parser_xiaomi.aes_decryptor import gen_md5_key
 
 from custom_components.better_xiaomi_cloud_map_extractor.connector.vacuums.base.model import VacuumConfig
 from custom_components.better_xiaomi_cloud_map_extractor.connector.vacuums.vacuum_xiaomi import (
@@ -122,3 +123,41 @@ def test_xiaomi_enc_key_matches_the_app(model: str, miot_device: MagicMock) -> N
     vacuum, _ = make_vacuum(model, b"")
 
     assert vacuum.additional_data()["enc_key"] == app_key(model, DEVICE_ID).hex()
+
+
+# Every Xiaomi-format model id known to this integration, vacuum-map-parser-xiaomi (code and
+# README) and the upstream reports (#704, #720, #732, #733, #748, #762, #764).
+KNOWN_XIAOMI_MODELS = [
+    "xiaomi.vacuum.b106bk", "xiaomi.vacuum.b106eu", "xiaomi.vacuum.b106tr", "xiaomi.vacuum.b108gl",
+    "xiaomi.vacuum.b108gp", "xiaomi.vacuum.b112", "xiaomi.vacuum.b112bk", "xiaomi.vacuum.b112gl",
+    "xiaomi.vacuum.b112tr", "xiaomi.vacuum.c101", "xiaomi.vacuum.c101eu", "xiaomi.vacuum.c102",
+    "xiaomi.vacuum.c103", "xiaomi.vacuum.c104", "xiaomi.vacuum.c107", "xiaomi.vacuum.d101",
+    "xiaomi.vacuum.d106gl", "xiaomi.vacuum.d109gl", "xiaomi.vacuum.e101gb", "xiaomi.vacuum.e101gl",
+    "xiaomi.vacuum.ov21gl", "xiaomi.vacuum.ov31gl", "xiaomi.vacuum.ov32gl", "xiaomi.vacuum.ov42gl",
+    "xiaomi.vacuum.ov43gb", "xiaomi.vacuum.ov43gl", "xiaomi.vacuum.ov51", "xiaomi.vacuum.ov51gl",
+    "xiaomi.vacuum.ov71gl", "xiaomi.vacuum.ov81", "xiaomi.vacuum.ov81gl",
+]
+AES_KEY_LENGTHS = (16, 24, 32)
+
+
+def old_model_key(model: str) -> str:
+    """The key upstream v3.0.0-alpha-24 (688fe3e) used."""
+    return model.replace("xiaomi", "mi")
+
+
+@pytest.mark.parametrize(
+    "model", [m for m in KNOWN_XIAOMI_MODELS if len(old_model_key(m)) in AES_KEY_LENGTHS]
+)
+def test_models_that_worked_keep_the_same_key(model: str, miot_device: MagicMock) -> None:
+    """No vacuum whose map decrypted before gets a different key: the key bytes are identical."""
+    vacuum, _ = make_vacuum(model, b"")
+
+    assert vacuum._model_key == old_model_key(model)
+    assert vacuum.additional_data()["enc_key"] == gen_md5_key(old_model_key(model), DEVICE_ID)
+
+
+def test_every_known_model_had_either_a_16_byte_key_or_none() -> None:
+    """The old key was valid only at 16 bytes for known models, so the test above covers all of them."""
+    lengths = {len(old_model_key(m)) for m in KNOWN_XIAOMI_MODELS}
+    assert lengths & set(AES_KEY_LENGTHS) == {16}
+    assert all(len(m[-16:]) == 16 for m in KNOWN_XIAOMI_MODELS)
