@@ -6,6 +6,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from homeassistant import config_entries
+from homeassistant.config_entries import ConfigEntryState
 from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResultType
 from pytest_homeassistant_custom_component.common import MockConfigEntry
@@ -201,3 +202,148 @@ async def test_device_list_error_aborts(hass: HomeAssistant, cloud_connector: Ma
 
     assert result["type"] is FlowResultType.ABORT
     assert result["reason"] == "unknown"
+
+
+# Reauth. The coordinator starts it when the cloud session expires or Xiaomi asks for captcha or
+# identity verification. Entries exist in three shapes: created by this flow, imported from YAML
+# (source import, no unique_id, possibly no MAC) and imported from the original integration
+# (unique_id = MAC). The host the user confirms may differ from the stored one (DHCP, typo).
+OLD_HOST = "192.168.1.10"
+OPTIONS = {
+    "image_config": XiaomiCloudMapExtractorFlowHandler._default_image_config(),
+    "colors": XiaomiCloudMapExtractorFlowHandler._default_colors(),
+    "room_colors": {"16": [10, 20, 30, 255]},
+    "drawables": ["charger", "path"],
+    "sizes": {},
+    "texts": [],
+}
+
+
+def _yaml_imported_entry(**data) -> MockConfigEntry:
+    return MockConfigEntry(
+        domain=DOMAIN,
+        source=config_entries.SOURCE_IMPORT,
+        unique_id=None,
+        title="Xiaomi Cloud Map Extractor",
+        data={**ENTRY_DATA, "host": OLD_HOST, "username": "old-user", "password": "old-password", **data},
+        options=OPTIONS,
+    )
+
+
+def _entry_imported_from_original() -> MockConfigEntry:
+    """What `_async_import_original` creates: a copy of the original entry, unique_id = MAC."""
+    return MockConfigEntry(
+        domain=DOMAIN,
+        source=config_entries.SOURCE_USER,
+        unique_id=MAC,
+        title="Living room vacuum",
+        data={**ENTRY_DATA, "host": OLD_HOST, "password": "old-password"},
+        options=OPTIONS,
+    )
+
+
+async def _reauth_until_confirm(hass: HomeAssistant, entry: MockConfigEntry) -> dict:
+    result = await entry.start_reauth_flow(hass)
+    assert result["type"] is FlowResultType.FORM
+    assert result["step_id"] == "reauth_confirm"
+    result = await hass.config_entries.flow.async_configure(result["flow_id"], {})
+    assert result["type"] is FlowResultType.MENU
+    assert result["menu_options"] == ["auth_credentials", "auth_qr"]
+    result = await hass.config_entries.flow.async_configure(result["flow_id"], {"next_step_id": "auth_credentials"})
+    return await _submit_credentials(hass, result)
+
+
+@pytest.mark.parametrize(
+    "make_entry",
+    [_yaml_imported_entry, _entry_imported_from_original],
+    ids=["imported_from_yaml", "imported_from_original"],
+)
+async def test_reauth_with_changed_host_updates_and_reloads_entry(
+    hass: HomeAssistant, cloud_connector: MagicMock, map_connector: MagicMock, no_store: AsyncMock, make_entry
+) -> None:
+    """Regression: the entry was looked up by the confirmed host, so Submit crashed with
+    AttributeError: 'NoneType' object has no attribute 'data' ("Unknown error occurred")."""
+    entry = make_entry()
+    entry.add_to_hass(hass)
+
+    result = await _confirm(hass, await _reauth_until_confirm(hass, entry))
+    await hass.async_block_till_done()
+
+    assert result["type"] is FlowResultType.ABORT
+    assert result["reason"] == "reauth_successful"
+    assert entry.data == {**ENTRY_DATA, "used_map_api": "VIOMI"}
+    assert entry.options == OPTIONS
+    assert entry.unique_id == MAC
+    assert entry.state is ConfigEntryState.LOADED
+    assert len(hass.config_entries.async_entries(DOMAIN)) == 1
+    no_store.assert_awaited_once()
+
+
+async def test_reauth_yaml_entry_without_mac_gets_unique_id(
+    hass: HomeAssistant, cloud_connector: MagicMock, map_connector: MagicMock
+) -> None:
+    """The YAML import stores no MAC when the cloud lookup failed; reauth fills it in."""
+    entry = _yaml_imported_entry(mac=None, device_id=None)
+    entry.add_to_hass(hass)
+
+    result = await _confirm(hass, await _reauth_until_confirm(hass, entry))
+    await hass.async_block_till_done()
+
+    assert result["reason"] == "reauth_successful"
+    assert entry.unique_id == MAC
+    assert entry.data["mac"] == MAC
+    assert entry.state is ConfigEntryState.LOADED
+
+
+@pytest.mark.parametrize(
+    "make_entry",
+    [_yaml_imported_entry, _entry_imported_from_original],
+    ids=["imported_from_yaml", "imported_from_original"],
+)
+async def test_reauth_with_another_vacuum_aborts(
+    hass: HomeAssistant, cloud_connector: MagicMock, no_store: AsyncMock, make_entry
+) -> None:
+    entry = make_entry()
+    entry.add_to_hass(hass)
+    cloud_connector.get_devices.return_value = [make_device(device_id="987", mac="11:22:33:44:55:66")]
+
+    result = await _confirm(hass, await _reauth_until_confirm(hass, entry))
+
+    assert result["type"] is FlowResultType.ABORT
+    assert result["reason"] == "reauth_wrong_vacuum"
+    assert entry.data["host"] == OLD_HOST
+    assert entry.data["password"] == "old-password"
+    no_store.assert_not_awaited()
+
+
+async def test_user_flow_adopts_yaml_entry_with_same_host(
+    hass: HomeAssistant, cloud_connector: MagicMock, map_connector: MagicMock
+) -> None:
+    """A YAML-imported entry has no unique_id, so only its host ties it to the vacuum."""
+    entry = _yaml_imported_entry(host=HOST)
+    entry.add_to_hass(hass)
+
+    result = await _confirm(hass, await _submit_credentials(hass, await _start_credentials_login(hass)))
+    await hass.async_block_till_done()
+
+    assert result["type"] is FlowResultType.ABORT
+    assert result["reason"] == "reauth_successful"
+    assert len(hass.config_entries.async_entries(DOMAIN)) == 1
+    assert entry.unique_id == MAC
+    assert entry.data["username"] == USERNAME
+
+
+async def test_user_flow_does_not_take_over_another_vacuums_entry_on_same_host(
+    hass: HomeAssistant, cloud_connector: MagicMock
+) -> None:
+    """The vacuum's IP was reused by another vacuum: create a new entry, keep the old one."""
+    other = MockConfigEntry(
+        domain=DOMAIN, unique_id="11:22:33:44:55:66", data={**ENTRY_DATA, "mac": "11:22:33:44:55:66"}
+    )
+    other.add_to_hass(hass)
+
+    result = await _confirm(hass, await _submit_credentials(hass, await _start_credentials_login(hass)))
+
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+    assert result["result"].unique_id == MAC
+    assert other.data["mac"] == "11:22:33:44:55:66"

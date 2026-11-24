@@ -15,6 +15,9 @@ next to the original as `better_xiaomi_cloud_map_extractor`.
 
 - Setup no longer aborts with "Unknown error occurred" when the Xiaomi cloud times out while listing
   the devices of one of your homes; that home is skipped.
+- Re-authentication no longer fails with "Unknown error occurred" when the vacuum's IP address
+  differs from the stored one (for example a setup imported from YAML). Picking a different vacuum
+  during re-authentication now stops with a message instead of rewriting the setup.
 
 ### Changed
 
