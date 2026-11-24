@@ -6,7 +6,7 @@ released changes are in [CHANGELOG.md](CHANGELOG.md); the differences from upstr
 
 ## How to propose work
 
-Open an issue on the [fork tracker](https://github.com/Igloczek/Home-Assistant-custom-components-Better-Xiaomi-Cloud-Map-Extractor/issues)
+Open an issue on the [fork tracker](https://github.com/Igloczek/better-xiaomi-cloud-map-extractor/issues)
 with the vacuum model, the integration and Home Assistant versions, a debug log with tokens removed,
 and what you expected. A change is planned when it can be proven: by a test with a scrubbed fixture
 of the cloud response or map, or by someone with the vacuum testing a pre-release. Every change comes

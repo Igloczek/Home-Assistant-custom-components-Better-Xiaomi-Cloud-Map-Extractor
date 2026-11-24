@@ -1,7 +1,7 @@
 # Better Xiaomi Cloud Map Extractor
 
-[![Latest release](https://img.shields.io/github/v/release/Igloczek/Home-Assistant-custom-components-Better-Xiaomi-Cloud-Map-Extractor?include_prereleases)](https://github.com/Igloczek/Home-Assistant-custom-components-Better-Xiaomi-Cloud-Map-Extractor/releases)
-[![Tests](https://github.com/Igloczek/Home-Assistant-custom-components-Better-Xiaomi-Cloud-Map-Extractor/actions/workflows/tests.yml/badge.svg)](https://github.com/Igloczek/Home-Assistant-custom-components-Better-Xiaomi-Cloud-Map-Extractor/actions/workflows/tests.yml)
+[![Latest release](https://img.shields.io/github/v/release/Igloczek/better-xiaomi-cloud-map-extractor?include_prereleases)](https://github.com/Igloczek/better-xiaomi-cloud-map-extractor/releases)
+[![Tests](https://github.com/Igloczek/better-xiaomi-cloud-map-extractor/actions/workflows/tests.yml/badge.svg)](https://github.com/Igloczek/better-xiaomi-cloud-map-extractor/actions/workflows/tests.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
 A Home Assistant integration that downloads your robot vacuum's map from the Xiaomi cloud and shows
@@ -11,7 +11,7 @@ works with Xiaomi, Roborock (Mi Home app), Viomi, Roidmi, Dreame and Ijai vacuum
 Use it with [Better Xiaomi Vacuum Map Card](https://github.com/Igloczek/lovelace-better-xiaomi-vacuum-map-card)
 to turn the map into a remote: tap rooms to clean them, draw zones, send the robot to a spot.
 
-<img src="https://raw.githubusercontent.com/Igloczek/Home-Assistant-custom-components-Better-Xiaomi-Cloud-Map-Extractor/master/images/map_no_rooms.png" width=48%>  <img src="https://raw.githubusercontent.com/Igloczek/Home-Assistant-custom-components-Better-Xiaomi-Cloud-Map-Extractor/master/images/map_rooms.png" width=48%>
+<img src="https://raw.githubusercontent.com/Igloczek/better-xiaomi-cloud-map-extractor/master/images/map_no_rooms.png" width=48%>  <img src="https://raw.githubusercontent.com/Igloczek/better-xiaomi-cloud-map-extractor/master/images/map_rooms.png" width=48%>
 
 ## Why this fork
 
@@ -27,18 +27,18 @@ The differences from the original are listed in [FORK.md](FORK.md), released cha
 ### HACS (recommended)
 
 1. In HACS, open the menu (⋮) → **Custom repositories**.
-2. Add `https://github.com/Igloczek/Home-Assistant-custom-components-Better-Xiaomi-Cloud-Map-Extractor` with type **Integration**.
+2. Add `https://github.com/Igloczek/better-xiaomi-cloud-map-extractor` with type **Integration**.
 3. Search for **Better Xiaomi Cloud Map Extractor**, download it and restart Home Assistant.
 
 ### Manual
 
-Download [`better_xiaomi_cloud_map_extractor.zip`](https://github.com/Igloczek/Home-Assistant-custom-components-Better-Xiaomi-Cloud-Map-Extractor/releases/latest/download/better_xiaomi_cloud_map_extractor.zip)
+Download [`better_xiaomi_cloud_map_extractor.zip`](https://github.com/Igloczek/better-xiaomi-cloud-map-extractor/releases/latest/download/better_xiaomi_cloud_map_extractor.zip)
 and extract it into `config/custom_components/better_xiaomi_cloud_map_extractor`:
 
 ```bash
 mkdir -p custom_components/better_xiaomi_cloud_map_extractor
 cd custom_components/better_xiaomi_cloud_map_extractor
-wget https://github.com/Igloczek/Home-Assistant-custom-components-Better-Xiaomi-Cloud-Map-Extractor/releases/latest/download/better_xiaomi_cloud_map_extractor.zip
+wget https://github.com/Igloczek/better-xiaomi-cloud-map-extractor/releases/latest/download/better_xiaomi_cloud_map_extractor.zip
 unzip better_xiaomi_cloud_map_extractor.zip
 rm better_xiaomi_cloud_map_extractor.zip
 ```
@@ -65,7 +65,7 @@ Coming from v2 (YAML `camera:` configuration)? Change `platform: xiaomi_cloud_ma
 `platform: better_xiaomi_cloud_map_extractor`. The entry is imported into a configured integration
 on start. Remove the YAML afterwards (Home Assistant shows a repair notice), and log in again if
 Home Assistant asks you to re-authenticate. The v2 documentation stays on the
-[`v2` branch](https://github.com/Igloczek/Home-Assistant-custom-components-Better-Xiaomi-Cloud-Map-Extractor/tree/v2#readme).
+[`v2` branch](https://github.com/Igloczek/better-xiaomi-cloud-map-extractor/tree/v2#readme).
 
 ## Setup
 
@@ -134,7 +134,7 @@ integration.
 
 ## Reporting a problem
 
-Report bugs on the [fork's issue tracker](https://github.com/Igloczek/Home-Assistant-custom-components-Better-Xiaomi-Cloud-Map-Extractor/issues). Include your vacuum model, the
+Report bugs on the [fork's issue tracker](https://github.com/Igloczek/better-xiaomi-cloud-map-extractor/issues). Include your vacuum model, the
 integration version and a debug log. To turn on debug logging, add this to `configuration.yaml`:
 
 ```yaml
