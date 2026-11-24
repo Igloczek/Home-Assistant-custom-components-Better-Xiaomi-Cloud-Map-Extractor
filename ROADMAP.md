@@ -49,11 +49,11 @@ repository; each item names the priority it serves.
    `MiotDevice` is created without a mapping (warning spam, #791), and the map keeps refreshing while
    docked (#764) and floods the logbook (#719). Import #775 (skip #769, which it covers). Closes #791,
    #764, #719; check #655 and #601 against it.
-5. **Xiaomi map format: decryption key and API choice** (reliability, and an actionable message for the wrong map format). "Incorrect AES key length": the key is
-   derived from `model.replace("xiaomi", "mi")` (`vacuum_xiaomi.py`), which is the wrong length for
-   names like `xiaomi.vacuum.c107`, and Roborock users who pick the Xiaomi format get the same error.
-   Fix the key derivation and warn when the chosen map format does not match the model. Closes #731,
-   #732, #733, #763.
+5. **Xiaomi map format: API choice** (an actionable message for the wrong map format). Roborock
+   users (`rockrobo.vacuum.v1`, `roborock.vacuum.s5e`) whose entry uses the Xiaomi map format get
+   "Incorrect AES key length" or a failed decryption; the Roborock format is detected automatically,
+   so warn when the chosen map format does not match the model. Closes #731, #763. (The key
+   derivation for short model names, #732 and #733, is fixed.)
 6. **Actionable failures everywhere** (UI). Any connector error that is not a login problem ends
    as an `UpdateFailed` with a log line only. Map download and parse failures that persist should
    raise a repair issue that says what to do (wrong map format, vacuum offline, region), and the

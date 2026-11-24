@@ -17,6 +17,10 @@ from ..utils.exceptions import FailedConnectionException
 
 _LOGGER = logging.getLogger(__name__)
 OFF_UPDATES = 3
+# The Xiaomi Home map plugin keys the map with the last 16 characters of the model
+# (`Device.model.slice(-16)`): "xiaomi.vacuum.ov81gl" -> "mi.vacuum.ov81gl",
+# "xiaomi.vacuum.c107" -> "aomi.vacuum.c107". AES-128 needs exactly 16 bytes.
+MODEL_KEY_LENGTH = 16
 
 @dataclass
 class XiaomiVacuumPropertyMapping:
@@ -85,6 +89,10 @@ class XiaomiCloudVacuum(BaseXiaomiCloudVacuumV2):
         self._vacuum_map = next((mapping for models, mapping in _NON_STANDARD_MAP_PROP if self.model in models), XiaomiVacuumPropertyMapping())
 
     @property
+    def _model_key(self: Self) -> str:
+        return self.model[-MODEL_KEY_LENGTH:]
+
+    @property
     def should_update_map(self: Self) -> bool:
         try:
             status_value = self._miot_device.get_property_by(self._status_mapping.siid,
@@ -149,7 +157,7 @@ class XiaomiCloudVacuum(BaseXiaomiCloudVacuumV2):
         raw_map = raw_map.hex()
         decoded_map = self.map_data_parser.unpack_map(
             raw_map,
-            model=self.model.replace("xiaomi", "mi"),
+            model=self._model_key,
             device_id=str(self._device_id),
         )
         return self.map_data_parser.parse(decoded_map)
@@ -157,7 +165,7 @@ class XiaomiCloudVacuum(BaseXiaomiCloudVacuumV2):
     def additional_data(self: Self) -> dict[str, Any]:
         super_data = super().additional_data()
         enc_key = gen_md5_key(
-            self.model.replace("xiaomi", "mi"),
+            self._model_key,
             str(self._device_id),
         )
 

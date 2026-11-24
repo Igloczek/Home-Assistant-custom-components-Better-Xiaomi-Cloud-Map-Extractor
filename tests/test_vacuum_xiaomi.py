@@ -1,0 +1,124 @@
+"""Xiaomi-format (MIoT, Shunzao family) map download and decryption.
+
+The cloud object is `{"version": 2, "data": base64(AES-CBC(zlib(map JSON)))}`. The AES key is
+derived the way the Xiaomi Home map plugin does it (upstream #704, #762 and
+vacuum-map-parser-xiaomi PR #5, read from the app bundle): the model key is
+`Device.model.slice(-16)`, and
+
+    key = MD5(AES-128-CBC(model_key + did, key=model_key, iv="ABCDEF1234123412", PKCS7))
+
+`encrypt_xiaomi_map` implements that recipe on its own, so the tests do not share the code
+under test. `tests/fixtures/xiaomi/map.json` is a synthetic map, not taken from any device.
+"""
+
+from __future__ import annotations
+
+import base64
+import hashlib
+import json
+import zlib
+from pathlib import Path
+from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
+from Crypto.Cipher import AES
+from Crypto.Util.Padding import pad
+from vacuum_map_parser_base.config.color import ColorsPalette
+from vacuum_map_parser_base.config.image_config import ImageConfig
+from vacuum_map_parser_base.config.size import Sizes
+
+from custom_components.better_xiaomi_cloud_map_extractor.connector.vacuums.base.model import VacuumConfig
+from custom_components.better_xiaomi_cloud_map_extractor.connector.vacuums.vacuum_xiaomi import (
+    XiaomiCloudVacuum,
+)
+
+from .conftest import make_device
+
+MAP_JSON = (Path(__file__).parent / "fixtures" / "xiaomi" / "map.json").read_text()
+DEVICE_ID = "123456789"
+USER_ID = 2
+IV = b"ABCDEF1234123412"
+MAP_URL = "https://example.invalid/map"
+
+# Model names from upstream reports. The ones that are not 20 characters long
+# ("xiaomi." + 6-character suffix) failed with "Incorrect AES key length".
+MODELS = [
+    "xiaomi.vacuum.ov81gl",  # 20 chars, worked before (upstream #704)
+    "xiaomi.vacuum.ov51gl",  # 20 chars, worked before (upstream #762)
+    "xiaomi.vacuum.c107",  # 18 chars, Mijia M30 Pro (upstream #732)
+    "xiaomi.vacuum.d101",  # 18 chars, H40 (upstream #733)
+    "xiaomi.vacuum.c101eu",  # 20 chars, listed in _NON_STANDARD_MAP_PROP
+    "xiaomi.vacuum.b112",  # 18 chars, listed in _NON_STANDARD_MAP_PROP
+]
+
+
+def app_key(model: str, device_id: str) -> bytes:
+    model_key = model[-16:].encode()
+    wrapped = AES.new(model_key, AES.MODE_CBC, IV).encrypt(pad(model_key + device_id.encode(), 16))
+    return hashlib.md5(wrapped).digest()
+
+
+def encrypt_xiaomi_map(map_json: str, model: str, device_id: str) -> bytes:
+    """Build the cloud object the vacuum uploads, as the Xiaomi Home app reads it."""
+    cipher = AES.new(app_key(model, device_id), AES.MODE_CBC, IV)
+    data = cipher.encrypt(pad(zlib.compress(map_json.encode()), 16))
+    return json.dumps({"version": 2, "data": base64.b64encode(data).decode()}).encode()
+
+
+def make_vacuum(model: str, raw_map: bytes) -> tuple[XiaomiCloudVacuum, MagicMock]:
+    connector = MagicMock()
+    connector.get_api_url = MagicMock(return_value="https://de.api.io.mi.com/app")
+    connector.execute_api_call_encrypted = AsyncMock(return_value={"result": {"url": MAP_URL}})
+    connector.get_raw_map_data = AsyncMock(return_value=raw_map)
+    config = VacuumConfig(
+        connector=connector,
+        device_info=make_device(model=model, device_id=DEVICE_ID, user_id=USER_ID),
+        server="de",
+        device_id=DEVICE_ID,
+        host="192.168.1.50",
+        token="0123456789abcdef0123456789abcdef",
+        model=model,
+        palette=ColorsPalette(),
+        drawables=[],
+        image_config=ImageConfig(),
+        sizes=Sizes(),
+        texts=[],
+    )
+    return XiaomiCloudVacuum(config), connector
+
+
+@pytest.fixture
+def miot_device():
+    """The vacuum on the LAN, reporting the live map object like MIoT property 10.1."""
+    with patch(
+        "custom_components.better_xiaomi_cloud_map_extractor.connector.vacuums.vacuum_xiaomi.MiotDevice"
+    ) as device_class:
+        device = device_class.return_value
+        device.get_property_by = MagicMock(
+            return_value=[{"value": json.dumps({"obj_name": f"{USER_ID}/{DEVICE_ID}/0"})}]
+        )
+        yield device
+
+
+@pytest.mark.parametrize("model", MODELS)
+async def test_xiaomi_map_decrypts_for_every_model_length(model: str, miot_device: MagicMock) -> None:
+    """The map of every Xiaomi model downloads, decrypts and parses."""
+    raw_map = encrypt_xiaomi_map(MAP_JSON, model, DEVICE_ID)
+    vacuum, connector = make_vacuum(model, raw_map)
+
+    map_data, returned_raw = await vacuum.get_map()
+
+    connector.get_raw_map_data.assert_awaited_once_with(MAP_URL)
+    assert returned_raw == raw_map
+    assert map_data.map_name == "0"
+    assert map_data.image.dimensions.width == 10
+    assert map_data.image.dimensions.height == 8
+    assert {room.name for room in map_data.rooms.values()} == {"Kitchen", "Hall"}
+
+
+@pytest.mark.parametrize("model", MODELS)
+def test_xiaomi_enc_key_matches_the_app(model: str, miot_device: MagicMock) -> None:
+    """The exported `enc_key` attribute is the key the map is encrypted with."""
+    vacuum, _ = make_vacuum(model, b"")
+
+    assert vacuum.additional_data()["enc_key"] == app_key(model, DEVICE_ID).hex()
