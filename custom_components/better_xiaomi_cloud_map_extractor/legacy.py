@@ -45,6 +45,7 @@ from .const import (
     DOMAIN,
     NAME,
 )
+from .connector.vacuums.base.model import VacuumApi
 from .connector.xiaomi_cloud.connector import XiaomiCloudConnector, XiaomiCloudDeviceInfo
 from .legacy_schema import (
     LEGACY_CONF_BOTTOM,
@@ -70,6 +71,11 @@ from .legacy_schema import (
 )
 
 _LOGGER = logging.getLogger(__name__)
+
+
+def _map_api(force_api: str | None) -> str | None:
+    """v2 YAML spells `force_api` in lower case; entries hold the `VacuumApi` value."""
+    return VacuumApi(force_api.upper()).value if force_api else None
 
 
 def handle_old_config(hass: HomeAssistant, config: ConfigType) -> None:
@@ -128,7 +134,7 @@ async def create_config_entry_data_from_yaml(
         CONF_USERNAME: import_info[CONF_USERNAME],
         CONF_PASSWORD: import_info[CONF_PASSWORD],
         CONF_SERVER: server,
-        CONF_USED_MAP_API: import_info.get(LEGACY_CONF_FORCE_API, None),
+        CONF_USED_MAP_API: _map_api(import_info.get(LEGACY_CONF_FORCE_API)),
     }
     options = {
         CONF_IMAGE_CONFIG: {

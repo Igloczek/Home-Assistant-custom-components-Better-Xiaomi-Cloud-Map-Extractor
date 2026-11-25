@@ -19,6 +19,7 @@ from custom_components.better_xiaomi_cloud_map_extractor.const import (
     CONF_SIZES,
     DOMAIN,
 )
+from custom_components.better_xiaomi_cloud_map_extractor.connector.vacuums.base.model import VacuumApi
 from custom_components.better_xiaomi_cloud_map_extractor.legacy import create_config_entry_data_from_yaml
 from custom_components.better_xiaomi_cloud_map_extractor.legacy_schema import LEGACY_PLATFORM_SCHEMA
 
@@ -103,3 +104,19 @@ async def test_failed_login_still_gives_an_entry(caplog: pytest.LogCaptureFixtur
     assert data["model"] is None
     assert options[CONF_IMAGE_CONFIG]["scale"] == 1
     assert "Failed to connect to Xiaomi Cloud" in caplog.text
+
+
+async def test_force_api_is_stored_as_the_map_format() -> None:
+    """v2 YAML spells `force_api` in lower case; the entry must hold a `VacuumApi` value that loads."""
+    data, _ = await create_config_entry_data_from_yaml(
+        _yaml(country="de", force_api="viomi"), _cloud([DEVICE]).session_creator
+    )
+
+    assert data["used_map_api"] == VacuumApi.VIOMI
+    assert VacuumApi.configured(data["used_map_api"], data["model"]) is VacuumApi.VIOMI
+
+
+@pytest.mark.parametrize("stored", ["viomi", "VIOMI"])
+def test_entries_imported_with_a_lower_case_map_format_still_load(stored: str) -> None:
+    """Entries imported before the fix hold the YAML spelling."""
+    assert VacuumApi.configured(stored, "viomi.vacuum.v8") is VacuumApi.VIOMI
