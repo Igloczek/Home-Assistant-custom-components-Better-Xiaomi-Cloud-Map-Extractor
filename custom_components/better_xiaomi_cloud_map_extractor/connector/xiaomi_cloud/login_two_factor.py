@@ -1,6 +1,7 @@
 """Identity verification (two-factor by email or SMS) that Xiaomi can ask for during a password login."""
 from __future__ import annotations
 import datetime
+import email.utils
 import json
 import logging
 import time
@@ -175,7 +176,11 @@ class TwoFactorLogin(XiaomiCloudSession):
                 _LOGGER.debug("Xiaomi cloud verification - redirects ended without a session (status %s)",
                               response.status)
                 return
-            url = str(URL(str(response.url or url)).join(URL(location)))
+            try:
+                url = str(URL(str(response.url or url)).join(URL(location)))
+            except ValueError:
+                _LOGGER.debug("Xiaomi cloud verification - a redirect is no URL")
+                return
         _LOGGER.debug("Xiaomi cloud verification - too many redirects")
 
     def _update_ids_from_cookies(self: Self) -> None:
@@ -194,8 +199,9 @@ class TwoFactorLogin(XiaomiCloudSession):
                 if cookie.get("max-age"):
                     max_age = int(cookie["max-age"])
                 elif cookie.get("expires"):
-                    max_age = int(datetime.datetime.strptime(
-                        cookie["expires"], "%a, %d %b %Y %H:%M:%S %Z").timestamp() - now.timestamp())
+                    # A cookie date is GMT; parsing it naive would read it as local time.
+                    expires = email.utils.parsedate_to_datetime(cookie["expires"])
+                    max_age = int((expires - datetime.datetime.now(datetime.UTC)).total_seconds())
                 else:
                     continue
             except (TypeError, ValueError):

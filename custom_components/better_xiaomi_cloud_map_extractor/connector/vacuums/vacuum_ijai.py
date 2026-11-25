@@ -312,8 +312,12 @@ class IjaiCloudVacuum(BaseXiaomiCloudVacuumV2):
                               "home" if owner_id == str(self._user_id) else "logged-in", device_id,
                               "digest" if hex_key else "short")
                 self._map_key_ids = (owner_id, device_id, hex_key)
-            decoded_map = _with_current_map_info(decoded_map)
-            return self._parser_for(decoded_map).parse(decoded_map)
+            try:
+                decoded_map = _with_current_map_info(decoded_map)
+                return self._parser_for(decoded_map).parse(decoded_map)
+            except Exception as err:  # noqa: BLE001 - decrypted, but not a map the parser can read
+                _LOGGER.debug("Failed to parse the %s map: %r", self.model, err)
+                raise FailedMapParseException() from err
 
         # Keep the last map instead of making the entities unavailable.
         _LOGGER.warning("Failed to decrypt the %s map with any known key: %r", self.model, last_error)

@@ -11,6 +11,8 @@
 - QR login: an unexpected answer or error while getting the code ends on the retry form instead of "Unknown error".
 - Dreame models with encrypted maps: a status answer without a time no longer breaks the next map request.
 - `protobuf` is installed with the integration; Ijai map parsing needs it and some installations did not have it.
+- A map download that hangs gives up after a minute instead of five, and one that breaks off midway keeps the last map instead of "Unexpected error".
+- Dreame and Ijai maps that unpack but can't be parsed keep the last map instead of "Unexpected error".
 - Logging in with a verification code no longer dead-ends:
   - after the emailed code, setup finishes even when Xiaomi sends the login on through a regional
     account address (seen on `ru` accounts) or skips a step, instead of failing with "Unable to

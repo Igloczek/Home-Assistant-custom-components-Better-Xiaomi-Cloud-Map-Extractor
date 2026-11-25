@@ -113,6 +113,12 @@ FAILING = {
         VERIFY_EMAIL, "POST", _verify_email_without_location, VerificationIncompleteException
     ),
     "result/check does not redirect": (RESULT_CHECK, "GET", _no_location, VerificationIncompleteException),
+    "result/check redirects to no URL": (
+        RESULT_CHECK,
+        "GET",
+        lambda r: FakeResponse(status=302, headers={"Location": "http://[not-a-host"}),
+        VerificationIncompleteException,
+    ),
     "Auth2/end without ssecurity": (
         AUTH2_END,
         "GET",
@@ -178,3 +184,33 @@ async def test_timeout_while_checking_the_code_is_a_connection_failure(method, e
     with pytest.raises(FailedConnectionException):
         await connector.continue_login_with_two_factor(VERIFICATION_CODE, verification)
     assert not connector.has_service_token()
+
+
+async def test_session_end_from_the_expires_date_is_read_as_gmt(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Cookie dates are GMT; reading them as local time shifted the session end by the UTC offset."""
+    import datetime
+    import time
+    from http.cookies import SimpleCookie
+
+    from yarl import URL
+
+    monkeypatch.setenv("TZ", "America/New_York")
+    time.tzset()
+    try:
+        connector = XiaomiCloudConnector(FakeXiaomiCloud().session_creator, server="de")
+        await connector.create_session()
+        end = datetime.datetime.now(datetime.UTC) + datetime.timedelta(days=10)
+        cookie = SimpleCookie()
+        cookie["userId"] = "2"
+        cookie["userId"]["expires"] = end.strftime("%a, %d %b %Y %H:%M:%S GMT")
+        jar = connector._session_data.session.cookie_jar
+        jar.clear()
+        jar.update_cookies(cookie, URL("https://account.xiaomi.com"))
+
+        # Session times are naive local time.
+        remaining = connector._expiration_from_cookies() - datetime.datetime.now()
+    finally:
+        monkeypatch.delenv("TZ")
+        time.tzset()
+
+    assert abs(remaining - datetime.timedelta(days=10)) < datetime.timedelta(minutes=5)

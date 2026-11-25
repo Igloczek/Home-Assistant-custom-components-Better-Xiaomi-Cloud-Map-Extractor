@@ -7,6 +7,8 @@ import logging
 import time
 from typing import Self, Any
 
+from aiohttp import ClientTimeout
+
 from .const import SERVER_CN
 from .network import _unavailable
 from .session import XiaomiCloudSession
@@ -15,27 +17,27 @@ from ..utils.exceptions import FailedConnectionException, SessionExpiredExceptio
 
 # One logger for the whole cloud connector, named as before the split, so logger settings keep applying.
 _LOGGER = logging.getLogger(f"{__package__}.connector")
+# A map file is larger than an API answer; aiohttp alone would wait five minutes.
+MAP_DOWNLOAD_TIMEOUT = ClientTimeout(total=60, sock_connect=10)
 
 
 class EncryptedApi(XiaomiCloudSession):
 
     async def get_raw_map_data(self: Self, map_url: str | None) -> bytes | None:
-        if map_url is not None:
-            try:
-                _LOGGER.debug("Downloading raw map...")
-                response = await self._session_data.session.get(map_url)
-            except Exception:
-                _LOGGER.debug("Downloading the map failed.")
-                return None
-            if response.status == 200:
-                _LOGGER.debug("Downloaded raw map, status: (%d).", response.status)
-                data = await response.content.read()
-                _LOGGER.debug("Downloaded raw map (%d).", len(data))
-                return data
-            else:
+        if map_url is None:
+            return None
+        try:
+            _LOGGER.debug("Downloading raw map...")
+            response = await self._session_data.session.get(map_url, timeout=MAP_DOWNLOAD_TIMEOUT)
+            if response.status != 200:
                 _LOGGER.debug("Downloading the map failed. Status: (%d).", response.status)
-
-        return None
+                return None
+            data = await response.content.read()
+        except Exception as err:  # noqa: BLE001 - a failed download; the last map stays
+            _LOGGER.debug("Downloading the map failed: %s", type(err).__name__)
+            return None
+        _LOGGER.debug("Downloaded raw map (%d).", len(data))
+        return data
 
     async def get_other_info(self: Self, device_id: str, method: str, parameters: dict) -> Any:
         url = self.get_api_url() + "/v2/home/rpc/" + device_id
