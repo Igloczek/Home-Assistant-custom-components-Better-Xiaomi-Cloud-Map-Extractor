@@ -22,6 +22,11 @@
   saving in the Xiaomi Home app; the last map stays on screen meanwhile, and the issue goes away
   with the next map.
 
+- Roidmi `roidmi.vacuum.sdj60` shows its map (upstream #572, ported from upstream PR #768 by
+  @winchester7). Its map is read from the endpoint the Mi Home app uses, where the other one points at
+  a file that is no map and failed with "list indices must be integers or slices, not str". Other
+  Roidmi models are unchanged.
+
 ### Fixed
 
 - When Xiaomi Cloud or the map storage did not answer in time, the "Failed to update" message and the

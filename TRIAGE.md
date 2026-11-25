@@ -30,17 +30,17 @@ whose fix shipped to *fixed*. Update this header's date and counts and the ROADM
 
 | Status | Count |
 | --- | ---: |
-| planned | 13 |
+| planned | 11 |
 | needs a capture | 19 |
 | feature request kept | 12 |
-| fixed | 56 |
+| fixed | 58 |
 | duplicate | 14 |
 | not planned | 15 |
 | v2-only / obsolete on v3 | 38 |
 | **Total** | **167** |
 
-Of the 56 fixed, 10 are fixed by the open fork PR #18 and wait for its pre-release, and 7 are in
-Unreleased.
+Of the 58 fixed, 10 are fixed by the open fork PR #18 and 2 by the open fork PR #28, which wait
+for their pre-releases, and 7 are in Unreleased.
 
 ## All items
 
@@ -48,7 +48,6 @@ Unreleased.
 | ---: | --- | --- | --- | --- | ---: |
 | [700](https://github.com/PiotrMachowski/Home-Assistant-custom-components-Xiaomi-Cloud-Map-Extractor/issues/700) | after entering the code from the mail, the error is: Unexpected error | issue | planned | P2 actionable failures: two-factor code ends in "Unexpected error". | 40 |
 | [621](https://github.com/PiotrMachowski/Home-Assistant-custom-components-Xiaomi-Cloud-Map-Extractor/issues/621) | Not working with Jonr P20 ( xtl.vacuum.xm2216 ) | issue | planned | P4 backlog: Jonr P20 (`xtl.vacuum.xm2216`); a working fork is confirmed by three owners. | 37 |
-| [572](https://github.com/PiotrMachowski/Home-Assistant-custom-components-Xiaomi-Cloud-Map-Extractor/issues/572) | Not load map from roidmi.vacuum.sdj60 | issue | planned | P4 backlog: PR #768. | 5 |
 | [712](https://github.com/PiotrMachowski/Home-Assistant-custom-components-Xiaomi-Cloud-Map-Extractor/issues/712) | bad login retry asks for captcha instead of whole username/password | issue | planned | P2 actionable failures: a failed login retry asks only for the captcha. | 4 |
 | [381](https://github.com/PiotrMachowski/Home-Assistant-custom-components-Xiaomi-Cloud-Map-Extractor/issues/381) | Cloud-Only Mode | issue | planned | P1 reliability: map without the local network (Xiaomi in fork PR #18, Roborock in progress). | 3 |
 | [450](https://github.com/PiotrMachowski/Home-Assistant-custom-components-Xiaomi-Cloud-Map-Extractor/issues/450) | Please add support for dreame.vacuum.md1808 | issue | planned | P4 backlog: a raw md1808 map is attached upstream; check it against vacuum-map-parser-dreame ("incorrect header check"). | 1 |
@@ -56,7 +55,6 @@ Unreleased.
 | [601](https://github.com/PiotrMachowski/Home-Assistant-custom-components-Xiaomi-Cloud-Map-Extractor/issues/601) | Map is not updating. ever. | issue | planned | P1 reliability: Roborock map name through the cloud (in progress). | 1 |
 | [762](https://github.com/PiotrMachowski/Home-Assistant-custom-components-Xiaomi-Cloud-Map-Extractor/issues/762) | Add map support for Xiaomi Robot Vacuum H40 (xiaomi.vacuum.ov51gl) | issue | planned | P1 reliability: build the map path from the uid the vacuum reports, not the account's. | 1 |
 | [780](https://github.com/PiotrMachowski/Home-Assistant-custom-components-Xiaomi-Cloud-Map-Extractor/issues/780) | Email verification dead-ends: URL only reaches the log, then "Unable to determine finish location after verifyEmail" | issue | planned | P2 actionable failures: finish location after `verifyEmail` (the link reaches the UI since 0.1.0). | 1 |
-| [768](https://github.com/PiotrMachowski/Home-Assistant-custom-components-Xiaomi-Cloud-Map-Extractor/pull/768) | Fix map parsing for roidmi.vacuum.sdj60 (#572) | PR | planned | P4 backlog: port to `vacuum_roidmi.py` (needs a sdj60 owner for a pre-release). | 0 |
 | [793](https://github.com/PiotrMachowski/Home-Assistant-custom-components-Xiaomi-Cloud-Map-Extractor/pull/793) | Add cloud region selection and Danish translations | PR | planned | P2 actionable failures: cloud region choice when Xiaomi sends the login elsewhere (#780). | 0 |
 | [794](https://github.com/PiotrMachowski/Home-Assistant-custom-components-Xiaomi-Cloud-Map-Extractor/pull/794) | Ijai: fit the rendered map to the explored area | PR | planned | P4 backlog: Ijai rendering, without the bundled font if possible. | 0 |
 | [558](https://github.com/PiotrMachowski/Home-Assistant-custom-components-Xiaomi-Cloud-Map-Extractor/issues/558) | Add suport for Xiaomi Robot Vacuum X20+ | issue | needs a capture | A debug log from the fork for xiaomi.vacuum.c102gl (d102gl and d109gl work on v3). | 23 |
@@ -110,6 +108,7 @@ Unreleased.
 | [698](https://github.com/PiotrMachowski/Home-Assistant-custom-components-Xiaomi-Cloud-Map-Extractor/issues/698) | _extractor.connector.vacuums.vacuum_ijai] Failed to get wifi_sn from vacuum - with new X20 Max d109gl | issue | fixed | 0.1.0 (Ijai WiFi serial) | 6 |
 | [703](https://github.com/PiotrMachowski/Home-Assistant-custom-components-Xiaomi-Cloud-Map-Extractor/issues/703) | Failed Map Download | issue | fixed | 0.1.0 (Ijai map download) | 6 |
 | [725](https://github.com/PiotrMachowski/Home-Assistant-custom-components-Xiaomi-Cloud-Map-Extractor/pull/725) | Ijai: Fixes for some models, parser version update | PR | fixed | 0.1.0 (Ijai) | 5 |
+| [572](https://github.com/PiotrMachowski/Home-Assistant-custom-components-Xiaomi-Cloud-Map-Extractor/issues/572) | Not load map from roidmi.vacuum.sdj60 | issue | fixed | fork PR #28 (open, pre-release for an sdj60 owner): map from `get_interim_file_url_pro`, bitmap split from PR #768 | 5 |
 | [663](https://github.com/PiotrMachowski/Home-Assistant-custom-components-Xiaomi-Cloud-Map-Extractor/issues/663) | Mijia Robot Vacuum-Mop 3C (Enhanced Edition) | issue | fixed | 0.1.0 (Ijai) | 3 |
 | [719](https://github.com/PiotrMachowski/Home-Assistant-custom-components-Xiaomi-Cloud-Map-Extractor/issues/719) | HA Activity panel is filled with 'map changed' events (every 10-20s new one is reported) | issue | fixed | Unreleased (unchanged map writes no state) | 3 |
 | [338](https://github.com/PiotrMachowski/Home-Assistant-custom-components-Xiaomi-Cloud-Map-Extractor/issues/338) | Notification for Additional Authentication Required | issue | fixed | 0.1.0 (reauth shows Home Assistant's notification and why: captcha, verification link) | 2 |
@@ -146,6 +145,7 @@ Unreleased.
 | [792](https://github.com/PiotrMachowski/Home-Assistant-custom-components-Xiaomi-Cloud-Map-Extractor/pull/792) | Fix ijai map decryption with alternate key ids and missing mapInfo | PR | fixed | 0.1.0 (Ijai) | 0 |
 | [795](https://github.com/PiotrMachowski/Home-Assistant-custom-components-Xiaomi-Cloud-Map-Extractor/pull/795) | Fix QR login: placeholders lost after the first progress call (MISSING_VALUE login_link) | PR | fixed | 0.1.2 | 0 |
 | [796](https://github.com/PiotrMachowski/Home-Assistant-custom-components-Xiaomi-Cloud-Map-Extractor/pull/796) | Fix QR code login failures on recent Home Assistant versions | PR | fixed | 0.1.2 | 0 |
+| [768](https://github.com/PiotrMachowski/Home-Assistant-custom-components-Xiaomi-Cloud-Map-Extractor/pull/768) | Fix map parsing for roidmi.vacuum.sdj60 (#572) | PR | fixed | fork PR #28 (open, pre-release for an sdj60 owner): ported to `vacuum_roidmi.py` | 0 |
 | [707](https://github.com/PiotrMachowski/Home-Assistant-custom-components-Xiaomi-Cloud-Map-Extractor/issues/707) | Xiaomi Robot Vacuum X20+ | issue | duplicate | Duplicate of #558 | 41 |
 | [279](https://github.com/PiotrMachowski/Home-Assistant-custom-components-Xiaomi-Cloud-Map-Extractor/issues/279) | Map Extractor don't show map | issue | duplicate | Duplicate of #200 (Mop 2S is an Ijai vacuum) | 18 |
 | [364](https://github.com/PiotrMachowski/Home-Assistant-custom-components-Xiaomi-Cloud-Map-Extractor/issues/364) | Failed to retrieve map from vacuum. | issue | duplicate | Duplicate of #422 | 9 |
