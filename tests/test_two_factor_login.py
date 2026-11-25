@@ -1,8 +1,9 @@
 """Identity verification (two-factor by email) at the connector, against the shapes Xiaomi answers in.
 
-After the code is typed in, Xiaomi's answer varies: verifyEmail with or without JSON, result/check with
-or without a redirect, Auth2/end with a "Tips" page first or the STS link only in its body. Each shape
-either completes the login or ends it with False and the previous session untouched.
+After the code is typed in, Xiaomi's answer varies: verifyEmail with or without passport JSON, with or
+without a location, Auth2/end with a "Tips" page first or no STS redirect at all. Each shape either
+completes the login or raises the error the form explains (refused code, accepted code without a
+session, Xiaomi unavailable), with the previous session untouched.
 """
 
 from __future__ import annotations
@@ -12,11 +13,23 @@ import json
 import pytest
 
 from custom_components.better_xiaomi_cloud_map_extractor.connector.utils.exceptions import (
+    FailedConnectionException,
+    InvalidTwoFactorCodeException,
     TwoFactorAuthRequiredException,
+    VerificationIncompleteException,
 )
 from custom_components.better_xiaomi_cloud_map_extractor.connector.xiaomi_cloud.connector import XiaomiCloudConnector
 
-from .fake_xiaomi import ACCOUNT, STS, VERIFY_CONTEXT, FakeResponse, FakeXiaomiCloud, json_response
+from .fake_xiaomi import (
+    ACCOUNT,
+    STS,
+    VERIFICATION_CODE,
+    VERIFY_CONTEXT,
+    FakeResponse,
+    FakeXiaomiCloud,
+    connection_timeout,
+    json_response,
+)
 
 VERIFY_EMAIL = f"{ACCOUNT}/identity/auth/verifyEmail"
 RESULT_CHECK = f"{ACCOUNT}/identity/result/check"
@@ -42,32 +55,11 @@ def _end_page(cloud: FakeXiaomiCloud, **headers: str) -> FakeResponse:
     return FakeResponse(status=302, headers={"extension-pragma": pragma, "Location": STS_LINK, **headers})
 
 
-def _verify_email_page_with_check_link(_request) -> FakeResponse:
-    return FakeResponse(body=f'<html><a href="{CHECK_LINK}">continue</a></html>')
-
-
-def _verify_email_redirect(_request) -> FakeResponse:
-    return FakeResponse(status=200, body="", headers={"Location": CHECK_LINK})
-
-
-def _verify_email_without_location(_request) -> FakeResponse:
-    return json_response({"code": 0})
-
-
-SUCCEEDING = {
-    "verifyEmail redirects instead of answering JSON": (VERIFY_EMAIL, "POST", _verify_email_redirect),
-    "verifyEmail answers a page linking result/check": (VERIFY_EMAIL, "POST", _verify_email_page_with_check_link),
-    "verifyEmail answers JSON without a location": (VERIFY_EMAIL, "POST", _verify_email_without_location),
-}
-
-
-@pytest.mark.parametrize(("endpoint", "method", "answer"), SUCCEEDING.values(), ids=SUCCEEDING.keys())
-async def test_verification_finishes_whatever_verify_email_answers(endpoint, method, answer) -> None:
+async def test_verification_code_finishes_the_login() -> None:
     cloud = FakeXiaomiCloud()
     connector, verification = await _verification_asked(cloud)
-    cloud.on(method, endpoint, answer)
 
-    assert await connector.continue_login_with_two_factor("123456", verification) is True
+    assert await connector.continue_login_with_two_factor(VERIFICATION_CODE, verification) is True
     assert connector.has_service_token()
     assert connector.to_config().service_token == SERVICE_TOKEN
 
@@ -83,46 +75,106 @@ async def test_tips_page_before_auth2_end_is_skipped() -> None:
     assert len(cloud.calls(AUTH2_END)) == 2
 
 
-async def test_sts_link_only_in_the_auth2_end_page() -> None:
-    cloud = FakeXiaomiCloud()
-    connector, verification = await _verification_asked(cloud)
-    pragma = json.dumps({"ssecurity": cloud.ssecurity})
-    cloud.on(
-        "GET",
-        AUTH2_END,
-        lambda r: FakeResponse(status=200, body=f'<script>go("{STS_LINK}")</script>', headers={"extension-pragma": pragma}),
-    )
-
-    assert await connector.continue_login_with_two_factor("123456", verification) is True
-    assert connector.has_service_token()
-
-
 def _no_location(_request) -> FakeResponse:
     return FakeResponse(status=200, body="")
 
 
+def _verify_email_redirect(_request) -> FakeResponse:
+    return FakeResponse(status=200, body="", headers={"Location": CHECK_LINK})
+
+
+def _verify_email_page_with_check_link(_request) -> FakeResponse:
+    return FakeResponse(body=f'<html><a href="{CHECK_LINK}">continue</a></html>')
+
+
+def _verify_email_without_location(_request) -> FakeResponse:
+    return json_response({"code": 0})
+
+
+def _sts_link_only_in_the_auth2_end_page(_request) -> FakeResponse:
+    pragma = json.dumps({"ssecurity": "c2Vj"})
+    return FakeResponse(status=200, body=f'<script>go("{STS_LINK}")</script>', headers={"extension-pragma": pragma})
+
+
+# verify's passport JSON and its `location` are the only way on: the shapes without them used to be
+# scraped for a result/check or STS link; they now end with an error the form can explain (fork PR #26).
 FAILING = {
-    "code refused": (VERIFY_EMAIL, "POST", lambda r: FakeResponse(status=403, body="")),
-    "no finish location anywhere": (RESULT_CHECK, "GET", _no_location),
-    "Auth2/end without ssecurity": (AUTH2_END, "GET", lambda r: FakeResponse(status=302, headers={"Location": STS_LINK})),
-    "Auth2/end without STS link": (
+    "code refused": (VERIFY_EMAIL, "POST", lambda r: json_response({"code": 70014}), InvalidTwoFactorCodeException),
+    "verifyEmail refuses without JSON": (
+        VERIFY_EMAIL, "POST", lambda r: FakeResponse(status=403, body=""), FailedConnectionException
+    ),
+    "verifyEmail redirects instead of answering JSON": (
+        VERIFY_EMAIL, "POST", _verify_email_redirect, FailedConnectionException
+    ),
+    "verifyEmail answers a page linking result/check": (
+        VERIFY_EMAIL, "POST", _verify_email_page_with_check_link, FailedConnectionException
+    ),
+    "verifyEmail answers JSON without a location": (
+        VERIFY_EMAIL, "POST", _verify_email_without_location, VerificationIncompleteException
+    ),
+    "result/check does not redirect": (RESULT_CHECK, "GET", _no_location, VerificationIncompleteException),
+    "Auth2/end without ssecurity": (
         AUTH2_END,
         "GET",
-        lambda r: FakeResponse(status=200, body="<html/>", headers={"extension-pragma": json.dumps({"ssecurity": "c2Vj"})}),
+        lambda r: FakeResponse(status=302, headers={"Location": STS_LINK}),
+        VerificationIncompleteException,
     ),
-    "STS fails": (STS, "GET", lambda r: FakeResponse(status=500, body="")),
-    "STS issues no serviceToken": (STS, "GET", lambda r: FakeResponse(status=200, body="ok")),
+    "Auth2/end without STS redirect": (
+        AUTH2_END, "GET", _sts_link_only_in_the_auth2_end_page, VerificationIncompleteException
+    ),
+    "STS fails": (STS, "GET", lambda r: FakeResponse(status=500, body=""), FailedConnectionException),
+    "STS issues no serviceToken": (
+        STS, "GET", lambda r: FakeResponse(status=200, body="ok"), VerificationIncompleteException
+    ),
 }
 
 
-@pytest.mark.parametrize(("endpoint", "method", "answer"), FAILING.values(), ids=FAILING.keys())
-async def test_unfinished_verification_returns_false_and_keeps_no_session(endpoint, method, answer) -> None:
+@pytest.mark.parametrize(("endpoint", "method", "answer", "raised"), FAILING.values(), ids=FAILING.keys())
+async def test_unfinished_verification_raises_and_keeps_no_session(endpoint, method, answer, raised) -> None:
     cloud = FakeXiaomiCloud()
     connector, verification = await _verification_asked(cloud)
     cloud.on(method, endpoint, answer)
-    if endpoint == RESULT_CHECK:
-        # Without a location in verifyEmail's answer, result/check is asked directly.
-        cloud.on("POST", VERIFY_EMAIL, _verify_email_without_location)
 
-    assert await connector.continue_login_with_two_factor("123456", verification) is False
+    with pytest.raises(raised):
+        await connector.continue_login_with_two_factor("123456", verification)
+    assert not connector.has_service_token()
+
+
+# Every request of the verification, started by the password login and finished with the code.
+VERIFICATION_START = {
+    "authStart": ("GET", f"{ACCOUNT}/fe/service/identity/authStart"),
+    "identity/list": ("GET", f"{ACCOUNT}/identity/list"),
+    "verifyEmail options": ("GET", VERIFY_EMAIL),
+    "sendEmailTicket": ("POST", f"{ACCOUNT}/identity/auth/sendEmailTicket"),
+}
+VERIFICATION_FINISH = {
+    "verifyEmail": ("POST", VERIFY_EMAIL),
+    "result/check": ("GET", RESULT_CHECK),
+    "Auth2/end": ("GET", AUTH2_END),
+    "STS": ("GET", STS),
+}
+
+
+@pytest.mark.parametrize(("method", "endpoint"), VERIFICATION_START.values(), ids=VERIFICATION_START.keys())
+async def test_timeout_while_asking_for_the_code_is_a_connection_failure(method, endpoint) -> None:
+    """A Xiaomi host that times out is "can't connect", never a raw aiohttp error ("Unknown error")."""
+    cloud = FakeXiaomiCloud()
+    cloud.pass_token_login(accepted=False)
+    cloud.password_login("two_factor")
+    cloud.on(method, endpoint, connection_timeout)
+    connector = XiaomiCloudConnector(cloud.session_creator, server="de")
+
+    with pytest.raises(FailedConnectionException):
+        await connector.login_with_credentials("user@example.com", "made-up-password")
+    assert not connector.has_service_token()
+
+
+@pytest.mark.parametrize(("method", "endpoint"), VERIFICATION_FINISH.values(), ids=VERIFICATION_FINISH.keys())
+async def test_timeout_while_checking_the_code_is_a_connection_failure(method, endpoint) -> None:
+    cloud = FakeXiaomiCloud()
+    connector, verification = await _verification_asked(cloud)
+    cloud.on(method, endpoint, connection_timeout)
+
+    with pytest.raises(FailedConnectionException):
+        await connector.continue_login_with_two_factor(VERIFICATION_CODE, verification)
     assert not connector.has_service_token()
