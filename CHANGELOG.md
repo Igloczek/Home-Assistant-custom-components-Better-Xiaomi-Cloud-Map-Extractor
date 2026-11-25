@@ -24,6 +24,13 @@
 
 ### Fixed
 
+- A Dreame vacuum whose map Xiaomi Cloud sends encrypted, in a way the integration can't decrypt yet
+  (dreame.vacuum.md1808, the Xiaomi Robot Vacuum-Mop 2C), failed every update with "The map update
+  failed unexpectedly" ("incorrect header check" in the log, upstream #450, #757, #772). The update
+  message and a Repairs issue now say that the map of this model is encrypted and can't be decrypted
+  yet, so nothing in your configuration needs changing, and where support for the model is tracked.
+  Any other Dreame map that can't be read now shows "The downloaded map could not be read" and is
+  retried, instead of an unexpected error.
 - When Xiaomi Cloud or the map storage did not answer in time, the "Failed to update" message and the
   log quoted the whole request address, including the session secret (`ssecurity`) or, during a
   login, the `clientSign`. They now show only the host and path. If you posted such a message

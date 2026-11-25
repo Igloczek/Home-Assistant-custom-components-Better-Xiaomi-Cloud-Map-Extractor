@@ -34,7 +34,6 @@ from custom_components.better_xiaomi_cloud_map_extractor.connector.vacuums.base.
     BaseXiaomiCloudVacuum,
 )
 from custom_components.better_xiaomi_cloud_map_extractor.connector.utils.backoff import Backoff
-from custom_components.better_xiaomi_cloud_map_extractor.connector.vacuums.vacuum_dreame import DreameCloudVacuum
 from custom_components.better_xiaomi_cloud_map_extractor.connector.vacuums.vacuum_roborock import (
     RoborockCloudVacuum,
 )
@@ -46,10 +45,11 @@ from custom_components.better_xiaomi_cloud_map_extractor.const import (
     DEFAULT_UPDATE_INTERVAL,
     DOMAIN,
 )
-from custom_components.better_xiaomi_cloud_map_extractor.repairs import LAN_UNREACHABLE_UPDATES
+from custom_components.better_xiaomi_cloud_map_extractor.repairs import FAILURE_THRESHOLD, LAN_UNREACHABLE_UPDATES
 
 from .const import ENTRY_DATA, HOST, MAC, TOKEN
 from .fake_miio import FakeLanVacuum, lan_vacuum
+from .dreame_map import MD1808_ENCRYPTED_MAP, build_frame, plain_map
 from .fake_xiaomi import API, USER_ID, FakeResponse, FakeXiaomiCloud, bad_gateway, connection_timeout
 from .ijai_map import DEVICE_ID, WIFI_SN, build_map, encrypt_map, map_key
 from .log_secrets import MAP_URL_QUERY, assert_no_secrets, leaked
@@ -62,8 +62,9 @@ BLOCKING_CALL = "Detected blocking call"
 NO_MAPPING = "Neither the class nor the parameter defines the mapping"
 
 # Vendors whose maps the tests cannot build stand in a map the parser draws itself, one image per
-# map content, so a changed map still looks changed.
-PARSER_DRAWN = (ViomiCloudVacuum, RoidmiCloudVacuum, DreameCloudVacuum, RoborockCloudVacuum)
+# map content, so a changed map still looks changed. Xiaomi, Ijai and Dreame maps are built the way
+# the vacuums upload them and go through the real parser.
+PARSER_DRAWN = (ViomiCloudVacuum, RoidmiCloudVacuum, RoborockCloudVacuum)
 
 
 @dataclass(frozen=True)
@@ -102,6 +103,10 @@ def _ijai_map(model: str) -> Callable[[int], bytes]:
     return lambda version: encrypt_map(model, owner_id=USER_ID, robot_map=build_map(map_id=version + 1))
 
 
+def _dreame_map(version: int) -> bytes:
+    return plain_map(build_frame(map_id=version))
+
+
 def _opaque_map(version: int) -> bytes:
     return f"map version {version}".encode()
 
@@ -115,7 +120,7 @@ VENDORS = [
     # charging, 1 sweeping.
     Vendor("viomi.vacuum.v8", "VIOMI", {"run_state": 5}, {"run_state": 3}, _opaque_map),
     Vendor("roidmi.vacuum.v60", "ROIDMI", {(2, 1): 6}, {(2, 1): 4}, _opaque_map),
-    Vendor("dreame.vacuum.p2008", "DREAME", {(2, 1): 6}, {(2, 1): 1}, _opaque_map),
+    Vendor("dreame.vacuum.p2008", "DREAME", {(2, 1): 6}, {(2, 1): 1}, _dreame_map),
     # A model with no known state property: the map tells whether it moves.
     Vendor("viomi.vacuum.x1", "VIOMI", {}, {}, _opaque_map),
     # Roborock reports its state through miIO `get_status`, set on FakeLanVacuum.
@@ -132,6 +137,8 @@ VENDORS = [
     ),
 ]
 UNSUPPORTED = Vendor("unknown.vacuum.x1", "UNSUPPORTED", {}, {}, _opaque_map)
+# Upstream #450, #757, #772: the cloud serves the map encrypted, with a per-model IV nobody published.
+MD1808 = Vendor("dreame.vacuum.md1808", "DREAME", {}, {}, lambda _version: MD1808_ENCRYPTED_MAP.read_bytes())
 
 
 class VacuumHome:
@@ -506,6 +513,34 @@ async def test_first_map_is_retried_while_docked(
     await vacuum.cycles(freezer, 1)
 
     assert vacuum.entry.runtime_data.coordinator.data.map_data is not None
+
+
+async def test_encrypted_dreame_map_says_it_cannot_be_decrypted(
+    hass: HomeAssistant, setup_vacuum
+) -> None:
+    """Upstream #450, #757, #772: a dreame.vacuum.md1808 map is AES-encrypted, and zlib's "incorrect
+    header check" reached the user as an unknown error. Setup is retried with a message that says the
+    map of this model cannot be decrypted, and after a few updates Repairs says so too."""
+    vacuum = setup_vacuum(MD1808)
+    vacuum.entry.add_to_hass(hass)
+    with lan_vacuum(vacuum.home.lan):
+        await hass.config_entries.async_setup(vacuum.entry.entry_id)
+        await hass.async_block_till_done()
+
+    assert vacuum.entry.state is ConfigEntryState.SETUP_RETRY
+    assert vacuum.entry.error_reason_translation_key == "map_encrypted"
+    vacuum.failure_messages.append(str(vacuum.entry.reason))
+    assert vacuum.home.downloads >= 1
+
+    for _ in range(FAILURE_THRESHOLD - 1):  # the setup retries Home Assistant schedules
+        with lan_vacuum(vacuum.home.lan):
+            await hass.config_entries.async_reload(vacuum.entry.entry_id)
+            await hass.async_block_till_done()
+        vacuum.failure_messages.append(str(vacuum.entry.reason))
+    assert vacuum.entry.state is ConfigEntryState.SETUP_RETRY
+    issue = ir.async_get(hass).async_get_issue(DOMAIN, f"map_encrypted_{vacuum.entry.entry_id}")
+    assert issue is not None and not issue.is_fixable
+    assert issue.translation_placeholders["model"] == MD1808.model
 
 
 # --- secrets ---------------------------------------------------------------------------------------

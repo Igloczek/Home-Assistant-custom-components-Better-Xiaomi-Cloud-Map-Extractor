@@ -55,10 +55,8 @@ numbers refer to the upstream repository; each item names the priority it serves
    needs its map as a fixture and an owner for the pre-release.
 5. **Roidmi sdj60** (P4, #572, PR #768): port to `vacuum_roidmi.py` (the `_pro` map URL and the byte
    split).
-6. **Dreame md1808 "incorrect header check"** (P4, #450, #757, #772): a raw map is attached to #450;
-   check it against vacuum-map-parser-dreame.
-7. **Small import** (P4, PR #591) if `scripts/` keeps shipping.
-8. **Ijai rendering** (P4, PR #794): fit to the explored area, without the bundled font if possible.
+6. **Small import** (P4, PR #591) if `scripts/` keeps shipping.
+7. **Ijai rendering** (P4, PR #794): fit to the explored area, without the bundled font if possible.
 
 ## 1.0.0 criteria
 
@@ -81,9 +79,10 @@ the [triage table](TRIAGE.md), the fixed issues, the module map and the test cov
   not a captured answer. Replace the fixture with a scrubbed `get_properties` answer from an owner,
   and record what the cloud's map endpoints return in that state.
 
-- **Waiting for a capture**: 19 upstream items need a raw map, a debug log or a tester before they
+- **Waiting for a capture**: 20 upstream items need a raw map, a debug log or a tester before they
   can be fixed with a test; [TRIAGE.md](TRIAGE.md) says what each needs. The biggest groups: Dreame
-  encrypted maps ("incorrect header check", #459 with #571, #607, #608) and Viomi maps (#315, #534,
+  encrypted maps ("incorrect header check", #459 with #571, #607, #608; md1808 #450 with #757, #772,
+  where Repairs now says the map can't be decrypted yet: the IV and a map key are needed) and Viomi maps (#315, #534,
   #613, #746); Xiaomi models not yet confirmed on v3 (#558, #602, #706, #751); Roidmi v62 and v66
   (#477, #710); the Dreame fresh-map request (#655: python-miio maps `map_view` as a property, so
   `call_action("map_view")` raises before anything is sent; needs a p2008 owner, pre-release).

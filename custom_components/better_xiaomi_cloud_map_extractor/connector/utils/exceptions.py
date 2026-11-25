@@ -88,6 +88,16 @@ class MapSavingDisabledException(XiaomiCloudMapExtractorException):
 
 
 @dataclass
+class EncryptedMapUnsupportedException(XiaomiCloudMapExtractorException):
+    """The cloud serves this model's map encrypted, and how to decrypt it for this model is not known."""
+
+    model: str
+
+    def __str__(self) -> str:
+        return f"Xiaomi Cloud sends the map of {self.model} encrypted, and this integration cannot decrypt it yet"
+
+
+@dataclass
 class TwoFactorAuthRequiredException(XiaomiCloudMapExtractorException):
     url: str
     headers: dict[str, str] = field(repr=False)

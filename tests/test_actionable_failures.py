@@ -28,6 +28,7 @@ from custom_components.better_xiaomi_cloud_map_extractor.connector.utils.excepti
     FailedMapDownloadException,
     FailedMapParseException,
     MapSavingDisabledException,
+    EncryptedMapUnsupportedException,
     InvalidCredentialsException,
     InvalidDeviceTokenException,
     QrLoginTimeoutException,
@@ -259,6 +260,8 @@ COORDINATOR_ERRORS = {
     "map download": (FailedMapDownloadException(), UpdateFailed, "map_download_failed"),
     "map parse": (FailedMapParseException(), UpdateFailed, "map_parse_failed"),
     "map saving off (Ijai)": (MapSavingDisabledException(), UpdateFailed, "map_saving_disabled"),
+    "encrypted map (Dreame md1808)": (
+        EncryptedMapUnsupportedException("dreame.vacuum.md1808"), UpdateFailed, "map_encrypted"),
     "QR timeout (login error)": (QrLoginTimeoutException(), ConfigEntryAuthFailed, "session_expired"),
     "raw timeout": (TimeoutError(), UpdateFailed, "cloud_unavailable"),
     "raw connection error": (ClientConnectionError(), UpdateFailed, "cloud_unavailable"),
