@@ -18,7 +18,7 @@ from dataclasses import dataclass, field
 from http.cookies import SimpleCookie
 from typing import Any
 
-from aiohttp import ConnectionTimeoutError, CookieJar
+from aiohttp import ClientTimeout, ConnectionTimeoutError, CookieJar
 from multidict import CIMultiDict
 from yarl import URL
 
@@ -40,6 +40,22 @@ NEW_SSECURITY = base64.b64encode(b"fedcba9876543210").decode()
 PASS_TOKEN = "V1:pass-token-from-login"
 THIRTY_DAYS = 30 * 24 * 60 * 60
 VERIFY_CONTEXT = "ctx123"
+IDENTITY_SESSION = "identity-session-value"
+# The code the fake account mails (or texts) for identity verification.
+VERIFICATION_CODE = "123456"
+CAPTCHA_SOLUTION = "Ab3d"
+CAPTCHA_ICK = "captcha-ick-value"
+FLAG_PHONE = 4
+FLAG_EMAIL = 8
+# Where verifyEmail/verifyPhone sends the browser once the code is accepted. Xiaomi's answer varies
+# (account host, region, first hop); every variant ends at Auth2/end and then STS (#780).
+VERIFY_FINISH = {
+    "result_check": f"{ACCOUNT}/identity/result/check?sid=xiaomiio&context={VERIFY_CONTEXT}&_locale=en_US",
+    "regional_result_check":
+        f"https://ru.account.xiaomi.com/identity/result/check?sid=xiaomiio&context={VERIFY_CONTEXT}&_locale=en_US",
+    "auth2_end": f"{ACCOUNT}/pass/serviceLoginAuth2/end?context={VERIFY_CONTEXT}&t=end-ticket",
+    "tips_page_first": f"{ACCOUNT}/identity/result/check?sid=xiaomiio&context={VERIFY_CONTEXT}&_locale=en_US",
+}
 # What a load balancer in front of Xiaomi answers when the backend is down: not JSON, not 200.
 BAD_GATEWAY_PAGE = "<html><head><title>502 Bad Gateway</title></head><body>nginx</body></html>"
 
@@ -51,6 +67,7 @@ class Request:
     params: dict[str, str]
     cookies: dict[str, str]
     data: Any
+    timeout: ClientTimeout | None = None
 
     @property
     def endpoint(self) -> str:
@@ -82,6 +99,7 @@ class FakeResponse:
                 self.cookies[name]["max-age"] = str(max_age)
         self.headers = CIMultiDict(self.headers)
         self.content = self
+        self.history: tuple[FakeResponse, ...] = ()
 
     @property
     def _bytes(self) -> bytes:
@@ -94,7 +112,9 @@ class FakeResponse:
         return self._bytes
 
     async def json(self) -> Any:
-        return json.loads(self._bytes.decode().replace("&&&START&&&", ""))
+        """Like aiohttp: no `&&&START&&&` stripping. Xiaomi's passport prefixes every JSON body with it,
+        so `response.json()` never works on a real passport answer (#780)."""
+        return json.loads(self._bytes.decode())
 
 
 def json_response(payload: Any, **kwargs: Any) -> FakeResponse:
@@ -129,6 +149,10 @@ class FakeXiaomiCloud:
         self.ssecurity = SSECURITY
         # Requests to these endpoints wait until the event is set, like a long poll Xiaomi holds open.
         self.gates: dict[str, asyncio.Event] = {}
+        # Hosts that accept the connection and never answer (a sanctions or DPI block, #700). Like aiohttp,
+        # the request ends only when its timeout runs out; without one, aiohttp's default is 5 minutes,
+        # which the fake treats as forever.
+        self.hanging_hosts: set[str] = set()
 
     # --- session factory -------------------------------------------------------------
     def session_creator(self) -> "FakeSession":
@@ -236,51 +260,153 @@ class FakeXiaomiCloud:
             return json_response({"code": 70016, "desc": "wrong password"})
 
         self.on("POST", SERVICE_LOGIN_AUTH2, handler)
+        self.captcha_image()
+        self.identity_verification()
+
+    def captcha_image(self) -> None:
+        """The captcha image; its response sets the `ick` cookie the answer is checked against."""
         self.on(
             "GET",
             f"{ACCOUNT}/pass/getCode",
-            lambda r: FakeResponse(body=b"\xff\xd8\xff\xe0JFIF-captcha-image-bytes"),
-        )
-        self.on("GET", f"{ACCOUNT}/fe/service/identity/authStart", lambda r: FakeResponse(body="<html/>"))
-        self.on("GET", f"{ACCOUNT}/identity/list", lambda r: FakeResponse(body="{}"))
-        self.on(
-            "POST", f"{ACCOUNT}/identity/auth/sendEmailTicket", lambda r: json_response({"code": 0})
-        )
-
-    def email_verification(self, service_token: str) -> None:
-        """The identity flow after the user typed the emailed code: verifyEmail, result/check, Auth2/end, STS."""
-        end = f"{ACCOUNT}/pass/serviceLoginAuth2/end"
-        self.on(
-            "POST",
-            f"{ACCOUNT}/identity/auth/verifyEmail",
-            lambda r: json_response(
-                {"code": 0, "location": f"{ACCOUNT}/identity/result/check?sid=xiaomiio&context={VERIFY_CONTEXT}"}
+            lambda r: FakeResponse(
+                body=b"\xff\xd8\xff\xe0JFIF-captcha-image-bytes", set_cookies={"ick": (CAPTCHA_ICK, None)}
             ),
         )
+
+    def captcha_account(self, password: str, *, captcha: str = CAPTCHA_SOLUTION) -> None:
+        """serviceLoginAuth2 of an account Xiaomi now guards with a captcha (#712).
+
+        Without a captcha, or with a wrong one, it answers 87001 and a new captchaUrl. With the right
+        captcha and a wrong password it answers 70016 and keeps asking for a captcha next time, as
+        XiaomiGateway3 and hass-xiaomi-miot handle it; with both right it logs in.
+        """
+        password_hash = hashlib.md5(password.encode()).hexdigest().upper()
+        captcha_url = "/pass/getCode?icodeType=login&0.918"
+
+        def handler(request: Request) -> FakeResponse:
+            if request.params.get("captCode") != captcha or request.cookies.get("ick") != CAPTCHA_ICK:
+                return json_response({"code": 87001, "desc": "captcha", "captchaUrl": captcha_url})
+            if request.params.get("hash") != password_hash:
+                return json_response({"code": 70016, "desc": "wrong password", "captchaUrl": captcha_url})
+            return json_response(
+                {
+                    "code": 0,
+                    "userId": int(USER_ID),
+                    "cUserId": C_USER_ID,
+                    "ssecurity": self.ssecurity,
+                    "passToken": PASS_TOKEN,
+                    "location": f"{STS}?d=password",
+                },
+                set_cookies={"userId": (USER_ID, THIRTY_DAYS), "passToken": (PASS_TOKEN, THIRTY_DAYS)},
+            )
+
+        self.on("POST", SERVICE_LOGIN_AUTH2, handler)
+        self.captcha_image()
+
+    def identity_verification(self, *, flag: int = FLAG_EMAIL, send_code: int = 0) -> None:
+        """authStart, identity/list and sending the code, as XiaomiGateway3 and hass-xiaomi-miot see them.
+
+        identity/list answers code 2 with the method (`flag` 4 phone, 8 email) and sets the
+        `identity_session` cookie every later identity request needs. `send_code` is what
+        send{Phone,Email}Ticket answers: 0 sent, 87001 (with a captchaUrl) or anything else not sent.
+        """
+        channel = "Phone" if flag == FLAG_PHONE else "Email"
+        self.on("GET", f"{ACCOUNT}/fe/service/identity/authStart", lambda r: FakeResponse(body="<html/>"))
         self.on(
             "GET",
-            f"{ACCOUNT}/identity/result/check",
-            lambda r: FakeResponse(status=302, headers={"Location": f"{end}?context={VERIFY_CONTEXT}&t=end-ticket"}),
+            f"{ACCOUNT}/identity/list",
+            lambda r: json_response(
+                {"code": 2, "flag": flag, "options": [flag]},
+                set_cookies={"identity_session": (IDENTITY_SESSION, None)},
+            ),
         )
+
+        def needs_session(answer: Callable[[Request], FakeResponse]) -> Handler:
+            def handler(request: Request) -> FakeResponse:
+                if request.cookies.get("identity_session") != IDENTITY_SESSION:
+                    return json_response({"code": 70016, "desc": "identity session missing"})
+                return answer(request)
+
+            return handler
+
         self.on(
             "GET",
-            end,
-            lambda r: FakeResponse(
+            f"{ACCOUNT}/identity/auth/verify{channel}",
+            needs_session(lambda r: json_response({"code": 0, f"masked{channel}": "u***@example.com"})),
+        )
+
+        def send(request: Request) -> FakeResponse:
+            if send_code == 87001:
+                return json_response({"code": 87001, "captchaUrl": "/pass/getCode?icodeType=antispam"})
+            return json_response({"code": send_code})
+
+        self.on("POST", f"{ACCOUNT}/identity/auth/send{channel}Ticket", needs_session(send))
+
+    def email_verification(
+        self, service_token: str, *, finish: str = "result_check", flag: int = FLAG_EMAIL
+    ) -> None:
+        """Checking the code and finishing the login: verify{Email,Phone}, its `location`, Auth2/end, STS.
+
+        verify answers `&&&START&&&{"code": 0, "location": ...}` for the right code and a non-zero code
+        for a wrong one. Following the location ends at Auth2/end, which carries `ssecurity` in its
+        `extension-pragma` header and sets the passToken, then at STS, which sets the serviceToken
+        (XiaomiGateway3 `_get_credentials`). `finish` picks the location variant (VERIFY_FINISH).
+        """
+        channel = "Phone" if flag == FLAG_PHONE else "Email"
+        location = VERIFY_FINISH[finish]
+        host = str(URL(location).origin())
+        end = f"{host}/pass/serviceLoginAuth2/end"
+        tips_shown: list[bool] = []
+        verified: list[bool] = []
+        not_verified = FakeResponse(body="<html><title>Xiaomi Account</title>Verify your identity</html>")
+
+        def verify(request: Request) -> FakeResponse:
+            data = request.data or {}
+            if request.cookies.get("identity_session") != IDENTITY_SESSION:
+                return json_response({"code": 70016, "desc": "identity session missing"})
+            if data.get("ticket") != VERIFICATION_CODE:
+                return json_response({"code": 70014, "tips": "wrong verification code"})
+            verified.append(True)
+            return json_response({"code": 0, "location": location})
+
+        def result_check(request: Request) -> FakeResponse:
+            # Only a verified identity session moves on; otherwise the page asks to verify again.
+            if not verified:
+                return not_verified
+            return FakeResponse(status=302, headers={"Location": f"{end}?context={VERIFY_CONTEXT}&t=end-ticket"})
+
+        def auth2_end(request: Request) -> FakeResponse:
+            if not verified:
+                return not_verified
+            if finish == "tips_page_first" and not tips_shown:
+                tips_shown.append(True)
+                return FakeResponse(body="<html><title>Xiaomi Account - Tips</title></html>")
+            return FakeResponse(
                 status=302,
                 headers={
                     "extension-pragma": json.dumps({"ssecurity": self.ssecurity, "psecurity": "psecurity-value"}),
                     "Location": f"{STS}?d=verified&clientSign=client-sign-value",
                 },
-            ),
-        )
+                set_cookies={"passToken": (PASS_TOKEN, THIRTY_DAYS), "userId": (USER_ID, THIRTY_DAYS)},
+            )
 
         def sts(request: Request) -> FakeResponse:
             self.valid_service_tokens.add(service_token)
             return FakeResponse(
                 body="ok",
-                set_cookies={"serviceToken": (service_token, None), "userId": (USER_ID, THIRTY_DAYS)},
+                set_cookies={
+                    "serviceToken": (service_token, None),
+                    "userId": (USER_ID, THIRTY_DAYS),
+                    "cUserId": (C_USER_ID, None),
+                },
             )
 
+        self.on("POST", f"{ACCOUNT}/identity/auth/verify{channel}", verify)
+        self.on("GET", f"{host}/identity/result/check", result_check)
+        if host != ACCOUNT:
+            # The identity session lives on the regional host; the global one does not know it.
+            self.on("GET", f"{ACCOUNT}/identity/result/check", lambda r: not_verified)
+        self.on("GET", end, auth2_end)
         self.on("GET", STS, sts)
 
     def qr_login(self, service_token: str, *, timeout: int = 300) -> None:
@@ -364,6 +490,9 @@ class FakeXiaomiCloud:
         return len(self.calls(SERVICE_LOGIN_AUTH2))
 
 
+REDIRECT_STATUSES = (301, 302, 303, 307, 308)
+
+
 class FakeSession:
     def __init__(self, cloud: FakeXiaomiCloud) -> None:
         self._cloud = cloud
@@ -373,22 +502,39 @@ class FakeSession:
         pass
 
     async def get(self, url, **kwargs) -> FakeResponse:
-        await asyncio.sleep(0)  # a real request yields to the event loop, so concurrent updates interleave
-        if (gate := self._cloud.gates.get(str(URL(str(url)).with_query(None)))) is not None:
-            await gate.wait()
-        return self._request("GET", url, **kwargs)
+        return await self._send("GET", url, **kwargs)
 
     async def post(self, url, **kwargs) -> FakeResponse:
-        await asyncio.sleep(0)
-        return self._request("POST", url, **kwargs)
+        return await self._send("POST", url, **kwargs)
 
-    def _request(self, method, url, *, params=None, cookies=None, data=None, **_kwargs) -> FakeResponse:
+    async def _send(self, method, url, *, allow_redirects: bool = True, **kwargs) -> FakeResponse:
+        timeout = kwargs.pop("timeout", None)
+        await asyncio.sleep(0)  # a real request yields to the event loop, so concurrent updates interleave
+        if URL(str(url)).host in self._cloud.hanging_hosts:
+            self._cloud.requests.append(Request(method, URL(str(url)), {}, {}, kwargs.get("data"), timeout))
+            if timeout is None:
+                await asyncio.Event().wait()  # aiohttp's default timeout: 5 minutes, i.e. forever here
+            raise TimeoutError()
+        if (gate := self._cloud.gates.get(str(URL(str(url)).with_query(None)))) is not None:
+            await gate.wait()
+        response = self._request(method, url, timeout=timeout, **kwargs)
+        history: list[FakeResponse] = []
+        # Like aiohttp: redirects are followed unless the caller asks not to, and kept in `history`.
+        while allow_redirects and response.status in REDIRECT_STATUSES and response.headers.get("Location"):
+            history.append(response)
+            if len(history) > 10:
+                raise AssertionError(f"Redirect loop at {response.url}")
+            response = self._request("GET", response.url.join(URL(response.headers["Location"])), timeout=timeout)
+        response.history = tuple(history)
+        return response
+
+    def _request(self, method, url, *, params=None, cookies=None, data=None, timeout=None, **_kwargs) -> FakeResponse:
         url = URL(str(url))
         if params:
             url = url.update_query({k: str(v) for k, v in params.items()})
         sent_cookies = {k: m.value for k, m in self.cookie_jar.filter_cookies(url).items()}
         sent_cookies.update({k: str(v) for k, v in (cookies or {}).items()})
-        request = Request(method, url, dict(url.query), sent_cookies, data)
+        request = Request(method, url, dict(url.query), sent_cookies, data, timeout)
         response = self._cloud.dispatch(request)
         self.cookie_jar.update_cookies(response.cookies, url)
         return response

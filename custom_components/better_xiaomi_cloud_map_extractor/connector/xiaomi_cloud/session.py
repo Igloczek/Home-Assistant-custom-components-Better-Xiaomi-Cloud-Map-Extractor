@@ -15,7 +15,7 @@ from dataclasses import dataclass, fields
 from typing import Self, Unpack
 
 import tzlocal
-from aiohttp import ClientSession, ClientResponse
+from aiohttp import ClientSession, ClientResponse, ClientTimeout
 from aiohttp.client import _RequestOptions
 from aiohttp.typedefs import StrOrURL
 from yarl import URL
@@ -28,6 +28,9 @@ _LOGGER = logging.getLogger(f"{__package__}.connector")
 # serviceLogin is asked to renew the session this long before the stored expiration.
 SESSION_RENEWAL_MARGIN = datetime.timedelta(days=1)
 DEFAULT_SESSION_LIFETIME = datetime.timedelta(days=20)
+# Every request to Xiaomi that doesn't set its own. aiohttp's default waits 5 minutes for a host that accepts the
+# connection and never answers, which a blocked region does (#700): setup then hung for minutes after the code.
+REQUEST_TIMEOUT = ClientTimeout(total=20, sock_connect=10)
 
 
 def _default_locale() -> str | None:
@@ -97,10 +100,12 @@ class XiaomiCloudSessionData:
 
     async def get(self: Self, url: StrOrURL, **kwargs: Unpack[_RequestOptions]):
         passed_headers = kwargs.pop("headers", {})
+        kwargs.setdefault("timeout", REQUEST_TIMEOUT)
         return await self.session.get(url, headers={**passed_headers, **self.headers}, **kwargs)
 
     async def post(self: Self, url: StrOrURL, **kwargs: Unpack[_RequestOptions]) -> ClientResponse:
         passed_headers = kwargs.pop("headers", {})
+        kwargs.setdefault("timeout", REQUEST_TIMEOUT)
         return await self.session.post(url, headers={**passed_headers, **self.headers}, **kwargs)
 
     def apply_from_parameters(self):

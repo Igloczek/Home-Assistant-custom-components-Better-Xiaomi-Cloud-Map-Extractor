@@ -87,6 +87,20 @@ class MapSavingDisabledException(XiaomiCloudMapExtractorException):
         return "Map saving is turned off on the vacuum. Turn on map saving in the Xiaomi Home app"
 
 
+class InvalidTwoFactorCodeException(FailedLoginException):
+    """Xiaomi did not accept the verification code (wrong, outdated, or the verification expired)."""
+
+    def __str__(self) -> str:
+        return "Xiaomi did not accept the verification code"
+
+
+class VerificationIncompleteException(FailedLoginException):
+    """Xiaomi accepted the verification code, but its redirects did not end in a session."""
+
+    def __str__(self) -> str:
+        return "Xiaomi accepted the verification code but did not complete the login"
+
+
 @dataclass
 class EncryptedMapUnsupportedException(XiaomiCloudMapExtractorException):
     """The cloud serves this model's map encrypted, and how to decrypt it for this model is not known."""
@@ -102,6 +116,9 @@ class TwoFactorAuthRequiredException(XiaomiCloudMapExtractorException):
     url: str
     headers: dict[str, str] = field(repr=False)
     context: str = field(repr=False)
+    # How Xiaomi sends the code (4 phone, 8 email) and whether it did: without a code, only the link helps.
+    flag: int = 8
+    code_sent: bool = True
 
     def __str__(self) -> str:
         return "Xiaomi requires additional identity verification"

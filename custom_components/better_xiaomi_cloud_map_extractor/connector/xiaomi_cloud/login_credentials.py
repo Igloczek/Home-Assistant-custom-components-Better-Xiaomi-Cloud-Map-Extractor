@@ -103,6 +103,10 @@ class CredentialsLogin(TwoFactorLogin):
                 if (two_factor_url := response_json.get("notificationUrl", None)) is not None:
                     _LOGGER.warning("Xiaomi requires additional identity verification before logging in")
                     await self._raise_two_factor_exception(two_factor_url)
+                elif response_json.get("code") == 70016:
+                    # Wrong password. Once Xiaomi guards the account with a captcha this answer carries a
+                    # captchaUrl too; taking it for a wrong captcha kept the user on the captcha form (#712).
+                    raise InvalidCredentialsException()
                 elif (captcha_url := response_json.get("captchaUrl", None)) is not None:
                     _LOGGER.warning("Xiaomi requires a captcha before logging in")
                     self._sign = sign

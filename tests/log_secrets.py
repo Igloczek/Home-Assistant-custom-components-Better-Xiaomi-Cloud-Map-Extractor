@@ -14,7 +14,7 @@ from collections.abc import Iterable, Mapping
 import pytest
 
 from .const import TOKEN
-from .fake_xiaomi import NEW_SSECURITY, PASS_TOKEN, SSECURITY, VERIFY_CONTEXT
+from .fake_xiaomi import CAPTCHA_ICK, IDENTITY_SESSION, NEW_SSECURITY, PASS_TOKEN, SSECURITY, VERIFY_CONTEXT
 
 PASSWORD = "made-up-password"
 # Query parameters of the signed map URL the fakes hand out; the signature must not be logged.
@@ -31,6 +31,8 @@ SESSION_SECRETS = {
     "serviceToken": "-service-token",  # every token the fake issues ends like this
     "STS clientSign": "client-sign-value",
     "verification context": VERIFY_CONTEXT,
+    "identity session": IDENTITY_SESSION,
+    "captcha ick": CAPTCHA_ICK,
     "verification ticket": "end-ticket",
     "QR long-poll ticket": "qr-poll-ticket",
     "QR login ticket": "qr-login-ticket",
