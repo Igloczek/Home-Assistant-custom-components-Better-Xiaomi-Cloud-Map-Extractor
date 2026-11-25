@@ -1,8 +1,6 @@
 ---
 name: Request a feature in Better Xiaomi Cloud Map Extractor
 description: Request a feature in Better Xiaomi Cloud Map Extractor
-labels: enhancement
-assignees: 'Igloczek'
 body:
   - type: markdown
     attributes:

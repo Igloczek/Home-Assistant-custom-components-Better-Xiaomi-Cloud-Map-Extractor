@@ -35,6 +35,7 @@ Compared with the original [Xiaomi Cloud Map Extractor](https://github.com/Piotr
 | 🤖 Ijai & newer Xiaomi vacuums | ⚠️ decryption errors & tiny 800×800 maps | ✅ fixed decryption, map-saving alerts & auto-fit zoom |
 | 🧹 Old v2 YAML setups | ❌ crashes on import, leaves broken YAML | ✅ imports cleanly & removes old YAML in one click |
 | 🔒 Privacy in logs & diagnostics | ⚠️ leaks session tokens, map keys & signed URLs | ✅ secrets automatically redacted |
+| 🐛 Bug reports | ✍️ manual forms & logs | 🤖 [your AI agent files them](#reporting-a-problem) |
 
 Installs alongside the original and keeps your login, entity IDs and dashboards: [switching takes a minute](#coming-from-xiaomi-cloud-map-extractor).
 
@@ -233,20 +234,39 @@ Models with open support requests and what is needed to add them are tracked in 
 
 ## Reporting a problem
 
-Report bugs on the [issue tracker](https://github.com/Igloczek/better-xiaomi-cloud-map-extractor/issues).
-Include your vacuum model, the integration version, and your **diagnostics**:
+Let an AI agent report it. Describe the problem to your agent and it collects your diagnostics,
+repairs and logs, removes all private data, works out what it can and files the report. Agent
+reports are labelled `agent-report` and handled first, because they come with everything needed to
+reproduce the bug.
 
-- Go to **Settings → Devices & services → Better Xiaomi Cloud Map Extractor → ⋮ → Download
-  diagnostics**. Credentials, tokens, and map decryption keys are removed automatically.
+Give your agent (Claude Code, Codex, Cursor or similar) this instruction, with your problem at the
+end:
 
-If a debug log is helpful:
+```text
+Read https://raw.githubusercontent.com/Igloczek/better-xiaomi-cloud-map-extractor/master/.agents/skills/report-problem/SKILL.md
+and follow it to report this problem with my Xiaomi vacuum map:
+
+<what is wrong, e.g. "my Xiaomi S12 map fails to update while cleaning">
+```
+
+It asks once for a temporary Home Assistant token and only reads. It never publishes credentials,
+Xiaomi session tokens, device tokens, map decryption keys, network addresses, or the map image. The
+[step-by-step guide](docs/report-a-problem.md) covers the token, what leaves your computer, and
+follow-up questions.
+
+No agent? Use the
+[bug form](https://github.com/Igloczek/better-xiaomi-cloud-map-extractor/issues/new?template=bug_report.yml)
+and attach your diagnostics (**Settings → Devices & services → Better Xiaomi Cloud Map Extractor →
+⋮ → Download diagnostics** — credentials, tokens and map keys are removed automatically).
+
+<details>
+<summary><b>How to capture a debug log manually</b></summary>
 
 1. Open **Settings → Devices & services → Better Xiaomi Cloud Map Extractor** and click **Enable
    debug logging**.
 2. Reproduce the problem, then click **Disable debug logging** to download the log file.
 
-<details>
-<summary><b>Alternative: enable debug logging in <code>configuration.yaml</code></b></summary>
+Alternatively, add this to `configuration.yaml`:
 
 ```yaml
 logger:
@@ -254,10 +274,10 @@ logger:
   logs:
     custom_components.better_xiaomi_cloud_map_extractor: debug
 ```
-</details>
 
 Even though this integration redacts secrets, give debug logs a quick look before posting and remove
 anything that looks like a password, token or cookie.
+</details>
 
 Problems with the dashboard card belong on the
 [Better Xiaomi Vacuum Map Card tracker](https://github.com/Igloczek/lovelace-better-xiaomi-vacuum-map-card/issues).
@@ -266,6 +286,7 @@ Problems with the dashboard card belong on the
 
 | Topic | Where |
 |---|---|
+| Reporting a bug | [Report a problem](docs/report-a-problem.md) |
 | Release notes | [Changelog](CHANGELOG.md) |
 | What is planned | [Roadmap](ROADMAP.md) |
 | Technical differences from the original | [Fork details](FORK.md) |
@@ -274,8 +295,9 @@ Problems with the dashboard card belong on the
 
 ## Contributing
 
-Pull requests are welcome. See [AGENTS.md](AGENTS.md) for local checks (`ruff check .` and
-`pytest`) and development guidelines.
+Pull requests are welcome. [CONTRIBUTING.md](CONTRIBUTING.md) covers setup, local checks
+(`ruff check .` and `pytest`), and adding or fixing vacuum formats; [AGENTS.md](AGENTS.md) holds the
+full project map and agent workflow.
 
 ## Credits and license
 
