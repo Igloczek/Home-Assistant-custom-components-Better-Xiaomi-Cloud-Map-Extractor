@@ -819,7 +819,7 @@
           },
           "vacuum": {
             "title": "Vacuum address and token",
-            "description": "{name} has not answered at {host} for 5 minutes, so Home Assistant can't tell when it cleans. Its IP address or token may have changed (new router lease, reset, re-pairing in the Xiaomi Home app).\n\nEnter its IP address and token. The values filled in come from Xiaomi Cloud when it could be reached, otherwise they are the stored ones. If they are already right, check that the vacuum is on and on the same network as Home Assistant; this goes away by itself once it answers.",
+            "description": "{name} has not answered at {host} for 5 minutes, so Home Assistant can't tell when it cleans. Its IP address or token may have changed (new router lease, reset, re-pairing in the Xiaomi Home app).\n\nEnter its IP address and token. The values filled in come from Xiaomi Cloud when it could be reached, otherwise they are the stored ones. If they are already right, check that the vacuum is on and on the same network as Home Assistant; this goes away by itself once it answers. If Home Assistant can't reach the vacuum on purpose (another network or VLAN), close this window and choose Ignore on the repair.",
             "data": {
               "host": "IP address",
               "token": "Token"

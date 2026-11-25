@@ -386,6 +386,7 @@ async def test_vacuum_unreachable_on_the_lan_raises_a_repair_until_it_answers(
     await vacuum.cycles(freezer, 1)
     issue = _lan_issue(hass, vacuum.entry.entry_id)
     assert issue is not None and issue.is_fixable
+    assert issue.severity is ir.IssueSeverity.WARNING, "a vacuum on another network on purpose is not an error"
     assert issue.translation_placeholders["host"] == vacuum.entry.data["host"]
 
     vacuum.home.lan.reachable = True

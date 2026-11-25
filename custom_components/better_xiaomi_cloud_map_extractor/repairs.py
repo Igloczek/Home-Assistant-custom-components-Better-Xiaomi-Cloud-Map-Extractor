@@ -121,7 +121,8 @@ def _async_raise(hass: HomeAssistant, entry: ConfigEntry, failure: str, count: i
         DOMAIN,
         issue_id,
         is_fixable=True,
-        severity=ir.IssueSeverity.ERROR,
+        # A vacuum Home Assistant can't reach may be on another network on purpose: not an error.
+        severity=ir.IssueSeverity.WARNING if failure == VACUUM_UNREACHABLE else ir.IssueSeverity.ERROR,
         translation_key=failure,
         translation_placeholders={
             "name": entry.title,
