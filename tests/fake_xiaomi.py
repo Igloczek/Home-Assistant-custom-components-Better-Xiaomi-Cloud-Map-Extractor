@@ -22,7 +22,7 @@ from aiohttp import ConnectionTimeoutError, CookieJar
 from multidict import CIMultiDict
 from yarl import URL
 
-from custom_components.better_xiaomi_cloud_map_extractor.connector.xiaomi_cloud.utils import encrypt_rc4
+from custom_components.better_xiaomi_cloud_map_extractor.connector.xiaomi_cloud.utils import decrypt_rc4, encrypt_rc4
 
 ACCOUNT = "https://account.xiaomi.com"
 SERVICE_LOGIN = f"{ACCOUNT}/pass/serviceLogin"
@@ -55,6 +55,15 @@ class Request:
     @property
     def endpoint(self) -> str:
         return str(self.url.with_query(None))
+
+
+def rc4_request_value(request: Request, name: str) -> str:
+    """A request parameter as the client wrote it before RC4-encrypting it (generate_enc_params)."""
+    nonce = request.params["_nonce"]
+    signed_nonce = base64.b64encode(
+        hashlib.sha256(base64.b64decode(request.params["ssecurity"]) + base64.b64decode(nonce)).digest()
+    ).decode()
+    return decrypt_rc4(signed_nonce, request.params[name]).decode()
 
 
 @dataclass
@@ -161,6 +170,14 @@ class FakeXiaomiCloud:
             return FakeResponse(body=encrypt_rc4(signed_nonce, json.dumps(payload)))
 
         self.on("POST", f"{API}{endpoint}", handler)
+
+    def encrypted_rpc(self, endpoint: str, answer: Callable[[dict[str, Any]], Any]) -> None:
+        """An encrypted endpoint whose answer depends on the request's decrypted `data` JSON."""
+
+        def result(request: Request) -> Any:
+            return answer(json.loads(rc4_request_value(request, "data")))
+
+        self.encrypted_api(endpoint, result)
 
     def sts_issuing(self, service_token: str) -> None:
         """The STS callback sets a fresh serviceToken cookie."""

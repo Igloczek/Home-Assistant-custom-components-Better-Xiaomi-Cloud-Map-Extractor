@@ -8,6 +8,7 @@ from vacuum_map_parser_base.map_data import MapData
 
 from vacuum_map_parser_dreame.map_data_parser import DreameMapDataParser
 from .base.model import VacuumConfig, VacuumApi
+from .base.cloud_run_state import DREAME_RUN_STATES, CloudRunState
 from .base.vacuum_v2 import BaseXiaomiCloudVacuumV2
 from ..utils.dict_operations import path_extractor
 
@@ -34,6 +35,8 @@ class DreameCloudVacuum(BaseXiaomiCloudVacuumV2):
 
     def __init__(self: Self, vacuum_config: VacuumConfig) -> None:
         super().__init__(vacuum_config)
+        self._run_state = CloudRunState(
+            self._connector, self._server, self._device_id, DREAME_RUN_STATES.get(self.model))
         self._dreame_map_data_parser = DreameMapDataParser(
             vacuum_config.palette,
             vacuum_config.sizes,
@@ -45,6 +48,9 @@ class DreameCloudVacuum(BaseXiaomiCloudVacuumV2):
         self._robot_stamp = 0
         self._enc_key = None
         self._dreame_vacuum = DreameVacuum(vacuum_config.host, vacuum_config.token, model=vacuum_config.model)
+
+    async def should_update_map(self: Self) -> bool | None:
+        return await self._run_state.should_update_map()
 
     @staticmethod
     def vacuum_platform() -> VacuumApi:

@@ -16,7 +16,8 @@ with a test that fails first (see [AGENTS.md](AGENTS.md)).
 
 - **Xiaomi models: live data and map index** (backlog): upstream PRs #781 and a generalised #748.
   Closes #720, advances #563, #657, #702, #739.
-- **Viomi: follow cleaning start sooner** (item 1 below).
+- **Viomi: follow cleaning start sooner**: run state through the cloud, waiting for a check on a
+  Viomi V8 (the cloud's `get_prop` answer is modelled, not captured).
 
 Still open from the cloud login work: PR #793 (cloud region selection), #700, #712 and the
 `verifyEmail` finish location in #780. Unverified: an unencrypted API answer with code 2 or 3, or the
@@ -32,10 +33,6 @@ the rest of the upstream backlog. Within a priority, work that hits more users g
 issues + comments + 👍; the backlog on 2026-11-24 was 141 open issues and 27 open pull requests),
 counting only what still happens on v3.0.0-alpha-24. Issue and PR numbers refer to the upstream
 repository; each item names the priority it serves.
-
-1. **Viomi: follow cleaning start sooner.** Viomi cannot report its status, so a docked Viomi is
-   checked once a minute and the map may start following a clean up to a minute late; read the
-   Viomi run state over the local network to switch back to 10-second updates at once.
 
 ## 1.0.0 criteria
 
@@ -53,6 +50,9 @@ the triage table, the fixed issues, the module map and the test coverage.
 
 ## Later
 
+- **Xiaomi H50 status** (`xiaomi.vacuum.ov43gb`): its status is siid 2 piid 2, which
+  vacuum-map-parser-xiaomi does not map, so it falls back to the once-a-minute map check like a
+  vacuum without status. Needs the property values from the miot-spec.
 - **Dreame: ask for a fresh map** (#655). On non-encrypted Dreame models (`dreame.vacuum.p2008`)
   `get_map_name` asks the vacuum for a new map with python-miio `call_action("map_view")`, but
   python-miio maps `map_view` as a property, not an action, so it raises before anything is sent and
