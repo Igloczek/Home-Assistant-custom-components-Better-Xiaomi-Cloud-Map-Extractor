@@ -1,5 +1,16 @@
+import re
 from abc import ABC
 from dataclasses import dataclass, field
+
+# A URL's query string: aiohttp quotes the whole request URL in its errors ("Connection timeout to
+# host https://...?signature=...&ssecurity=..."), and the encrypted API and STS calls carry the
+# session's secrets there.
+_URL_QUERY = re.compile(r"(\b[a-z][a-z0-9+.-]*://[^\s?#'\"<>]*)\?[^\s'\"<>]*", re.IGNORECASE)
+
+
+def redact_url_queries(text: str) -> str:
+    """`text` with every URL's query string removed; the host and path stay for debugging."""
+    return _URL_QUERY.sub(r"\1?<redacted>", text)
 
 
 class XiaomiCloudMapExtractorException(Exception, ABC):
@@ -11,8 +22,13 @@ class FailedConnectionException(XiaomiCloudMapExtractorException):
     """Xiaomi could not be reached (timeout, DNS, connection reset). Never a reason to log in again."""
     base_exception: Exception
 
+    def __post_init__(self) -> None:
+        # Raised inside `except`: a logged traceback would print the original error, URL and all.
+        self.__suppress_context__ = True
+
     def __str__(self) -> str:
-        return f"Could not connect to Xiaomi Cloud: {type(self.base_exception).__name__} {self.base_exception}".strip()
+        reason = redact_url_queries(str(self.base_exception))
+        return f"Could not connect to Xiaomi Cloud: {type(self.base_exception).__name__} {reason}".strip()
 
 
 class UnexpectedResponseError(Exception):

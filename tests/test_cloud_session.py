@@ -35,7 +35,7 @@ from .fake_xiaomi import (
 def stored_config(**overrides) -> XiaomiCloudConnectorConfig:
     values = dict(
         username="user@example.com",
-        password="secret",
+        password="made-up-password",
         server="de",
         user_id=USER_ID,
         c_user_id="cUser-abc",
@@ -56,7 +56,7 @@ async def test_password_login_stores_pass_token_in_config() -> None:
     cloud.sts_issuing("token-from-password")
     connector = XiaomiCloudConnector(cloud.session_creator, server="de")
 
-    await connector.login_with_credentials("user@example.com", "secret")
+    await connector.login_with_credentials("user@example.com", "made-up-password")
 
     config = connector.to_config()
     assert config.pass_token == PASS_TOKEN
@@ -133,7 +133,7 @@ async def test_login_timeout_is_a_connection_failure_not_bad_credentials() -> No
     connector = XiaomiCloudConnector(cloud.session_creator, server="de")
 
     with pytest.raises(FailedConnectionException):
-        await connector.login_with_credentials("user@example.com", "secret")
+        await connector.login_with_credentials("user@example.com", "made-up-password")
 
 
 async def test_api_401_raises_session_expired() -> None:
@@ -179,7 +179,7 @@ async def test_captcha_exception_never_renders_image_bytes() -> None:
     connector = XiaomiCloudConnector(cloud.session_creator, server="de")
 
     with pytest.raises(CaptchaRequiredException) as info:
-        await connector.login_with_credentials("user@example.com", "secret")
+        await connector.login_with_credentials("user@example.com", "made-up-password")
 
     assert info.value.image_data.startswith(b"\xff\xd8")
     for rendered in (str(info.value), repr(info.value)):
@@ -195,7 +195,7 @@ async def test_two_factor_exception_message_carries_the_link_but_no_headers(capl
     connector = XiaomiCloudConnector(cloud.session_creator, server="de")
 
     with caplog.at_level(logging.DEBUG), pytest.raises(TwoFactorAuthRequiredException) as info:
-        await connector.login_with_credentials("user@example.com", "secret")
+        await connector.login_with_credentials("user@example.com", "made-up-password")
 
     assert "identity/authStart" in info.value.url
     assert "User-Agent" not in str(info.value)

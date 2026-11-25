@@ -27,10 +27,10 @@ from custom_components.better_xiaomi_cloud_map_extractor.connector.xiaomi_cloud.
 )
 
 from .fake_xiaomi import API, PASS_TOKEN, SERVICE_LOGIN, SSECURITY, USER_ID, FakeResponse, FakeXiaomiCloud
+from .log_secrets import MAP_URL_SIGNATURE  # the interim map URL is signed: it must not reach the log
 
 DEVICE_ID = "428789378"
 MAP_URL = "https://maps.example.com/map/0"
-MAP_URL_SIGNATURE = "map-url-signature"  # the interim map URL is signed: it must not reach the log
 
 
 def map_configuration() -> XiaomiCloudMapExtractorConnectorConfiguration:
@@ -38,7 +38,7 @@ def map_configuration() -> XiaomiCloudMapExtractorConnectorConfiguration:
         host="192.168.1.14",
         token="0" * 32,
         username="user@example.com",
-        password="secret",
+        password="made-up-password",
         server="de",
         used_api=VacuumApi.VIOMI,
         device_id=DEVICE_ID,
@@ -55,7 +55,7 @@ def map_configuration() -> XiaomiCloudMapExtractorConnectorConfiguration:
 def stored_session(*, expires_in: datetime.timedelta, pass_token: str | None = PASS_TOKEN):
     return XiaomiCloudConnectorConfig(
         username="user@example.com",
-        password="secret",
+        password="made-up-password",
         server="de",
         user_id=USER_ID,
         c_user_id="cUser-abc",

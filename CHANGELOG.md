@@ -19,6 +19,12 @@
 
 ### Fixed
 
+- When Xiaomi Cloud or the map storage did not answer in time, the "Failed to update" message and the
+  log quoted the whole request address, including the session secret (`ssecurity`) or, during a
+  login, the `clientSign`. They now show only the host and path. If you posted such a message
+  publicly, change your Xiaomi account password to end that session.
+- Encrypted Dreame maps: the map decryption key no longer appears in debug logs (the map parser logged
+  it).
 - After importing a vacuum that came from v2 YAML, Repairs now says to remove the old
   `camera: - platform: xiaomi_cloud_map_extractor` block: it shows the file, the line and the block
   (username, password and token hidden) and that removing it is safe. Left in place, it made Home

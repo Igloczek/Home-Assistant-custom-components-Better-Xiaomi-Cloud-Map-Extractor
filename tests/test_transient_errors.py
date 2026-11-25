@@ -110,7 +110,7 @@ async def test_password_login_outage_is_retryable_not_invalid_credentials(step, 
     connector = XiaomiCloudConnector(cloud.session_creator, server="de")
 
     with pytest.raises(FailedConnectionException):
-        await connector.login_with_credentials("user@example.com", "secret")
+        await connector.login_with_credentials("user@example.com", "made-up-password")
 
 
 async def test_password_refused_by_xiaomi_is_still_invalid_credentials() -> None:
@@ -121,7 +121,7 @@ async def test_password_refused_by_xiaomi_is_still_invalid_credentials() -> None
     connector = XiaomiCloudConnector(cloud.session_creator, server="de")
 
     with pytest.raises(InvalidCredentialsException):
-        await connector.login_with_credentials("user@example.com", "secret")
+        await connector.login_with_credentials("user@example.com", "made-up-password")
 
 
 # --- a failed password login keeps the session it was meant to replace ---------------------------
@@ -134,7 +134,7 @@ async def test_failed_password_login_keeps_the_stored_session_and_pass_token() -
     connector = await XiaomiCloudConnector.from_config(stored_config(), cloud.session_creator)
 
     with pytest.raises(FailedConnectionException):
-        await connector.login_with_credentials("user@example.com", "secret")
+        await connector.login_with_credentials("user@example.com", "made-up-password")
 
     config = connector.to_config()
     assert config.service_token == "old-service-token"
