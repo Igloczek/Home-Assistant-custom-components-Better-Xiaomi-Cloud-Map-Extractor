@@ -1,0 +1,1 @@
+I currently use the original `xiaomi_cloud_map_extractor` integration with two vacuums and a custom dashboard card. Do I need to uninstall the old one first and re-enter my Xiaomi login, or will my entity IDs change?

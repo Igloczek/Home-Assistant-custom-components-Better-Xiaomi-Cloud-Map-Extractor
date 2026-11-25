@@ -2,11 +2,13 @@
 
 ## Unreleased
 
+### Fixed
+
 - Xiaomi vacuums show the robot and its path while cleaning. The cloud map has neither, so they
   are read from the vacuum (position and the current clean's trajectory) and drawn on the map; the
-  S20+ (xiaomi.vacuum.b108gl) map now refreshes during a clean instead of treating "Sweeping" as
+  S20+ (`xiaomi.vacuum.b108gl`) map now refreshes during a clean instead of treating "Sweeping" as
   idle (upstream PR #781 by muryoh, extended to every Xiaomi model that reports them; upstream #720,
-  #563).
+  #563; confirmed on `xiaomi.vacuum.b108gl` by LaZyCraZy71 on #20).
 - Xiaomi vacuums read their status from the right property: on the S40, X20+, H50, 5 Pro and most
   newer models it was read from the firmware version, so the map could not tell cleaning from
   docked.
@@ -16,14 +18,25 @@
   instead of showing an old, deleted map; a map number missing from the vacuum's map name is read
   from its current map id (upstream #720).
 - A Xiaomi vacuum that stores its maps under another Xiaomi account id than the one logged in, as
-  an H40 (xiaomi.vacuum.ov51gl) does, gets its map instead of "404 Object Not Found": the map is
+  an H40 (`xiaomi.vacuum.ov51gl`) does, gets its map instead of "404 Object Not Found": the map is
   downloaded from the path the vacuum reports (upstream #762).
-- Rooms of the Xiaomi 5 Pro (xiaomi.vacuum.ov21gl) and any other map that repeats a room id stay
+- Rooms of the Xiaomi 5 Pro (`xiaomi.vacuum.ov21gl`) and any other map that repeats a room id stay
   separate instead of merging into one room (upstream PR #748 by Luciano Benitez, generalised;
   upstream #702, #657).
-- No-go zones, no-mop zones and virtual walls of the S40 (ov81gl), 5 Pro and other Xiaomi models
+- No-go zones, no-mop zones and virtual walls of the S40 (`ov81gl`), 5 Pro and other Xiaomi models
   that store them as point lists are drawn (`vacuum-map-parser-xiaomi` 0.1.4; upstream #739, PR
   #748).
+
+## 1.0.1 - 2026-11-25
+
+### Fixed
+
+- Ijai vacuums (`ijai.vacuum.*` and Xiaomi models on the Ijai map format) no longer fail with `TypeError: aes_decrypt() takes 2 positional arguments but 3 were given` when installed side by side with the original `xiaomi_cloud_map_extractor` (whose `v3.0.0-alpha-24` pins `vacuum-map-parser-ijai==0.1.0`). Map decryption now runs directly via `pycryptodome`, so both key formats work whether parser `0.1.0` or `0.1.1` is loaded (#9, PR #49; verified on `ijai.vacuum.v3` by Altar82).
+
+### Changed
+
+- Rewrote `README.md` for end users with a side-by-side comparison table and clearer installation and migration steps (PR #39).
+- Added AI-agent-first problem reporting (`report-problem` skill, zero-dependency Python collector/redactor CLI, and automated issue triage, PR #40).
 
 ## 1.0.0 - 2026-11-25
 

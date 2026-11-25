@@ -1,0 +1,35 @@
+{
+  "cases": [
+    {
+      "key": "roborock-app-only",
+      "title": "Cannot find my Roborock Q Revo",
+      "body": "roborock-app-only.md",
+      "expect": { "state": "closed", "mentions": ["Roborock"] }
+    },
+    {
+      "key": "ijai-tiny-map",
+      "title": "Xiaomi S12 map is tiny in the middle of a huge empty background",
+      "body": "ijai-tiny-map.md",
+      "expect": { "mentions": ["Fit to the explored area"] },
+      "followUp": { "body": "Found it in Configure, looks great now. Thanks!", "expectReply": false }
+    },
+    {
+      "key": "migrate-from-original",
+      "title": "How do I switch from the original integration without breaking my dashboard?",
+      "body": "migrate-from-original.md",
+      "expect": { "mentions": ["Import from Xiaomi Cloud Map Extractor"] }
+    },
+    {
+      "key": "new-feature-multifloor",
+      "title": "Support switching between multiple floors",
+      "body": "new-feature-multifloor.md",
+      "expect": { "labels": ["enhancement"], "state": "open", "mentions": ["ROADMAP"] }
+    },
+    {
+      "key": "vague-bug-no-map",
+      "title": "Map stopped showing up after updating",
+      "body": "vague-bug-no-map.md",
+      "expect": { "labels": ["bug"], "state": "open", "mentions": ["report-problem"] }
+    }
+  ]
+}

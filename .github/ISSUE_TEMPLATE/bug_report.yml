@@ -1,15 +1,15 @@
 ---
 name: Report an issue with Better Xiaomi Cloud Map Extractor
-description: Report an issue with Better Xiaomi Cloud Map Extractor.
-labels: bug
-assignees: 'Igloczek'
+description: Report an issue with Better Xiaomi Cloud Map Extractor (or let your AI agent file it — see docs/report-a-problem.md).
 body:
   - type: markdown
     attributes:
       value: |
-        This issue form is for reporting bugs only!
+        **Tip:** if you use an AI agent (Claude Code, Codex, Cursor, …), you don't need to fill
+        this out by hand — follow [Report a problem](https://github.com/Igloczek/better-xiaomi-cloud-map-extractor/blob/master/docs/report-a-problem.md)
+        and your agent collects, redacts and files everything automatically.
 
-        If you have a question, feature or enhancement request, please use the dedicated form.
+        This form is for reporting bugs only. For a question or feature request, use the dedicated form.
   - type: checkboxes
     id: checklist
     attributes:

@@ -7,13 +7,14 @@ import re
 import zlib
 from typing import Self, Any
 
+from Crypto.Cipher import AES
 from Crypto.Hash import MD5
+from Crypto.Util.Padding import pad, unpad
 from miio.miot_device import MiotDevice
 from miio.exceptions import DeviceException
 from vacuum_map_parser_base.map_data import MapData
 from vacuum_map_parser_ijai.map_data_parser import IjaiMapDataParser
 from vacuum_map_parser_ijai.status_mapping import get_status_mapping
-from vacuum_map_parser_ijai.aes_decryptor import aes_decrypt, aes_encrypt
 from vacuum_map_parser_ijai.RobotMap_pb2 import RobotMap
 
 from .base.vacuum_v2 import BaseXiaomiCloudVacuumV2
@@ -340,6 +341,22 @@ class IjaiCloudVacuum(BaseXiaomiCloudVacuumV2):
         return {**super_data, "enc_key": enc_key}
 
 
+def _aes_encrypt(data: str, key: str) -> str:
+    cipher = AES.new(key.encode("utf-8"), AES.MODE_ECB)
+    encrypted = cipher.encrypt(pad(data.encode("utf-8"), AES.block_size, "pkcs7"))
+    return base64.b64encode(encrypted).decode("utf-8")
+
+
+def _aes_decrypt(data: bytes, key: str, hex_key: bool) -> bytes:
+    # Done with pycryptodome directly instead of vacuum_map_parser_ijai.aes_decryptor.aes_decrypt:
+    # side-by-side installs with the original integration (v3.0.0-alpha-24) can keep parser 0.1.0
+    # loaded, whose aes_decrypt takes 2 arguments and hardcodes hex keys.
+    parsed_key = bytes.fromhex(key) if hex_key else key.encode("utf-8")
+    cipher = AES.new(parsed_key, AES.MODE_ECB)
+    decrypted = unpad(cipher.decrypt(data), AES.block_size, "pkcs7")
+    return bytes.fromhex(decrypted.decode("utf-8"))
+
+
 def map_key(wifi_sn: str, owner_id: str, device_id: str, model: str, mac: str, hex_key: bool) -> str:
     # vacuum_map_parser_ijai.aes_decryptor.gen_md5_key with the key type as a parameter instead of
     # taken from the parser's model list.
@@ -348,7 +365,7 @@ def map_key(wifi_sn: str, owner_id: str, device_id: str, model: str, mac: str, h
         model_suffix = model_suffix[-4:]
     elif len(model_suffix) in (2, 3):
         model_suffix = model_suffix.rjust(4, "0")
-    encrypted = aes_encrypt("+".join([wifi_sn, owner_id, device_id]), mac.lower().replace(":", "") + model_suffix)
+    encrypted = _aes_encrypt("+".join([wifi_sn, owner_id, device_id]), mac.lower().replace(":", "") + model_suffix)
     digest = MD5.new(encrypted.encode("utf-8")).hexdigest()
     return digest if hex_key else digest[8:-8].upper()
 
@@ -359,7 +376,7 @@ def unpack_map(raw_map: bytes, key: str, hex_key: bool) -> bytes:
         raw_map = base64.b64decode(raw_map, validate=True)
     except binascii.Error:
         pass
-    return zlib.decompress(aes_decrypt(raw_map, key, hex_key))
+    return zlib.decompress(_aes_decrypt(raw_map, key, hex_key))
 
 
 def _with_current_map_info(decoded_map: bytes) -> bytes:

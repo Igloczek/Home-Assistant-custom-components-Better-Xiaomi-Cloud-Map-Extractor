@@ -1,8 +1,16 @@
 # Agent guide
 
-## North star
+## North star and autonomy
 
 A Home Assistant user's vacuum map just keeps working, and when it can't, Home Assistant tells them exactly what to do, in one click. Nobody ever has to read logs.
+
+This is a Home Assistant custom integration, not a nuclear plant: in the worst case someone checks their vacuum in the Xiaomi Home app or rolls back a version. The maintainer does not know every vacuum model, does not own every device or region, and does not want to study every routine user request.
+
+**Default to 99% automation.** Agents and the **Chief of staff** own decisions, implementation, pull request review, merging and releases on their own — without asking the maintainer — as long as a change:
+
+1. **is not breaking** (existing config entries, entity IDs, dashboards, migrations and workflows keep working unchanged),
+2. **does not drastically change UX** for existing users (opt-in options or clear, non-disruptive refinements), and
+3. **cannot make the overall experience or quality worse** (proven by red-first tests and full local checks; no brittle hacks, leaked secrets or bloat).
 
 Priorities, in order:
 
@@ -14,6 +22,13 @@ Priorities, in order:
 
 When two pieces of work compete, the one higher on this list goes first. [`ROADMAP.md`](ROADMAP.md) is ranked by it.
 
+## Chief of staff
+
+A standing pinned thread titled `Chief of staff` owns day-to-day delivery for this repository, backed by a daily scheduled sweep (`Chief of staff (daily sweep)`). It reviews and merges open pull requests, decides on feature and follow-up proposals, launches and steers `Build #N` threads, follows up on pre-release beta feedback, revives any failed triage runs, cuts batched stable releases, keeps `ROADMAP.md` current, and settles completed threads.
+
+- Triage and build threads hand ready pull requests, reporter beta confirmations and design calls to `Chief of staff` (`t3_thread_search` for `Chief of staff`), not to the maintainer.
+- `Chief of staff` only escalates to the maintainer for the ~1% calls under "Who decides what ships". Routine merges, opt-in options and releases do not ask for approval.
+
 ## Fork relationship
 
 - This repository is Igloczek's hard fork of `PiotrMachowski/Home-Assistant-custom-components-Xiaomi-Cloud-Map-Extractor`, published as **Better Xiaomi Cloud Map Extractor**. Upstream is abandoned; its v3 line (`dev_extracted_libraries` at `688fe3e`, released as v3.0.0-alpha-24) is the baseline, and the legacy v2 line is frozen on the `v2` branch.
@@ -21,6 +36,7 @@ When two pieces of work compete, the one higher on this list goes first. [`ROADM
 - Add every intentional fork-only feature or fix to `FORK.md` with what it changes and why, and add it to the [sync checklist](.agents/skills/sync-upstream/fork-differences.md).
 - [`ROADMAP.md`](ROADMAP.md) holds planned work and postponed items, [`TRIAGE.md`](TRIAGE.md) the classification of every open upstream issue and pull request; [`CHANGELOG.md`](CHANGELOG.md) holds released changes. Do not keep a record of completed work in a standing document.
 - To import an upstream commit or open upstream pull request, follow [`.agents/skills/sync-upstream/SKILL.md`](.agents/skills/sync-upstream/SKILL.md). Never push to `upstream` and never comment on upstream issues or pull requests.
+- The issue tracker is triaged by the issue triage agent (`Igloczek/issue-triage-agent`, private): a T3 webhook task on the maintainer's Mac runs its procedure for each new issue or comment, one thread per issue. What it needs to know about this project is in [`.github/triage.md`](.github/triage.md), and this project's end-to-end cases are in `.github/triage-e2e/`. No workflow comments on or edits issues; `.github/workflows/triage-e2e-file.yml` only files `triage-test` issues for that project's end-to-end test.
 
 ## Compatibility
 
@@ -37,6 +53,13 @@ The fork's domain is `better_xiaomi_cloud_map_extractor`, so it installs next to
 - Runtime: `coordinator.py` maps connector exceptions to `ConfigEntryAuthFailed` (reauth) or `UpdateFailed` (retry); entities in `image.py`, `camera.py`, `sensor.py`, `binary_sensor.py`, `button.py`, `switch.py`.
 - Cloud access: `connector/xiaomi_cloud/connector.py` (`XiaomiCloudConnector`, the one object callers use, `to_config`/`from_config`) composed of `session.py` (session data, stored config, `_login_attempt`), `login_credentials.py` (password login, captcha), `login_two_factor.py` (identity verification), `login_qr.py`, `renewal.py` (passToken), `devices.py` (homes and devices per region), `api.py` (RC4 encrypted calls, map download) and `network.py` (outage versus refusal). All log under the `connector.xiaomi_cloud.connector` logger. The session is persisted per MAC by `store.py`.
 - Vendors: `connector/vacuums/vacuum_*.py` download the map; parsing and drawing live in the external `vacuum-map-parser-*` packages pinned in `manifest.json`.
+- Agent problem reporting: [`.agents/skills/report-problem/SKILL.md`](.agents/skills/report-problem/SKILL.md) (procedure for users' AI agents), `scripts/agent-report/` (zero-dependency Python 3 collector, redactor, renderer and validator, tested by `tests/test_agent_report.py`), [`docs/report-a-problem.md`](docs/report-a-problem.md) and `.github/ISSUE_TEMPLATE/agent_report.yml`.
+
+## Fixes are for every user
+
+- Fix problems in the integration, for every supported vacuum and region. A report from one user's vacuum is a sample of a general bug: find the general cause and check the other vendors and flows for it.
+- Never create or change scripts, automations, helpers or Home Assistant configuration in a user's Home Assistant (including the maintainer's `ha.igielski.dev`) to work around an integration bug.
+- When a vacuum or cloud protocol cannot do what a feature needs, say so and surface it clearly in the UI or document the limitation; do not ship a per-installation workaround as the fix.
 
 ## Local checks
 
@@ -65,23 +88,20 @@ A bug that reached a user is also a bug in the test suite: the suite let it thro
 
 ## Who decides what ships
 
-Agents drive this project: they investigate, reproduce, build, test, open pull requests and prepare releases without waiting to be asked.
+Agents drive this project end to end: they investigate, reproduce, decide option names and shapes, build, test, review, merge and release without waiting to be asked. Sort every change into one of these three buckets:
 
-**During 0.x, agents merge and release any change themselves**, in any class, as often as useful, once it is verified:
+1. **Agents decide, merge and ship (~99% of work).** Bug fixes, additive opt-in options, vendor/protocol fixes proven locally, Repairs improvements, documentation, and non-disruptive UX refinements. Pick the cleanest design yourself, prove it with red-first tests and the checks in "Local checks" on the exact head, and merge — directly for a clear bug, or via `Chief of staff` review for new options and refinements — without asking the maintainer, as long as the change is **not breaking**, does **not drastically change UX**, and **cannot make overall experience or quality worse**.
+2. **Needs real-hardware confirmation first: pre-release.** Use this only when a change genuinely depends on a vacuum model, region or account state we cannot reproduce locally. Keep the pull request open, publish a `vX.Y.Z-beta.N` pre-release from its head ("GitHub releases"), and ask the reporter's AI agent to test it. Once they confirm it works, `Chief of staff` merges and ships the stable release autonomously without asking the maintainer.
+3. **Escalate to the maintainer (~1% of work).** Build or propose it, then stop and ask the maintainer in chat (never on GitHub) **only** when a change:
+   - is **breaking** (removes or renames config keys/entities, breaks compatibility or migrations, or changes defaults in a way that breaks existing setups),
+   - **drastically changes UX** (a major config-flow/visual overhaul or changing how the integration works for everyone), or
+   - **risks degrading overall experience or quality** (high maintenance burden, risky parser dependency upgrades with breaking signatures, or changing the fork's compatibility promise or scope).
 
-- The local checks pass on the exact head, and the change works end to end on the maintainer's Home Assistant at `ha.igielski.dev`. Agents may install builds there. Fix problems only in the integration, never with workarounds in that Home Assistant's configuration. Leave it working: roll back to the previous version if a build breaks it. Report what was installed and what was checked.
-- The release rules under "GitHub releases" still hold: verify before tagging, check that the tag is free, and check that the uploaded zip contains the change.
-- Batching and the class-2 stop below do not apply in 0.x. Hand-offs and reports still go in the chat, never on GitHub.
+**What an escalation hand-off contains.** Keep it in the chat with the maintainer, never on GitHub: do not post hand-offs, screenshots or summaries as pull request or issue comments, and keep pull request descriptions short. GitHub comments are only for external contributors (the pre-release flow). Present it with the chat's visualization tools: the problem and the change in a short paragraph written for a user; what it looks like (config flow screens, rendered map) before and after when visual; the risk or trade-off that triggered escalation, alternatives and recommendation; what is proven and what is not. End with one question the maintainer can answer yes or no, or by picking an option.
 
-**From 1.0.0** (released 2026-11-25; see [ROADMAP.md](ROADMAP.md#since-100)), whether a change may be merged and released depends on what kind of change it is. Sort every change into one of these classes before merging; when it is not clearly class 1, it is class 2.
+**Releases are batched.** Merging does not mean releasing. Before cutting a release, `Chief of staff` checks other running agent threads, open pull requests close to merging, and what `master` gained since the last tag (`git log <last tag>..origin/master`). Cut a release autonomously when a batch is ready, not after every merge. Release on its own only for urgent breakage: setup that fails for users, lost configuration, or leaked credentials. Only changes escalated under bucket 3 wait for maintainer approval before merging and releasing.
 
-1. **Clear bug: merge it yourself.** The report is binary (it works or it does not), the reproduction is a red test, and the fix restores documented or obviously intended behaviour with nothing visible changing beyond the fix. Merge after the local checks pass on the exact head.
-2. **Needs the maintainer's call: build it fully, then stop.** Anything that is not an obvious bug, and every change to what users see or how they set things up: config and options flow steps, wording and translations, entity names, defaults and which entities are enabled, how the map is drawn, new options or behaviour, compatibility or migrations, dependency upgrades of the map parsers. Do all the work, open the pull request, do not merge or release it, and hand it over.
-3. **Cannot be reproduced here: pre-release.** The change depends on a vacuum, region or account state we do not have. Follow the pre-release rule under "GitHub releases".
-
-**What a hand-off contains.** It goes in the chat with the maintainer, never on GitHub: no hand-offs, screenshots or summaries as pull request or issue comments, and short pull request descriptions. GitHub comments are only for external contributors (the pre-release flow). Present it with the chat's visualization tools: the problem and the change in a short paragraph written for a user; what it looks like (config flow screens, the rendered map) before and after; how to try it; the alternatives and your recommendation; what is proven and what is not. End with one question the maintainer can answer yes or no, or by picking an option.
-
-**Releases are batched (1.0+).** Merging does not mean releasing. Before a release, check other running agent threads, open pull requests close to merging, and what `master` gained since the last tag (`git log <last tag>..origin/master`). Release on its own only for urgent breakage: setup that fails for everyone, lost configuration, or leaked credentials.
+**Settling finished threads.** Any agent thread (`Triage #N`, `Build #N`, worker, or sweep) that has delivered its work and has nothing left to do — merged, released, answered, or handed off to `Chief of staff` / waiting on external pre-release feedback with no open maintainer decision — must settle itself at the end of its turn (`t3_thread_organize` with `action: "settle"`), so the thread list stays clean. `Chief of staff` also settles completed worker/triage/build threads and removes their clean worktrees.
 
 ## GitHub releases
 

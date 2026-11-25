@@ -1,0 +1,1 @@
+I have a Xiaomi S12 (`xiaomi.vacuum.b106eu`) on v1.0.0. The map loads fine, but my apartment is a tiny island in the middle of a huge blank 800x800 square and the icons are super small. Is there any way to zoom or crop it automatically?
