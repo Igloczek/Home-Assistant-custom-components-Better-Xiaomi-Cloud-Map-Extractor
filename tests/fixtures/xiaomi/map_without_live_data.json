@@ -1,0 +1,39 @@
+{
+  "map_id": 1,
+  "width": 10,
+  "height": 8,
+  "resolution": 50,
+  "origin_x": -250,
+  "origin_y": -200,
+  "map_data": "eJz7/x8OmIGABQjIYcEBACXvIIk=",
+  "map_room_info": [
+    {
+      "grid_id": 3,
+      "room_id": 1,
+      "color": 1
+    },
+    {
+      "grid_id": 4,
+      "room_id": 2,
+      "color": 2
+    }
+  ],
+  "room_attrs": [
+    {
+      "id": 1,
+      "room_name": "Kitchen",
+      "name_pos_x": -100,
+      "name_pos_y": 0
+    },
+    {
+      "id": 2,
+      "room_name": "Hall",
+      "name_pos_x": 100,
+      "name_pos_y": 0
+    }
+  ],
+  "have_pile": 1,
+  "pile_x": 0,
+  "pile_y": -100,
+  "pile_yaw": 0
+}

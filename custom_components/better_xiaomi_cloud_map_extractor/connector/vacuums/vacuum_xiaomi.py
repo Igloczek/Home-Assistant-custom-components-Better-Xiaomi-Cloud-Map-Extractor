@@ -2,7 +2,6 @@ import asyncio
 import base64
 import json
 import logging
-from dataclasses import dataclass
 from typing import Self, Any
 
 from miio.exceptions import DeviceException
@@ -10,11 +9,26 @@ from miio.miot_device import MiotDevice
 from vacuum_map_parser_base.map_data import MapData
 from vacuum_map_parser_xiaomi.aes_decryptor import gen_md5_key
 from vacuum_map_parser_xiaomi.map_data_parser import XiaomiMapDataParser
-from vacuum_map_parser_xiaomi.status_mapping import get_status_mapping
 
 from .base.model import VacuumConfig, VacuumApi
 from .base.vacuum_v2 import BaseXiaomiCloudVacuumV2
-from ..utils.exceptions import FailedConnectionException, FailedMapParseException
+from .xiaomi_miot import (
+    Property,
+    as_int,
+    decode_trajectory,
+    layout_for,
+    object_name,
+    object_path,
+    vacuum_position,
+    with_live_data,
+    with_unique_room_ids,
+)
+from ..utils.dict_operations import path_extractor
+from ..utils.exceptions import (
+    FailedConnectionException,
+    FailedMapParseException,
+    XiaomiCloudMapExtractorException,
+)
 
 _LOGGER = logging.getLogger(__name__)
 OFF_UPDATES = 3
@@ -23,50 +37,6 @@ OFF_UPDATES = 3
 # "xiaomi.vacuum.c107" -> "aomi.vacuum.c107". AES-128 needs exactly 16 bytes.
 MODEL_KEY_LENGTH = 16
 
-@dataclass
-class XiaomiVacuumPropertyMapping:
-    """Dataclass containing mapping for map property"""
-
-    # vacuum map service id
-    siid: int = 10
-
-    # current map property id in vacuum map service
-    piid: int = 1
-
-_NON_STANDARD_MAP_PROP = [
-    (
-        [
-            "xiaomi.vacuum.b108gl",
-        ],
-        XiaomiVacuumPropertyMapping(siid=7),
-    ),
-    (
-        [
-            "xiaomi.vacuum.b108gp",
-            "xiaomi.vacuum.ov32gl",
-            "xiaomi.vacuum.ov43gl",
-            "xiaomi.vacuum.ov51",
-            "xiaomi.vacuum.ov81",
-        ],
-        XiaomiVacuumPropertyMapping(siid=9),
-    ),
-    (
-        [
-            "xiaomi.vacuum.b106bk",
-            "xiaomi.vacuum.b106tr",
-            "xiaomi.vacuum.b112",
-            "xiaomi.vacuum.b112bk",
-            "xiaomi.vacuum.b112gl",
-            "xiaomi.vacuum.b112tr",
-            "xiaomi.vacuum.c101",
-            "xiaomi.vacuum.c101eu",
-            "xiaomi.vacuum.c102",
-            "xiaomi.vacuum.c104",
-            "xiaomi.vacuum.e101gl",
-        ],
-        XiaomiVacuumPropertyMapping(piid=2),
-    ),
-]
 
 class XiaomiCloudVacuum(BaseXiaomiCloudVacuumV2):
     def __init__(self, vacuum_config: VacuumConfig):
@@ -84,10 +54,16 @@ class XiaomiCloudVacuum(BaseXiaomiCloudVacuumV2):
             vacuum_config.texts
         )
 
-        self._status_mapping = get_status_mapping(self.model)
+        # Where this model keeps its status, current map and live position (xiaomi_miot.py).
+        self._layout = layout_for(self.model)
         self._off_counter = 0
-
-        self._vacuum_map = next((mapping for models, mapping in _NON_STANDARD_MAP_PROP if self.model in models), XiaomiVacuumPropertyMapping())
+        self._state: dict[Property, Any] | None = None
+        # The object paths the vacuum reported, by object name (upstream #762).
+        self._object_paths: dict[str, str] = {}
+        # The current map properties of the last answer, for when neither the LAN nor the cloud answers.
+        self._last_map_state: dict[Property, Any] = {}
+        self._live_path: list[dict[str, Any]] = []
+        self._live_position: dict[str, Any] | None = None
 
     @property
     def _model_key(self: Self) -> str:
@@ -95,26 +71,25 @@ class XiaomiCloudVacuum(BaseXiaomiCloudVacuumV2):
 
     async def should_update_map(self: Self) -> bool | None:
         try:
-            status_value = (await asyncio.to_thread(
-                self._miot_device.get_property_by, self._status_mapping.siid, self._status_mapping.piid
-            ))[0].get("value")
-            self.lan_reachable = True
-
-            if not isinstance(status_value, int):
-                return None  # not a status: on the H50 (ov43gb) this property is the firmware version
-            if status_value in self._status_mapping.idle_at:
-                self._off_counter += 1
-                _LOGGER.debug(
-                    "Vacuum is not moving. Off counter: %d", self._off_counter)
-                return self._off_counter <= OFF_UPDATES
-            else:
-                self._off_counter = 0
-                return True
+            values = await self._read_lan([self._layout.status])
         except DeviceException as de:
-            if "token" not in repr(de):
-                self.lan_reachable = False
-                return False
-            raise FailedConnectionException(de)
+            if "token" in repr(de):
+                raise FailedConnectionException(de)
+            # Busy cleaning or on another network: unknown, so the map keeps following the cloud
+            # (it used to stop downloading for good, upstream PR #748).
+            _LOGGER.debug("The vacuum did not report its status on the local network (%s)", type(de).__name__)
+            return None
+
+        status_value = as_int(values.get(self._layout.status))
+        if status_value is None:
+            return None  # not a status: a model this integration does not know
+        if status_value in self._layout.idle_at:
+            self._off_counter += 1
+            _LOGGER.debug(
+                "Vacuum is not moving. Off counter: %d", self._off_counter)
+            return self._off_counter <= OFF_UPDATES
+        self._off_counter = 0
+        return True
 
     @staticmethod
     def vacuum_platform() -> VacuumApi:
@@ -127,30 +102,138 @@ class XiaomiCloudVacuum(BaseXiaomiCloudVacuumV2):
     @property
     def map_data_parser(self) -> XiaomiMapDataParser:
         return self._xiaomi_map_data_parser
-    
+
+    async def get_map(self: Self) -> tuple[MapData, bytes]:
+        self._state = await self._read_state()
+        layout = self._layout
+        self._object_paths = {
+            path.split("/")[-1]: path
+            for prop in (layout.map_obj_name, layout.trajectory_obj_name)
+            if prop and (path := object_path(self._state.get(prop))) is not None
+        }
+        self._live_path, self._live_position = await self._read_live_data(self._state)
+        return await super().get_map()
+
     async def get_map_name(self: Self) -> str:
-        response = (await asyncio.to_thread(
-            self._miot_device.get_property_by, self._vacuum_map.siid, self._vacuum_map.piid
-        ))[0].get("value")
-
-        if response is None:
+        state = self._state if self._state is not None else await self._read_state()
+        layout = self._layout
+        name = object_name(state.get(layout.map_obj_name)) if layout.map_obj_name else None
+        if name is None and layout.current_map_id:
+            # Upstream #720: map "0" may be a deleted map on a vacuum that had several.
+            current = as_int(state.get(layout.current_map_id))
+            name = str(current) if current is not None else None
+        if name is None:
             return await super().get_map_name()
+        return name
 
-        if isinstance(response, int):
-            return str(response)
-        else:
-            map_name = None
+    async def _read_state(self: Self) -> dict[Property, Any]:
+        """The status, current map and live data properties: the LAN first, then the cloud."""
+        layout = self._layout
+        properties = [p for p in (layout.status, layout.map_obj_name, layout.current_map_id,
+                                  layout.trajectory_obj_name, layout.vacuum_position) if p]
+        map_properties = [p for p in (layout.map_obj_name, layout.current_map_id) if p]
+        try:
+            values = await self._read_lan(properties)
+        except DeviceException as lan_error:
+            if not map_properties:
+                return {}
+            _LOGGER.debug("The vacuum did not answer on the local network (%s), asking the cloud",
+                          type(lan_error).__name__)
             try:
-                map_name = json.loads(response).get("obj_name", None)
-            except json.JSONDecodeError:
-                if isinstance(response, str) and "/" in response:
-                    map_name = response
-            if map_name is None:
-                return await super().get_map_name()
-            return map_name.split("/")[-1]
+                values = await self._read_cloud(properties)
+            except XiaomiCloudMapExtractorException:
+                raise  # an expired session is renewed by the extractor
+            except Exception as cloud_error:
+                if not self._last_map_state:
+                    raise lan_error from cloud_error
+                values = {}
+            if all(values.get(p) is None for p in map_properties):
+                if not self._last_map_state:
+                    # Never told which map is current: report the vacuum unreachable rather than show
+                    # map "0", which may be a deleted one (upstream #720).
+                    raise lan_error
+                # The map the vacuum last reported; the vacuum_unreachable repair says why.
+                return {**values, **self._last_map_state}
+        if any(values.get(p) is not None for p in map_properties):
+            self._last_map_state = {p: values.get(p) for p in map_properties}
+        return values
+
+    async def _read_lan(self: Self, properties: list[Property]) -> dict[Property, Any]:
+        """Properties from the vacuum on the LAN; `lan_reachable` says whether it answered (repairs.py)."""
+        try:
+            response = await asyncio.to_thread(
+                self._miot_device.send,
+                "get_properties",
+                [{"did": f"{siid}-{piid}", "siid": siid, "piid": piid} for siid, piid in properties],
+            )
+        except DeviceException as de:
+            if "token" not in repr(de):
+                self.lan_reachable = False
+            raise
+        self.lan_reachable = True
+        return self._property_values(response)
+
+    async def _read_cloud(self: Self, properties: list[Property]) -> dict[Property, Any]:
+        response = await self._connector.get_other_info(
+            str(self._device_id), "get_properties",
+            parameters=[{"did": str(self._device_id), "siid": siid, "piid": piid} for siid, piid in properties])
+        return self._property_values(path_extractor(response, "result"))
+
+    @staticmethod
+    def _property_values(response: Any) -> dict[Property, Any]:
+        if not isinstance(response, list):
+            return {}
+        return {
+            (item.get("siid"), item.get("piid")): item.get("value")
+            for item in response
+            if isinstance(item, dict) and item.get("code", 0) == 0
+        }
+
+    async def _read_live_data(
+        self: Self, state: dict[Property, Any]
+    ) -> tuple[list[dict[str, Any]], dict[str, Any] | None]:
+        """The robot position and path of the current clean (upstream PR #781, every model that has them)."""
+        layout = self._layout
+        if as_int(state.get(layout.status)) in layout.docked_at:
+            return [], None  # the trajectory property still names the previous clean's path
+        position = vacuum_position(state.get(layout.vacuum_position)) if layout.vacuum_position else None
+        name = object_name(state.get(layout.trajectory_obj_name)) if layout.trajectory_obj_name else None
+        if name is None:
+            return [], position
+        try:
+            raw = await self.get_raw_map_data(name)
+            path = await asyncio.to_thread(decode_trajectory, raw, self._map_key()) if raw else []
+        except Exception as e:  # live data is optional, never fail the map for it
+            _LOGGER.debug("Failed to read the trajectory of the current clean (%s)", type(e).__name__)
+            path = []
+        return path, position
+
+    def _map_key(self: Self) -> bytes | None:
+        try:
+            return bytes.fromhex(gen_md5_key(self._model_key, str(self._device_id)))
+        except ValueError:
+            return None
 
     async def get_map_url(self, map_name: str) -> str | None:
         return await self.get_fallback_map_url(map_name)
+
+    async def get_raw_map_data(self: Self, map_name: str | None) -> bytes | None:
+        """The object at the path the vacuum reported, then at the account's path as before.
+
+        The vacuum may store its objects under another uid than the account's (upstream #762): the
+        cloud signs a URL for the account's path all the same, and the download answers 404.
+        """
+        path = self._object_paths.get(map_name) if map_name is not None else None
+        if path is not None and path != self._account_path(map_name):
+            url = await self.get_fallback_map_url(map_name, obj_name=path)
+            raw = await self._connector.get_raw_map_data(url) if url is not None else None
+            if raw is not None:
+                return raw
+            _LOGGER.debug("Nothing at the object path the vacuum reported, trying the account's")
+        return await super().get_raw_map_data(map_name)
+
+    def _account_path(self: Self, name: str) -> str:
+        return f"{self._user_id}/{self._device_id}/{name}"
 
     def decode_and_parse(self, raw_map: bytes) -> MapData:
         # Try parsing as JSON first (old format), otherwise use raw data directly (new format)
@@ -159,19 +242,23 @@ class XiaomiCloudVacuum(BaseXiaomiCloudVacuumV2):
         except (json.JSONDecodeError, KeyError, UnicodeDecodeError):
             # Data may not be JSON-wrapped
             pass
-        
+
         try:
             decoded_map = self.map_data_parser.unpack_map(
                 raw_map.hex(),
                 model=self._model_key,
                 device_id=str(self._device_id),
             )
-            return self.map_data_parser.parse(decoded_map)
+            payload = json.loads(decoded_map) if isinstance(decoded_map, str) else decoded_map
+            if isinstance(payload, dict):
+                payload = with_unique_room_ids(payload)
+                payload = with_live_data(payload, self._live_path, self._live_position)
+            return self.map_data_parser.parse(payload)
         except Exception as err:
             # A map in another vendor's format fails here with whatever the cipher, zlib or JSON
             # step raises; report it as a parse failure so the coordinator can offer the right format.
             raise FailedMapParseException(f"{self.model}: the map could not be read in the Xiaomi format") from err
-    
+
     def additional_data(self: Self) -> dict[str, Any]:
         super_data = super().additional_data()
         try:

@@ -1,3 +1,4 @@
+import json
 from abc import ABC
 from typing import Self, Any
 
@@ -24,11 +25,12 @@ class BaseXiaomiCloudVacuumV2(BaseXiaomiCloudVacuum, ABC):
             return await self.get_fallback_map_url(map_name)
         return url
 
-    async def get_fallback_map_url(self: Self, map_name: str) -> str | None:
+    async def get_fallback_map_url(self: Self, map_name: str, obj_name: str | None = None) -> str | None:
         url = self._connector.get_api_url(self._server) + '/v2/home/get_interim_file_url_pro'
         self.last_used_url = url
         params = {
-            "data": f'{{"obj_name":"{self._user_id}/{self._device_id}/{map_name}"}}'
+            "data": json.dumps({"obj_name": obj_name or f"{self._user_id}/{self._device_id}/{map_name}"},
+                               separators=(",", ":"))
         }
         api_response = await self._connector.execute_api_call_encrypted(url, params)
         return path_extractor(api_response, "result.url")

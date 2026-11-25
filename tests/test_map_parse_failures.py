@@ -58,6 +58,11 @@ def _vacuum(api: VacuumApi):
         texts=[],
     )
     vacuum = AVAILABLE_VACUUM_PLATFORMS[api](config)
+    if hasattr(vacuum, "_miot_device"):
+        # Xiaomi models read their state from the vacuum on the local network; none here.
+        from miio.exceptions import DeviceException
+
+        vacuum._miot_device = MagicMock(send=MagicMock(side_effect=DeviceException("no vacuum")))
     if api is VacuumApi.IJAI:
         vacuum._wifi_info_sn = "0123456789AB"  # read from the vacuum before the first map
     return vacuum
