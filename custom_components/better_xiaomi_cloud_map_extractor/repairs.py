@@ -1,6 +1,7 @@
 """Repairs: the fix flow of each issue raised in `issues.py`, with the most direct fix.
 
 - `wrong_map_format`: one confirm stores the vendor's map format.
+- `original_yaml`: one confirm removes the original's leftover YAML block (`original_yaml.py`).
 - `device_not_found`, `vacuum_token`, `map_download_failing`, `vacuum_unreachable`: the vacuum is looked
   up in every Xiaomi region with the stored session, and what the cloud knows (region, IP address,
   token) is offered; a login is asked for only when the session can't be renewed or the account
@@ -29,6 +30,7 @@ from .connector.vacuums.base.model import VacuumApi
 from .connector.xiaomi_cloud.connector import XiaomiCloudConnector, XiaomiCloudDeviceInfo
 from .const import CONF_SERVER, CONF_USED_MAP_API, DOMAIN
 from .issues import LAN_FAILURES, PERSISTENT_FAILURES
+from .original_yaml import ORIGINAL_YAML_KIND, OriginalYamlRepairFlow
 from .store import restore_connector_config, save_connector_config
 
 
@@ -207,6 +209,8 @@ async def async_create_fix_flow(
     hass: HomeAssistant, issue_id: str, data: dict[str, str | int | float | None] | None
 ) -> RepairsFlow:
     assert data is not None
+    if data.get("kind") == ORIGINAL_YAML_KIND:
+        return OriginalYamlRepairFlow(str(data["entry_id"]))
     if (failure := data.get("failure")) in PERSISTENT_FAILURES:
         return VacuumLookupRepairFlow(str(data["entry_id"]), str(failure))
     return WrongMapFormatRepairFlow(str(data["entry_id"]), str(data["detected_api"]))
