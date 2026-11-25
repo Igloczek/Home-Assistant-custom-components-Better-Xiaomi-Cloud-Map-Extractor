@@ -78,9 +78,8 @@
   Xiaomi and Ijai vacuums (upstream #791).
 - A docked vacuum's map is no longer downloaded and redrawn every 10 seconds (upstream #764).
   Vacuums that report their status stop after the usual few updates once docked; vacuums that
-  cannot (Viomi, Roidmi, Dreame, and the Xiaomi H50, whose status property holds the firmware
-  version) are downloaded every update only while the map changes, and checked once a minute after
-  three unchanged downloads.
+  cannot (Viomi, Roidmi, Dreame) are downloaded every update only while the map changes, and
+  checked once a minute after three unchanged downloads.
 - A Viomi (V6, V7, V8, V10, V13), Roidmi Eve Plus (v60) or Dreame (1C, F9, D9, Z10 Pro, Mop 2
   family) that starts cleaning is followed from the next update (10 seconds) instead of up to a
   minute late: the vacuum's run state is read through the Xiaomi cloud on every update, so it works
@@ -97,6 +96,25 @@
   re-authentication: the login was never the problem. The Repairs issue above handles it.
 - Setup no longer finishes with a session that could not be saved, which made every restart ask for
   a login: the last step shows an error and one click tries again.
+- Xiaomi vacuums show the robot and its path while cleaning. The cloud map has neither, so they
+  are read from the vacuum (position and the current clean's trajectory) and drawn on the map; the
+  S20+ (xiaomi.vacuum.b108gl) map now refreshes during a clean instead of treating "Sweeping" as
+  idle (upstream PR #781 by muryoh, extended to every Xiaomi model that reports them; upstream #720,
+  #563).
+- Xiaomi vacuums read their status from the right property: on the S40, X20+, H50, 5 Pro and most
+  newer models it was read from the firmware version, so the map could not tell cleaning from
+  docked.
+- A Xiaomi vacuum that Home Assistant cannot reach on the local network keeps showing the current
+  map: the map number and the robot position come through the Xiaomi cloud, or the vacuum's last
+  reported map is kept. A vacuum that never said which map is current is reported unreachable
+  instead of showing an old, deleted map; a map number missing from the vacuum's map name is read
+  from its current map id (upstream #720).
+- Rooms of the Xiaomi 5 Pro (xiaomi.vacuum.ov21gl) and any other map that repeats a room id stay
+  separate instead of merging into one room (upstream PR #748 by Luciano Benitez, generalised;
+  upstream #702, #657).
+- No-go zones, no-mop zones and virtual walls of the S40 (ov81gl), 5 Pro and other Xiaomi models
+  that store them as point lists are drawn (`vacuum-map-parser-xiaomi` 0.1.4; upstream #739, PR
+  #748).
 
 ## 0.1.3 - 2026-11-24
 

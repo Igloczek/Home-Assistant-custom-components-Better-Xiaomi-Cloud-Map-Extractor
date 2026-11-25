@@ -159,7 +159,10 @@ class XiaomiCloudMapExtractorConnector:
             self._map_cache.status = XiaomiCloudMapExtractorConnectorStatus.OK
             self._map_cache.last_successful_update_timestamp = datetime.now()
             self._map_cache.two_factor_url = None
-            if self._last_hash != (new_hash := hashlib.sha256(self._map_cache.map_data_raw).hexdigest()):
+            # The image too: Xiaomi vacuums draw the robot and path from MIoT properties, so the map
+            # moves while the cloud map object stays the same.
+            new_hash = hashlib.sha256(self._map_cache.map_data_raw + (self._map_cache.map_image or b"")).hexdigest()
+            if self._last_hash != new_hash:
                 _LOGGER.debug("Old hash: '%s', New hash: '%s'", self._last_hash, new_hash)
                 self._last_hash = new_hash
                 self._map_cache.last_real_update_timestamp = self._map_cache.last_successful_update_timestamp

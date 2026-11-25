@@ -126,14 +126,19 @@ VENDORS = [
     # Roborock reports its state through miIO `get_status`, set on FakeLanVacuum.
     Vendor("roborock.vacuum.s5", "ROBOROCK", {}, {}, _opaque_map),
     Vendor("ijai.vacuum.v3", "IJAI", {**IJAI_SN, (2, 1): 2}, {**IJAI_SN, (2, 1): 5}, _ijai_map("ijai.vacuum.v3")),
+    # Statuses where miot_spec.json has them: on the S40 and the H50, 2/1 is the firmware version and the
+    # status is 2/2 (upstream #764); on the S20+ it is 2/1, where 4 is "Sweeping" (upstream PR #781).
     Vendor(
-        "xiaomi.vacuum.ov81gl", "XIAOMI", {**OBJ_NAME, (2, 1): 2}, {**OBJ_NAME, (2, 1): 5},
-        _xiaomi_map("xiaomi.vacuum.ov81gl"),
+        "xiaomi.vacuum.ov81gl", "XIAOMI", {**OBJ_NAME, (2, 1): "4.3.3_0016", (2, 2): 2},
+        {**OBJ_NAME, (2, 1): "4.3.3_0016", (2, 2): 4}, _xiaomi_map("xiaomi.vacuum.ov81gl"),
     ),
-    # Upstream #764: on the H50, 2/1 is the firmware version, a string; the status is 2/2.
     Vendor(
         "xiaomi.vacuum.ov43gb", "XIAOMI", {**OBJ_NAME, (2, 1): "4.3.3_0016", (2, 2): 9},
-        {**OBJ_NAME, (2, 1): "4.3.3_0016", (2, 2): 1}, _xiaomi_map("xiaomi.vacuum.ov43gb"),
+        {**OBJ_NAME, (2, 1): "4.3.3_0016", (2, 2): 16}, _xiaomi_map("xiaomi.vacuum.ov43gb"),
+    ),
+    Vendor(
+        "xiaomi.vacuum.b108gl", "XIAOMI", {(7, 1): OBJ_NAME[(10, 1)], (2, 1): 2},
+        {(7, 1): OBJ_NAME[(10, 1)], (2, 1): 4}, _xiaomi_map("xiaomi.vacuum.b108gl"),
     ),
 ]
 UNSUPPORTED = Vendor("unknown.vacuum.x1", "UNSUPPORTED", {}, {}, _opaque_map)
@@ -201,8 +206,8 @@ def setup_vacuum(
     caplog.set_level(logging.DEBUG)
     vacuums: list[AsyncVacuum] = []
 
-    def make(vendor: Vendor) -> AsyncVacuum:
-        vacuum = AsyncVacuum(hass, VacuumHome(vendor))
+    def make(vendor: Vendor, drawables: list[str] | None = None) -> AsyncVacuum:
+        vacuum = AsyncVacuum(hass, VacuumHome(vendor), drawables)
         vacuums.append(vacuum)
         return vacuum
 
@@ -240,7 +245,7 @@ class _Homes:
 
 
 class AsyncVacuum:
-    def __init__(self, hass: HomeAssistant, home: VacuumHome) -> None:
+    def __init__(self, hass: HomeAssistant, home: VacuumHome, drawables: list[str] | None = None) -> None:
         self.hass = hass
         self.home = home
         # What Home Assistant showed for each failed update ("Failed to update", the entity's error).
@@ -261,7 +266,7 @@ class AsyncVacuum:
                 "image_config": flow._default_image_config(),
                 "colors": flow._default_colors(),
                 "room_colors": {},
-                "drawables": ["charger", "path"],
+                "drawables": drawables or ["charger", "path"],
                 "sizes": {},
                 "texts": [],
             },
@@ -661,6 +666,31 @@ async def test_cloud_only_vendors_never_raise_the_lan_repair(
     await vacuum.cycles(freezer, LAN_UNREACHABLE_UPDATES + 1)
 
     assert _lan_issue(hass, vacuum.entry.entry_id) is None
+
+
+async def test_vacuum_on_another_network_keeps_its_position_current(
+    hass: HomeAssistant, setup_vacuum, freezer: FrozenDateTimeFactory
+) -> None:
+    """The LAN does not reach the vacuum, so the current map and the position come through the cloud.
+
+    The cloud map object does not change while the robot drives (upstream #720), so its hash alone
+    called every download "unchanged" and the image froze after UNCHANGED_MAP_DOWNLOADS.
+    """
+    vendor = next(v for v in VENDORS if v.model == "xiaomi.vacuum.ov81gl")
+    vacuum = setup_vacuum(vendor, ["charger", "path", "vacuum_position"])
+    vacuum.home.lan.reachable = False  # the cloud still forwards to the vacuum (FakeLanVacuum.cloud_rpc)
+    await vacuum.setup()
+    vacuum.home.start_cleaning()
+    lan = vacuum.home.lan
+    changes = async_capture_events(hass, EVENT_STATE_CHANGED)
+
+    for step in range(8):
+        lan.properties[(10, 4)] = json.dumps({"position": [-150 + 50 * step, 0, 0]})
+        await vacuum.cycles(freezer, 1)
+
+    assert any(call["method"] == "get_properties" for call in lan.cloud_calls)
+    assert lan.calls_on_event_loop == []
+    assert [e.data["entity_id"] for e in changes].count(IMAGE) == 8
 
 
 # --- state writes --------------------------------------------------------------------------------

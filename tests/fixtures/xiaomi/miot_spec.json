@@ -1,0 +1,249 @@
+{
+ "source": "https://miot-spec.org/miot-spec-v2/instance (latest released version of each model, retrieved 2026-11-25)",
+ "models": {
+  "xiaomi.vacuum.b106bk": {
+   "status": [2, 1], "current_map_id": [10, 2],
+   "status_values": {"0": "Sleep", "1": "Idle", "2": "Paused", "3": "Go Charging", "4": "Charging", "5": "Sweeping", "6": "Mopping", "7": "Sweeping and Mopping", "8": "Upgrade"}
+  },
+  "xiaomi.vacuum.b106eu": {
+   "status": [2, 1], "current_map_id": [10, 2],
+   "status_values": {"0": "Sleep", "1": "Idle", "2": "Paused", "3": "Go Charging", "4": "Charging", "5": "Sweeping", "6": "Mopping", "7": "Sweeping and Mopping", "8": "Upgrade"}
+  },
+  "xiaomi.vacuum.b106tr": {
+   "status": [2, 1], "current_map_id": [10, 2],
+   "status_values": {"0": "Sleep", "1": "Idle", "2": "Paused", "3": "Go Charging", "4": "Charging", "5": "Sweeping", "6": "Mopping", "7": "Sweeping and Mopping", "8": "Upgrade"}
+  },
+  "xiaomi.vacuum.b108": {
+   "status": [2, 1],
+   "status_values": {"1": "Idle", "2": "Busy"}
+  },
+  "xiaomi.vacuum.b108gl": {
+   "status": [2, 1], "map_obj_name": [7, 1], "trajectory_obj_name": [7, 2], "vacuum_position": [7, 4],
+   "status_values": {"1": "Idle", "2": "Charging", "3": "BreakCharging", "4": "Sweeping", "5": "Paused", "6": "Go Charging", "7": "Remote", "8": "Charged", "9": "Mapping", "10": "Updating"}
+  },
+  "xiaomi.vacuum.b108gp": {
+   "status": [2, 2], "map_obj_name": [9, 1], "trajectory_obj_name": [9, 2], "vacuum_position": [9, 4], "current_map_id": [9, 6],
+   "status_values": {"1": "Idle", "2": "Busy", "3": "Delay"}
+  },
+  "xiaomi.vacuum.b112": {
+   "status": [2, 1], "current_map_id": [10, 2],
+   "status_values": {"0": "Sleep", "1": "Idle", "2": "Paused", "3": "Go Charging", "4": "Charging", "5": "Sweeping", "6": "Sweeping and Mopping", "7": "Mopping", "8": "Upgrading"}
+  },
+  "xiaomi.vacuum.b112bk": {
+   "status": [2, 1], "current_map_id": [10, 2],
+   "status_values": {"0": "Sleep", "1": "Idle", "2": "Paused", "3": "Go Charging", "4": "Charging", "5": "Sweeping", "6": "Sweeping and Mopping", "7": "Mopping", "8": "Upgrading"}
+  },
+  "xiaomi.vacuum.b112gl": {
+   "status": [2, 1], "current_map_id": [10, 2],
+   "status_values": {"0": "Sleep", "1": "Idle", "2": "Paused", "3": "Go Charging", "4": "Charging", "5": "Sweeping", "6": "Sweeping and Mopping", "7": "Mopping", "8": "Upgrading"}
+  },
+  "xiaomi.vacuum.b112tr": {
+   "status": [2, 1], "current_map_id": [10, 2],
+   "status_values": {"0": "Sleep", "1": "Idle", "2": "Paused", "3": "Go Charging", "4": "Charging", "5": "Sweeping", "6": "Sweeping and Mopping", "7": "Mopping", "8": "Upgrading"}
+  },
+  "xiaomi.vacuum.c101": {
+   "status": [2, 1], "current_map_id": [10, 2],
+   "status_values": {"0": "Sleep", "1": "Idle", "2": "Paused", "3": "Go Charging", "4": "Charging", "5": "Sweeping", "6": "Sweeping and Mopping", "7": "Mopping", "8": "Upgrading", "9": "In The Wash", "10": "In The Dry", "11": "In The Dust", "12": "Air Dry Paused"}
+  },
+  "xiaomi.vacuum.c101eu": {
+   "status": [2, 1], "current_map_id": [10, 2],
+   "status_values": {"0": "Sleep", "1": "Idle", "2": "Paused", "3": "Go Charging", "4": "Charging", "5": "Sweeping", "6": "Sweeping and Mopping", "7": "Mopping", "8": "Upgrading", "9": "In The Wash", "10": "In The Dry", "11": "In The Dust", "12": "Air Dry Paused"}
+  },
+  "xiaomi.vacuum.c102": {
+   "status": [2, 1], "current_map_id": [10, 2],
+   "status_values": {"0": "Sleep", "1": "Idle", "2": "Paused", "3": "Go Charging", "4": "Charging", "5": "Sweeping", "6": "Sweeping and Mopping", "7": "Mopping", "8": "Upgrading", "9": "In The Wash", "10": "In The Dry", "11": "In The Dust"}
+  },
+  "xiaomi.vacuum.c102cn": {
+   "status": [2, 1],
+   "status_values": {"1": "Sweeping", "2": "Idle", "3": "Paused", "4": "Error", "5": "Go Charging", "6": "Charging", "7": "Mopping", "8": "Drying", "9": "Washing", "10": "Go Washing", "11": "Building", "12": "Sweeping and Mopping", "13": "Charging Completed", "14": "Upgrading", "19": "WaterInspecting", "21": "WashingMopPause", "22": "DustCollecting", "23": "RemoteClean"}
+  },
+  "xiaomi.vacuum.c102gl": {
+   "status": [2, 1],
+   "status_values": {"1": "Sweeping", "2": "Idle", "3": "Paused", "4": "Error", "5": "Go Charging", "6": "Charging", "7": "Mopping", "8": "Drying", "9": "Washing", "10": "Go Washing", "11": "Building", "12": "Sweeping And Mopping", "13": "Charging Completed", "14": "Upgrading", "19": "WaterInspecting", "21": "WashingMopPause", "22": "DustCollecting", "23": "RemoteClean"}
+  },
+  "xiaomi.vacuum.c103": {
+   "status": [2, 1], "current_map_id": [10, 2],
+   "status_values": {"0": "Sleep", "1": "Idle", "2": "Paused", "3": "Go Charging", "4": "Charging", "5": "Sweeping", "6": "Sweeping and Mopping", "7": "Mopping", "8": "Upgrading", "9": "BuildingMap", "10": "Charged"}
+  },
+  "xiaomi.vacuum.c104": {
+   "status": [2, 1], "current_map_id": [10, 2],
+   "status_values": {"0": "Sleep", "1": "Idle", "2": "Paused", "3": "Go Charging", "4": "Charging", "5": "Sweeping", "6": "Sweeping and Mopping", "7": "Mopping", "8": "Upgrade", "9": "BuildingMap", "10": "Charged"}
+  },
+  "xiaomi.vacuum.c107": {
+   "status": [2, 2], "map_obj_name": [10, 1], "trajectory_obj_name": [10, 2], "vacuum_position": [10, 4], "current_map_id": [10, 6],
+   "status_values": {"1": "Idle", "2": "Charging", "3": "BreakCharging", "4": "Sweeping", "5": "Paused", "6": "Go Charging", "7": "GoWash", "8": "Remote", "9": "Charged", "10": "BuildingMap", "11": "Updating", "12": "MultiTaskStationWorking", "13": "MultiTaskRecharge", "14": "StationWorking", "15": "Error", "16": "Sweeping and Mopping", "17": "Mopping", "18": "MappingPause", "19": "GoChargeBreak", "20": "WashBreak", "21": "GoChargeBuildingMap"}
+  },
+  "xiaomi.vacuum.c108": {
+   "status": [2, 1],
+   "status_values": {"1": "Idle", "2": "Sweeping", "3": "Paused", "4": "Error", "5": "Charging", "6": "Go Charging", "7": "Charge Done"}
+  },
+  "xiaomi.vacuum.d101": {
+   "status": [2, 2], "map_obj_name": [10, 1], "trajectory_obj_name": [10, 2], "vacuum_position": [10, 4], "current_map_id": [10, 6],
+   "status_values": {"1": "Idle", "2": "Charging", "3": "BreakCharging", "4": "Sweeping", "5": "Paused", "6": "Go Charging", "7": "GoWash", "8": "Remote", "9": "Charged", "10": "BuildingMap", "11": "Updating", "12": "MultiTaskStationWorking", "13": "MultiTaskRecharge", "14": "StationWorking", "15": "Error", "16": "Sweeping and Mopping", "17": "Mopping", "18": "MappingPause", "19": "GoChargeBreak", "20": "WashBreak", "21": "GoChargeBuildingMap", "22": "StationAssistingCleaning", "23": "StationAssistingCleaned", "24": "GoChargeInStationAssistingCleaning"}
+  },
+  "xiaomi.vacuum.d102cn": {
+   "status": [2, 2], "map_obj_name": [10, 1], "trajectory_obj_name": [10, 2], "vacuum_position": [10, 4], "current_map_id": [10, 6],
+   "status_values": {"1": "Idle", "2": "Charging", "3": "BreakCharging", "4": "Sweeping", "5": "Paused", "6": "Go Charging", "7": "GoWash", "8": "Remote", "9": "Charged", "10": "BuildingMap", "11": "Updating", "12": "Sleeping", "13": "Relocation", "14": "StationWorking", "15": "Error", "16": "Sweeping and Mopping", "17": "Mopping", "18": "MappingPause", "19": "GoChargeBreak", "20": "WashBreak", "21": "GoChargeBuildingMap"}
+  },
+  "xiaomi.vacuum.d102ev": {
+   "status": [2, 2], "map_obj_name": [10, 1], "trajectory_obj_name": [10, 2], "vacuum_position": [10, 4], "current_map_id": [10, 6],
+   "status_values": {"1": "Idle", "2": "Charging", "3": "BreakCharging", "4": "Sweeping", "5": "Paused", "6": "Go Charging", "7": "GoWash", "8": "Remote", "9": "Charged", "10": "BuildingMap", "11": "Updating", "12": "MultiTaskStationWorking", "13": "MultiTaskRecharge", "14": "StationWorking", "15": "Error", "16": "Sweeping and Mopping", "17": "Mopping", "18": "MappingPause", "19": "GoChargeBreak", "20": "WashBreak", "21": "GoChargeBuildingMap"}
+  },
+  "xiaomi.vacuum.d102gl": {
+   "status": [2, 2], "map_obj_name": [10, 1], "trajectory_obj_name": [10, 2], "vacuum_position": [10, 4], "current_map_id": [10, 6],
+   "status_values": {"1": "Idle", "2": "Charging", "3": "BreakCharging", "4": "Sweeping", "5": "Paused", "6": "Go Charging", "7": "GoWash", "8": "Remote", "9": "Charged", "10": "BuildingMap", "11": "Updating", "12": "MultiTaskStationWorking", "13": "MultiTaskRecharge", "14": "StationWorking", "15": "Error", "16": "Sweeping and Mopping", "17": "Mopping", "18": "MappingPause", "19": "GoChargeBreak", "20": "WashBreak", "21": "GoChargeBuildingMap"}
+  },
+  "xiaomi.vacuum.d103cn": {
+   "status": [2, 1],
+   "status_values": {"1": "Sweeping", "2": "Idle", "3": "Paused", "4": "Error", "5": "Go Charging", "6": "Charging", "7": "Mopping", "8": "Drying", "9": "Washing", "10": "Go Washing", "11": "Building", "12": "Sweeping and Mopping", "13": "Charging Completed", "14": "Upgrading", "19": "WaterInspecting", "21": "WashingMopPause", "22": "DustCollecting", "23": "RemoteClean", "30": "SelfStationClean"}
+  },
+  "xiaomi.vacuum.d105": {
+   "status": [2, 2], "map_obj_name": [10, 1], "trajectory_obj_name": [10, 2], "vacuum_position": [10, 4], "current_map_id": [10, 6],
+   "status_values": {"1": "Idle", "2": "Charging", "3": "BreakCharging", "4": "Sweeping", "5": "Paused", "6": "Go Charging", "7": "GoWash", "8": "Remote", "9": "Charged", "10": "BuildingMap", "11": "Updating", "12": "MultiTaskStationWorking", "13": "MultiTaskRecharge", "14": "StationWorking", "15": "Error", "16": "Sweeping and Mopping", "17": "Mopping", "18": "MappingPause", "19": "GoChargeBreak", "20": "WashBreak", "21": "GoChargeBuildingMap", "22": "StationAssistingCleaning", "23": "StationAssistingCleaned", "24": "GoChargeInStationAssistingCleaning"}
+  },
+  "xiaomi.vacuum.d106gl": {
+   "status": [2, 1], "current_map_id": [10, 2],
+   "status_values": {"0": "Sleep", "1": "Idle", "2": "Paused", "3": "Go Charging", "4": "Charging", "5": "Sweeping", "6": "Sweeping and Mopping", "7": "Mopping", "8": "Upgrading", "9": "BuildingMap", "10": "Charging"}
+  },
+  "xiaomi.vacuum.d109gl": {
+   "status": [2, 2], "map_obj_name": [10, 1], "trajectory_obj_name": [10, 2], "vacuum_position": [10, 4], "current_map_id": [10, 6],
+   "status_values": {"1": "Idle", "2": "Charging", "3": "BreakCharging", "4": "Sweeping", "5": "Paused", "6": "Go Charging", "7": "GoWash", "8": "Remote", "9": "Charged", "10": "BuildingMap", "11": "Updating", "12": "MultiTaskStationWorking", "13": "MultiTaskRecharge", "14": "StationWorking", "15": "Error", "16": "Sweeping and Mopping", "17": "Mopping", "18": "MappingPause", "19": "GoChargeBreak", "20": "WashBreak", "21": "GoChargeBuildingMap"}
+  },
+  "xiaomi.vacuum.d110ch": {
+   "status": [2, 1],
+   "status_values": {"1": "Sweeping", "2": "Idle", "3": "Paused", "4": "Error", "5": "Go Charging", "6": "Charging", "7": "Mopping", "8": "Drying", "9": "Washing", "10": "Go Washing", "11": "Building", "12": "Sweeping and Mopping", "13": "Charging Completed", "14": "Upgrading", "19": "WaterInspecting", "21": "WashingMopPause", "22": "DustCollecting", "23": "RemoteClean", "30": "SelfStationClean"}
+  },
+  "xiaomi.vacuum.d110cn": {
+   "status": [2, 2], "map_obj_name": [10, 1], "trajectory_obj_name": [10, 2], "vacuum_position": [10, 4], "current_map_id": [10, 6],
+   "status_values": {"1": "Idle", "2": "Charging", "3": "BreakCharging", "4": "Sweeping", "5": "Paused", "6": "Go Charging", "7": "GoWash", "8": "Remote", "9": "Charged", "10": "BuildingMap", "11": "Updating", "12": "MultiTaskStationWorking", "13": "MultiTaskRecharge", "14": "StationWorking", "15": "Error", "16": "Sweeping and Mopping", "17": "Mopping", "18": "MappingPause", "19": "GoChargeBreak", "20": "WashBreak", "21": "GoChargeBuildingMap"}
+  },
+  "xiaomi.vacuum.e101gb": {
+   "status": [2, 2], "map_obj_name": [10, 1], "trajectory_obj_name": [10, 2], "vacuum_position": [10, 4], "current_map_id": [10, 6],
+   "status_values": {"1": "Idle", "2": "Charging", "3": "BreakCharging", "4": "Sweeping", "5": "Paused", "6": "Go Charging", "7": "GoWash", "8": "Remote", "9": "Charged", "10": "BuildingMap", "11": "Updating", "12": "MultiTaskStationWorking", "13": "MultiTaskRecharge", "14": "StationWorking", "15": "Error", "16": "Sweeping and Mopping", "17": "Mopping", "18": "MappingPause", "19": "GoChargeBreak", "20": "WashBreak", "21": "GoChargeBuildingMap", "22": "StationAssistingCleaning", "23": "StationAssistingCleaned", "24": "GoChargeInStationAssistingCleaning"}
+  },
+  "xiaomi.vacuum.e101gl": {
+   "status": [2, 1], "current_map_id": [10, 2],
+   "status_values": {"0": "Sleep", "1": "Idle", "2": "Paused", "3": "Go Charging", "4": "Charging", "5": "Sweeping", "6": "Sweeping and Mopping", "7": "Mopping", "8": "Upgrading", "9": "BuildingMap", "10": "Charged"}
+  },
+  "xiaomi.vacuum.ov21cn": {
+   "status": [2, 2], "map_obj_name": [10, 1], "trajectory_obj_name": [10, 2], "vacuum_position": [10, 4], "current_map_id": [10, 6],
+   "status_values": {"1": "Idle", "2": "Charging", "3": "BreakCharging", "4": "Sweeping", "5": "Paused", "6": "Go Charging", "7": "GoWash", "8": "Remote", "9": "Charged", "10": "BuildingMap", "11": "Updating", "12": "MultiTaskStationWorking", "13": "MultiTaskRecharge", "14": "StationWorking", "15": "Error", "16": "Sweeping and Mopping", "17": "Mopping", "18": "MappingPause", "19": "GoChargeBreak", "20": "WashBreak", "21": "GoChargeBuildingMap", "22": "StationAssistingCleaning", "23": "StationAssistingCleaned", "24": "GoChargeInStationAssistingCleaning"}
+  },
+  "xiaomi.vacuum.ov21gl": {
+   "status": [2, 2], "map_obj_name": [10, 1], "trajectory_obj_name": [10, 2], "vacuum_position": [10, 4], "current_map_id": [10, 6],
+   "status_values": {"1": "Idle", "2": "Charging", "3": "BreakCharging", "4": "Sweeping", "5": "Paused", "6": "Go Charging", "7": "GoWash", "8": "Remote", "9": "Charged", "10": "BuildingMap", "11": "Updating", "12": "MultiTaskStationWorking", "13": "MultiTaskRecharge", "14": "StationWorking", "15": "Error", "16": "Sweeping and Mopping", "17": "Mopping", "18": "MappingPause", "19": "GoChargeBreak", "20": "WashBreak", "21": "GoChargeBuildingMap", "22": "StationAssistingCleaning", "23": "StationAssistingCleaned", "24": "GoChargeInStationAssistingCleaning"}
+  },
+  "xiaomi.vacuum.ov31cn": {
+   "status": [2, 2], "map_obj_name": [10, 1], "trajectory_obj_name": [10, 2], "vacuum_position": [10, 4], "current_map_id": [10, 6],
+   "status_values": {"1": "Idle", "2": "Charging", "3": "BreakCharging", "4": "Sweeping", "5": "Paused", "6": "Go Charging", "7": "GoWash", "8": "Remote", "9": "Charged", "10": "BuildingMap", "11": "Updating", "12": "MultiTaskStationWorking", "13": "MultiTaskRecharge", "14": "StationWorking", "15": "Error", "16": "Sweeping and Mopping", "17": "Mopping", "18": "MappingPause", "19": "GoChargeBreak", "20": "WashBreak", "21": "GoChargeBuildingMap", "22": "StationAssistingCleaning", "23": "StationAssistingCleaned", "24": "GoChargeInStationAssistingCleaning"}
+  },
+  "xiaomi.vacuum.ov31gl": {
+   "status": [2, 2], "map_obj_name": [10, 1], "trajectory_obj_name": [10, 2], "vacuum_position": [10, 4], "current_map_id": [10, 6],
+   "status_values": {"1": "Idle", "2": "Charging", "3": "BreakCharging", "4": "Sweeping", "5": "Paused", "6": "Go Charging", "7": "GoWash", "8": "Remote", "9": "Charged", "10": "BuildingMap", "11": "Updating", "12": "MultiTaskStationWorking", "13": "MultiTaskRecharge", "14": "StationWorking", "15": "Error", "16": "Sweeping and Mopping", "17": "Mopping", "18": "MappingPause", "19": "GoChargeBreak", "20": "WashBreak", "21": "GoChargeBuildingMap", "22": "StationAssistingCleaning", "23": "StationAssistingCleaned", "24": "GoChargeInStationAssistingCleaning"}
+  },
+  "xiaomi.vacuum.ov32gl": {
+   "status": [2, 2], "map_obj_name": [9, 1], "trajectory_obj_name": [9, 2], "vacuum_position": [9, 4], "current_map_id": [9, 6],
+   "status_values": {"1": "Idle", "2": "Busy", "3": "Delay"}
+  },
+  "xiaomi.vacuum.ov42cn": {
+   "status": [2, 2], "map_obj_name": [10, 1], "trajectory_obj_name": [10, 2], "vacuum_position": [10, 4], "current_map_id": [10, 6],
+   "status_values": {"1": "Idle", "2": "Charging", "3": "BreakCharging", "4": "Sweeping", "5": "Paused", "6": "Go Charging", "7": "GoWash", "8": "Remote", "9": "Charged", "10": "BuildingMap", "11": "Updating", "12": "MultiTaskStationWorking", "13": "MultiTaskRecharge", "14": "StationWorking", "15": "Error", "16": "Sweeping and Mopping", "17": "Mopping", "18": "MappingPause", "19": "GoChargeBreak", "20": "WashBreak", "21": "GoChargeBuildingMap", "22": "StationAssistingCleaning", "23": "StationAssistingCleaned", "24": "GoChargeInStationAssistingCleaning"}
+  },
+  "xiaomi.vacuum.ov42gl": {
+   "status": [2, 2], "map_obj_name": [10, 1], "trajectory_obj_name": [10, 2], "vacuum_position": [10, 4], "current_map_id": [10, 6],
+   "status_values": {"1": "Idle", "2": "Charging", "3": "BreakCharging", "4": "Sweeping", "5": "Paused", "6": "Go Charging", "7": "GoWash", "8": "Remote", "9": "Charged", "10": "BuildingMap", "11": "Updating", "12": "MultiTaskStationWorking", "13": "MultiTaskRecharge", "14": "StationWorking", "15": "Error", "16": "Sweeping and Mopping", "17": "Mopping", "18": "MappingPause", "19": "GoChargeBreak", "20": "WashBreak", "21": "GoChargeBuildingMap", "22": "StationAssistingCleaning", "23": "StationAssistingCleaned", "24": "GoChargeInStationAssistingCleaning"}
+  },
+  "xiaomi.vacuum.ov43gb": {
+   "status": [2, 2], "map_obj_name": [10, 1], "trajectory_obj_name": [10, 2], "vacuum_position": [10, 4], "current_map_id": [10, 6],
+   "status_values": {"1": "Idle", "2": "Charging", "3": "BreakCharging", "4": "Sweeping", "5": "Paused", "6": "Go Charging", "7": "GoWash", "8": "Remote", "9": "Charged", "10": "BuildingMap", "11": "Updating", "12": "MultiTaskStationWorking", "13": "MultiTaskRecharge", "14": "StationWorking", "15": "Error", "16": "Sweeping and Mopping", "17": "Mopping", "18": "MappingPause", "19": "GoChargeBreak", "20": "WashBreak", "21": "GoChargeBuildingMap", "22": "StationAssistingCleaning", "23": "StationAssistingCleaned", "24": "GoChargeInStationAssistingCleaning"}
+  },
+  "xiaomi.vacuum.ov43gl": {
+   "status": [2, 2], "map_obj_name": [9, 1], "trajectory_obj_name": [9, 2], "vacuum_position": [9, 4], "current_map_id": [9, 6],
+   "status_values": {"1": "Idle", "2": "Busy", "3": "Delay"}
+  },
+  "xiaomi.vacuum.ov51": {
+   "status": [2, 2], "map_obj_name": [9, 1], "trajectory_obj_name": [9, 2], "vacuum_position": [9, 4], "current_map_id": [9, 6],
+   "status_values": {"1": "Idle", "2": "Busy", "3": "Delay"}
+  },
+  "xiaomi.vacuum.ov51gl": {
+   "status": [2, 2], "map_obj_name": [10, 1], "trajectory_obj_name": [10, 2], "vacuum_position": [10, 4], "current_map_id": [10, 6],
+   "status_values": {"1": "Idle", "2": "Charging", "3": "BreakCharging", "4": "Sweeping", "5": "Paused", "6": "Go Charging", "7": "GoWash", "8": "Remote", "9": "Charged", "10": "BuildingMap", "11": "Updating", "12": "MultiTaskStationWorking", "13": "MultiTaskRecharge", "14": "StationWorking", "15": "Error", "16": "Sweeping and Mopping", "17": "Mopping", "18": "MappingPause", "19": "GoChargeBreak", "20": "WashBreak", "21": "GoChargeBuildingMap", "22": "StationAssistingCleaning", "23": "StationAssistingCleaned", "24": "GoChargeInStationAssistingCleaning"}
+  },
+  "xiaomi.vacuum.ov71gl": {
+   "status": [2, 2], "map_obj_name": [10, 1], "trajectory_obj_name": [10, 2], "vacuum_position": [10, 4], "current_map_id": [10, 6],
+   "status_values": {"1": "Idle", "2": "Charging", "3": "BreakCharging", "4": "Sweeping", "5": "Paused", "6": "Go Charging", "7": "GoWash", "8": "Remote", "9": "Charged", "10": "BuildingMap", "11": "Updating", "12": "MultiTaskStationWorking", "13": "MultiTaskRecharge", "14": "StationWorking", "15": "Error", "16": "Sweeping and Mopping", "17": "Mopping", "18": "MappingPause", "19": "GoChargeBreak", "20": "WashBreak", "21": "GoChargeBuildingMap", "22": "StationAssistingCleaning", "23": "StationAssistingCleaned", "24": "GoChargeInStationAssistingCleaning"}
+  },
+  "xiaomi.vacuum.ov81": {
+   "status": [2, 2], "map_obj_name": [9, 1], "trajectory_obj_name": [9, 2], "vacuum_position": [9, 4], "current_map_id": [9, 6],
+   "status_values": {"1": "Idle", "2": "Busy", "3": "Delay"}
+  },
+  "xiaomi.vacuum.ov81cn": {
+   "status": [2, 2], "map_obj_name": [10, 1], "trajectory_obj_name": [10, 2], "vacuum_position": [10, 4], "current_map_id": [10, 6],
+   "status_values": {"1": "Idle", "2": "Charging", "3": "BreakCharging", "4": "Sweeping", "5": "Paused", "6": "Go Charging", "7": "GoWash", "8": "Remote", "9": "Charged", "10": "BuildingMap", "11": "Updating", "13": "MultiTaskRecharge", "15": "Error", "16": "Sweeping and Mopping", "17": "Mopping", "18": "MappingPause", "19": "GoChargeBreak", "21": "GoChargeBuildingMap", "24": "GoChargeInStationAssistingCleaning"}
+  },
+  "xiaomi.vacuum.ov81gl": {
+   "status": [2, 2], "map_obj_name": [10, 1], "trajectory_obj_name": [10, 2], "vacuum_position": [10, 4], "current_map_id": [10, 6],
+   "status_values": {"1": "Idle", "2": "Charging", "3": "BreakCharging", "4": "Sweeping", "5": "Paused", "6": "Go Charging", "7": "GoWash", "8": "Remote", "9": "Charged", "10": "BuildingMap", "11": "Updating", "12": "MultiTaskStationWorking", "13": "MultiTaskRecharge", "14": "StationWorking", "15": "Error", "16": "Sweeping and Mopping", "17": "Mopping", "18": "MappingPause", "19": "GoChargeBreak", "20": "WashBreak", "21": "GoChargeBuildingMap", "22": "StationAssistingCleaning", "23": "StationAssistingCleaned", "24": "GoChargeInStationAssistingCleaning"}
+  },
+  "xiaomi.vacuum.pv11cn": {
+   "status": [2, 2], "map_obj_name": [10, 1], "trajectory_obj_name": [10, 2], "vacuum_position": [10, 4], "current_map_id": [10, 6],
+   "status_values": {"1": "Idle", "2": "Charging", "3": "BreakCharging", "4": "Sweeping", "5": "Paused", "6": "Go Charging", "7": "GoWash", "8": "Remote", "9": "Charged", "10": "BuildingMap", "11": "Updating", "12": "MultiTaskStationWorking", "13": "MultiTaskRecharge", "14": "StationWorking", "15": "Error", "16": "Sweeping and Mopping", "17": "Mopping", "18": "MappingPause", "19": "GoChargeBreak", "20": "WashBreak", "21": "GoChargeBuildingMap", "24": "GoChargeInStationAssistingCleaning", "25": "SelfChecking", "26": "Summoning", "27": "SweepSummoning"}
+  },
+  "xiaomi.vacuum.pv11gl": {
+   "status": [2, 2], "map_obj_name": [10, 1], "trajectory_obj_name": [10, 2], "vacuum_position": [10, 4], "current_map_id": [10, 6],
+   "status_values": {"1": "Idle", "2": "Charging", "3": "BreakCharging", "4": "Sweeping", "5": "Paused", "6": "Go Charging", "7": "GoWash", "8": "Remote", "9": "Charged", "10": "BuildingMap", "11": "Updating", "12": "MultiTaskStationWorking", "13": "MultiTaskRecharge", "14": "StationWorking", "15": "Error", "16": "Sweeping and Mopping", "17": "Mopping", "18": "MappingPause", "19": "GoChargeBreak", "20": "WashBreak", "21": "GoChargeBuildingMap", "24": "GoChargeInStationAssistingCleaning", "25": "SelfChecking", "26": "Summoning", "27": "SweepSummoning"}
+  },
+  "xiaomi.vacuum.pv21cn": {
+   "status": [2, 2], "map_obj_name": [10, 1], "trajectory_obj_name": [10, 2], "vacuum_position": [10, 4], "current_map_id": [10, 6],
+   "status_values": {"1": "Idle", "2": "Charging", "3": "BreakCharging", "4": "Sweeping", "5": "Paused", "6": "Go Charging", "7": "GoWash", "8": "Remote", "9": "Charged", "10": "BuildingMap", "11": "Updating", "12": "MultiTaskStationWorking", "13": "MultiTaskRecharge", "14": "StationWorking", "15": "Error", "16": "Sweeping and Mopping", "17": "Mopping", "18": "MappingPause", "19": "GoChargeBreak", "20": "WashBreak", "21": "GoChargeBuildingMap", "22": "StationAssistingCleaning", "23": "StationAssistingCleaned", "24": "GoChargeInStationAssistingCleaning", "25": "SelfChecking", "26": "Summoning"}
+  },
+  "xiaomi.vacuum.pv21gl": {
+   "status": [2, 2], "map_obj_name": [10, 1], "trajectory_obj_name": [10, 2], "vacuum_position": [10, 4], "current_map_id": [10, 6],
+   "status_values": {"1": "Idle", "2": "Charging", "3": "BreakCharging", "4": "Sweeping", "5": "Paused", "6": "Go Charging", "7": "GoWash", "8": "Remote", "9": "Charged", "10": "BuildingMap", "11": "Updating", "12": "MultiTaskStationWorking", "13": "MultiTaskRecharge", "14": "StationWorking", "15": "Error", "16": "Sweeping and Mopping", "17": "Mopping", "18": "MappingPause", "19": "GoChargeBreak", "20": "WashBreak", "21": "GoChargeBuildingMap", "22": "StationAssistingCleaning", "23": "StationAssistingCleaned", "24": "GoChargeInStationAssistingCleaning", "25": "SelfChecking", "26": "Summoning"}
+  },
+  "xiaomi.vacuum.pv31cn": {
+   "status": [2, 2], "map_obj_name": [10, 1], "trajectory_obj_name": [10, 2], "vacuum_position": [10, 4], "current_map_id": [10, 6],
+   "status_values": {"1": "Idle", "2": "Charging", "3": "BreakCharging", "4": "Sweeping", "5": "Paused", "6": "Go Charging", "7": "GoWash", "8": "Remote", "9": "Charged", "10": "BuildingMap", "11": "Updating", "12": "MultiTaskStationWorking", "13": "MultiTaskRecharge", "14": "StationWorking", "15": "Error", "16": "Sweeping and Mopping", "17": "Mopping", "18": "MappingPause", "19": "GoChargeBreak", "20": "WashBreak", "21": "GoChargeBuildingMap", "22": "StationAssistingCleaning", "23": "StationAssistingCleaned", "24": "GoChargeInStationAssistingCleaning"}
+  },
+  "xiaomi.vacuum.pv32cn": {
+   "status": [2, 2], "map_obj_name": [10, 1], "trajectory_obj_name": [10, 2], "vacuum_position": [10, 4], "current_map_id": [10, 6],
+   "status_values": {"1": "Idle", "2": "Charging", "3": "BreakCharging", "4": "Sweeping", "5": "Paused", "6": "Go Charging", "7": "GoWash", "8": "Remote", "9": "Charged", "10": "BuildingMap", "11": "Updating", "12": "MultiTaskStationWorking", "13": "MultiTaskRecharge", "14": "StationWorking", "15": "Error", "16": "Sweeping and Mopping", "17": "Mopping", "18": "MappingPause", "19": "GoChargeBreak", "20": "WashBreak", "21": "GoChargeBuildingMap", "24": "GoChargeInStationAssistingCleaning"}
+  },
+  "xiaomi.vacuum.pv32gl": {
+   "status": [2, 2], "map_obj_name": [10, 1], "trajectory_obj_name": [10, 2], "vacuum_position": [10, 4], "current_map_id": [10, 6],
+   "status_values": {"1": "Idle", "2": "Charging", "3": "BreakCharging", "4": "Sweeping", "5": "Paused", "6": "Go Charging", "7": "GoWash", "8": "Remote", "9": "Charged", "10": "BuildingMap", "11": "Updating", "12": "MultiTaskStationWorking", "13": "MultiTaskRecharge", "14": "StationWorking", "15": "Error", "16": "Sweeping and Mopping", "17": "Mopping", "18": "MappingPause", "19": "GoChargeBreak", "20": "WashBreak", "21": "GoChargeBuildingMap", "24": "GoChargeInStationAssistingCleaning"}
+  },
+  "xiaomi.vacuum.pv51gl": {
+   "status": [2, 2], "map_obj_name": [10, 1], "trajectory_obj_name": [10, 2], "vacuum_position": [10, 4], "current_map_id": [10, 6],
+   "status_values": {"1": "Idle", "2": "Charging", "3": "BreakCharging", "4": "Sweeping", "5": "Paused", "6": "Go Charging", "7": "GoWash", "8": "Remote", "9": "Charged", "10": "BuildingMap", "11": "Updating", "12": "MultiTaskStationWorking", "13": "MultiTaskRecharge", "14": "StationWorking", "15": "Error", "16": "Sweeping and Mopping", "17": "Mopping", "18": "MappingPause", "19": "GoChargeBreak", "20": "WashBreak", "21": "GoChargeBuildingMap", "22": "StationAssistingCleaning", "23": "StationAssistingCleaned", "24": "GoChargeInStationAssistingCleaning", "25": "SelfChecking", "26": "Summoning", "27": "SweepSummoning"}
+  },
+  "xiaomi.vacuum.pv81gl": {
+   "status": [2, 2], "map_obj_name": [10, 1], "trajectory_obj_name": [10, 2], "vacuum_position": [10, 4], "current_map_id": [10, 6],
+   "status_values": {"1": "Idle", "2": "Charging", "3": "BreakCharging", "4": "Sweeping", "5": "Paused", "6": "Go Charging", "7": "GoWash", "8": "Remote", "9": "Charged", "10": "BuildingMap", "11": "Updating", "12": "MultiTaskStationWorking", "13": "MultiTaskRecharge", "14": "StationWorking", "15": "Error", "16": "Sweeping and Mopping", "17": "Mopping", "18": "MappingPause", "19": "GoChargeBreak", "20": "WashBreak", "21": "GoChargeBuildingMap", "22": "StationAssistingCleaning", "23": "StationAssistingCleaned", "24": "GoChargeInStationAssistingCleaning", "25": "SelfChecking", "26": "Summoning", "27": "SweepSummoning"}
+  },
+  "xiaomi.vacuum.qv12cn": {
+   "status": [2, 2], "map_obj_name": [10, 1], "trajectory_obj_name": [10, 2], "vacuum_position": [10, 4], "current_map_id": [10, 6],
+   "status_values": {"1": "Idle", "2": "Charging", "3": "BreakCharging", "4": "Sweeping", "5": "Paused", "6": "Go Charging", "7": "GoWash", "8": "Remote", "9": "Charged", "10": "BuildingMap", "11": "Updating", "12": "MultiTaskStationWorking", "13": "MultiTaskRecharge", "14": "StationWorking", "18": "MappingPause", "19": "GoChargeBreak", "20": "WashBreak", "21": "GoChargeBuildingMap", "25": "SelfChecking", "26": "Summoning"}
+  },
+  "xiaomi.vacuum.qv12gl": {
+   "status": [2, 2], "map_obj_name": [10, 1], "trajectory_obj_name": [10, 2], "vacuum_position": [10, 4], "current_map_id": [10, 6],
+   "status_values": {"1": "Idle", "2": "Charging", "3": "BreakCharging", "4": "Sweeping", "5": "Paused", "6": "Go Charging", "7": "GoWash", "8": "Remote", "9": "Charged", "10": "BuildingMap", "11": "Updating", "12": "MultiTaskStationWorking", "13": "MultiTaskRecharge", "14": "StationWorking", "18": "MappingPause", "19": "GoChargeBreak", "20": "WashBreak", "21": "GoChargeBuildingMap", "25": "SelfChecking", "26": "Summoning"}
+  },
+  "xiaomi.vacuum.qv41cn": {
+   "status": [2, 2], "map_obj_name": [10, 1], "trajectory_obj_name": [10, 2], "vacuum_position": [10, 4], "current_map_id": [10, 6],
+   "status_values": {"1": "Idle", "2": "Charging", "3": "BreakCharging", "4": "Sweeping", "5": "Paused", "6": "Go Charging", "7": "GoWash", "8": "Remote", "9": "Charged", "10": "BuildingMap", "11": "Updating", "12": "MultiTaskStationWorking", "13": "MultiTaskRecharge", "14": "StationWorking", "15": "Error", "16": "Sweeping and Mopping", "17": "Mopping", "18": "MappingPause", "19": "GoChargeBreak", "20": "WashBreak", "21": "GoChargeBuildingMap", "24": "GoChargeInStationAssistingCleaning"}
+  },
+  "xiaomi.vacuum.qv41gl": {
+   "status": [2, 2], "map_obj_name": [10, 1], "trajectory_obj_name": [10, 2], "vacuum_position": [10, 4], "current_map_id": [10, 6],
+   "status_values": {"1": "Idle", "2": "Charging", "3": "BreakCharging", "4": "Sweeping", "5": "Paused", "6": "Go Charging", "7": "GoWash", "8": "Remote", "9": "Charged", "10": "BuildingMap", "11": "Updating", "12": "MultiTaskStationWorking", "13": "MultiTaskRecharge", "14": "StationWorking", "15": "Error", "16": "Sweeping and Mopping", "17": "Mopping", "18": "MappingPause", "19": "GoChargeBreak", "20": "WashBreak", "21": "GoChargeBuildingMap", "24": "GoChargeInStationAssistingCleaning"}
+  },
+  "xiaomi.vacuum.qv42gl": {
+   "status": [2, 2], "map_obj_name": [10, 1], "trajectory_obj_name": [10, 2], "vacuum_position": [10, 4], "current_map_id": [10, 6],
+   "status_values": {"1": "Idle", "2": "Charging", "3": "BreakCharging", "4": "Sweeping", "5": "Paused", "6": "Go Charging", "7": "GoWash", "8": "Remote", "9": "Charged", "10": "BuildingMap", "11": "Updating", "12": "MultiTaskStationWorking", "13": "MultiTaskRecharge", "14": "StationWorking", "15": "Error", "16": "Sweeping and Mopping", "17": "Mopping", "18": "MappingPause", "19": "GoChargeBreak", "20": "WashBreak", "21": "GoChargeBuildingMap", "22": "StationAssistingCleaning", "23": "StationAssistingCleaned", "24": "GoChargeInStationAssistingCleaning", "25": "SelfChecking", "26": "Summoning", "27": "SweepSummoning"}
+  },
+  "xiaomi.vacuum.qv71gl": {
+   "status": [2, 2], "map_obj_name": [10, 1], "trajectory_obj_name": [10, 2], "vacuum_position": [10, 4], "current_map_id": [10, 6],
+   "status_values": {"1": "Idle", "2": "Charging", "3": "BreakCharging", "4": "Sweeping", "5": "Paused", "6": "Go Charging", "7": "GoWash", "8": "Remote", "9": "Charged", "10": "BuildingMap", "11": "Updating", "12": "MultiTaskStationWorking", "13": "MultiTaskRecharge", "14": "StationWorking", "15": "Error", "16": "Sweeping and Mopping", "17": "Mopping", "18": "MappingPause", "19": "GoChargeBreak", "20": "WashBreak", "21": "GoChargeBuildingMap", "22": "StationAssistingCleaning", "23": "StationAssistingCleaned", "24": "GoChargeInStationAssistingCleaning"}
+  }
+ }
+}
