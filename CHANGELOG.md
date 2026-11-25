@@ -6,6 +6,16 @@
   @winchester7). Its map is read from the endpoint the Mi Home app uses, where the other one points at
   a file that is no map and failed with "list indices must be integers or slices, not str". Other
   Roidmi models are unchanged.
+- Roidmi `roidmi.vacuum.sdj60` shows its map (upstream #572, ported from upstream PR #768 by
+  @winchester7). Its map is read from the endpoint the Mi Home app uses, where the other one points at
+  a file that is no map and failed with "list indices must be integers or slices, not str". Other
+  Roidmi models are unchanged.
+- Jonr P20 and P20 Pro (`xtl.vacuum.xm2216`) show their map: floor plan with room colours, charger,
+  vacuum and the path of the clean (upstream #621). The map format and its parser come from
+  [Maedrawd's fork](https://github.com/Maedrawd/Home-Assistant-custom-components-Xiaomi-Cloud-Map-Extractor-jonrp20)
+  (@Maedrawd), which three owners confirmed against the Mi Home app. Room names, no-go zones and
+  whether the vacuum is cleaning are not read yet; the map is checked once a minute while it does not
+  change.
 
 ## 1.0.0 - 2026-11-25
 
