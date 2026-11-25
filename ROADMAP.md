@@ -16,8 +16,7 @@ with a test that fails first (see [AGENTS.md](AGENTS.md)).
 
 - **Xiaomi models: live data and map index** (backlog): upstream PRs #781 and a generalised #748.
   Closes #720, advances #563, #657, #702, #739.
-- **Leftover original YAML after the import** (drop-in): a repair that names the
-  `platform: xiaomi_cloud_map_extractor` block to remove once the original is uninstalled.
+- **Secrets in vendor logs** and **Viomi: follow cleaning start sooner** (items 1 and 2 below).
 
 Still open from the cloud login work: PR #793 (cloud region selection), #700, #712 and the
 `verifyEmail` finish location in #780. Unverified: an unencrypted API answer with code 2 or 3, or the
