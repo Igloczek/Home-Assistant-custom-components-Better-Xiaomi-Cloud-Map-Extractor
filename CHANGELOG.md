@@ -2,6 +2,29 @@
 
 ## Unreleased
 
+- Xiaomi vacuums show the robot and its path while cleaning. The cloud map has neither, so they
+  are read from the vacuum (position and the current clean's trajectory) and drawn on the map; the
+  S20+ (xiaomi.vacuum.b108gl) map now refreshes during a clean instead of treating "Sweeping" as
+  idle (upstream PR #781 by muryoh, extended to every Xiaomi model that reports them; upstream #720,
+  #563).
+- Xiaomi vacuums read their status from the right property: on the S40, X20+, H50, 5 Pro and most
+  newer models it was read from the firmware version, so the map could not tell cleaning from
+  docked.
+- A Xiaomi vacuum that Home Assistant cannot reach on the local network keeps showing the current
+  map: the map number and the robot position come through the Xiaomi cloud, or the vacuum's last
+  reported map is kept. A vacuum that never said which map is current is reported unreachable
+  instead of showing an old, deleted map; a map number missing from the vacuum's map name is read
+  from its current map id (upstream #720).
+- A Xiaomi vacuum that stores its maps under another Xiaomi account id than the one logged in, as
+  an H40 (xiaomi.vacuum.ov51gl) does, gets its map instead of "404 Object Not Found": the map is
+  downloaded from the path the vacuum reports (upstream #762).
+- Rooms of the Xiaomi 5 Pro (xiaomi.vacuum.ov21gl) and any other map that repeats a room id stay
+  separate instead of merging into one room (upstream PR #748 by Luciano Benitez, generalised;
+  upstream #702, #657).
+- No-go zones, no-mop zones and virtual walls of the S40 (ov81gl), 5 Pro and other Xiaomi models
+  that store them as point lists are drawn (`vacuum-map-parser-xiaomi` 0.1.4; upstream #739, PR
+  #748).
+
 ## 0.1.5 - 2026-11-25
 
 ### Fixed
