@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+### Fixed
+
+- A Roborock, Viomi or Roidmi map that can't be read (corrupt or cut off) now says the map couldn't be read and keeps the last map, instead of "Unexpected error" with every entity unavailable.
+- Options: entering a room id that is not a number in **Room colors** shows the error again instead of an empty next step that cleared every room colour; stored room colours show in the colour picker.
+- Options: **Sizes** fills in every size, so the form can be saved without typing each one.
+- The **Goto predicted path** sensor no longer fails when the vacuum reports a predicted path.
+- QR login: an unexpected answer or error while getting the code ends on the retry form instead of "Unknown error".
+- Dreame models with encrypted maps: a status answer without a time no longer breaks the next map request.
+- `protobuf` is installed with the integration; Ijai map parsing needs it and some installations did not have it.
+
 ## 0.1.6 - 2026-11-25
 
 ### Changed

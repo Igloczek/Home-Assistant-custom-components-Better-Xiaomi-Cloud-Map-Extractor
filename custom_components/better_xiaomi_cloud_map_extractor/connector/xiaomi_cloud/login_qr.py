@@ -119,7 +119,11 @@ class QrLogin(XiaomiCloudSession):
         location = response.headers.get("Location")
         if response.status not in (301, 302, 303, 307, 308) or not location:
             return login_url
-        target = URL(login_url).join(URL(location))
+        try:
+            target = URL(login_url).join(URL(location))
+        except ValueError:
+            _LOGGER.debug("Xiaomi cloud qr login - login link redirect is no URL, using the link as is")
+            return login_url
         if "_json" not in target.query:
             return login_url
         return str(target.with_query({k: v for k, v in target.query.items() if k != "_json"}))

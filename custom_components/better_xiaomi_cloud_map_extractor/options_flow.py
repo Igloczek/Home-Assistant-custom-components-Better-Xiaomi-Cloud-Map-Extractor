@@ -147,7 +147,7 @@ class XiaomiCloudMapExtractorOptionsFlowHandler(OptionsFlow):
                 errors["room_color_ids"] = "some_room_ids_are_not_integers"
             else:
                 self._room_color_ids = user_input["room_color_ids"]
-            return await self.async_step_room_colors_step2()
+                return await self.async_step_room_colors_step2()
 
         schema = vol.Schema(
             {vol.Required("room_color_ids"): SelectSelector(
@@ -160,13 +160,15 @@ class XiaomiCloudMapExtractorOptionsFlowHandler(OptionsFlow):
                 ))}
         )
 
-        if len(self.config_entry.options[CONF_ROOM_COLORS]) > 0:
+        if user_input is not None:
+            data_schema = self.add_suggested_values_to_schema(schema, user_input)
+        elif len(self.config_entry.options[CONF_ROOM_COLORS]) > 0:
             data_schema = self.add_suggested_values_to_schema(
                 schema, {"room_color_ids": list(self.config_entry.options[CONF_ROOM_COLORS].keys())}
             )
         else:
             data_schema = schema
-        return self.async_show_form(step_id="room_colors_step1", data_schema=data_schema)
+        return self.async_show_form(step_id="room_colors_step1", data_schema=data_schema, errors=errors)
 
     async def async_step_room_colors_step2(self: Self, user_input=None) -> ConfigFlowResult:
         if user_input is not None:
@@ -180,7 +182,8 @@ class XiaomiCloudMapExtractorOptionsFlowHandler(OptionsFlow):
             schema,
             {
                 room_id: (
-                    configured_colors[room_id]
+                    # Stored as RGBA; the colour picker takes RGB.
+                    list(configured_colors[room_id][:3])
                     if room_id in configured_colors
                     else palette.get_room_color(room_id)
                 )
@@ -218,14 +221,12 @@ class XiaomiCloudMapExtractorOptionsFlowHandler(OptionsFlow):
         selector = NumberSelector(
             config=NumberSelectorConfig(min=0, max=50, step=0.1, unit_of_measurement="px", mode=NumberSelectorMode.BOX))
         schema = vol.Schema({vol.Required(s.value): selector for s in Size})
-        data_schema = self.add_suggested_values_to_schema(
-            schema, self.config_entry.options[CONF_SIZES]
-        )
+        data_schema = self.add_suggested_values_to_schema(schema, self._default_values_sizes())
         return self.async_show_form(step_id="sizes", data_schema=data_schema, last_step=True)
 
     def _default_values_sizes(self: Self) -> dict[str, Any]:
         defaults = {k.value: v for k, v in Sizes.SIZES.items()}
-        for k, v in self.config_entry.options[CONF_SIZES]:
+        for k, v in self.config_entry.options[CONF_SIZES].items():
             defaults[k] = v
         return defaults
 

@@ -125,6 +125,10 @@ class LoginSteps(FlowBase):
             except FailedLoginException:
                 self._qr_error = "qr_code_unavailable"
                 return await self.async_step_auth_qr_failed()
+            except Exception as err:  # noqa: BLE001 - a bug still ends on a form the user can retry from
+                _LOGGER.error("Unexpected error while getting the QR code", exc_info=err)
+                self._qr_error = "qr_failed"
+                return await self.async_step_auth_qr_failed()
             self._qr_placeholders = {
                 "qr_image_b64": base64.b64encode(qr_image).decode("utf-8"),
                 "login_link": login_link,

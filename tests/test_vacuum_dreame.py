@@ -7,10 +7,14 @@ zlib ("incorrect header check", shown as an unknown error).
 
 from __future__ import annotations
 
+import json
+
 import base64
 import logging
 import zlib
 from unittest.mock import MagicMock
+
+from unittest.mock import AsyncMock
 
 import pytest
 from vacuum_map_parser_base.config.color import ColorsPalette
@@ -117,3 +121,15 @@ def test_unreadable_map_is_a_parse_failure(raw: bytes) -> None:
     unknown error from inside the parser."""
     with pytest.raises(FailedMapParseException):
         dreame("dreame.vacuum.p2008").decode_and_parse(raw)
+
+
+async def test_map_name_request_after_an_answer_without_a_time_stays_json() -> None:
+    """The vacuum answers with no map and no time: the next request still sends valid JSON."""
+    vacuum = dreame(ENCRYPTED_MODEL)
+    vacuum._connector.get_other_info = AsyncMock(return_value={"result": {"out": [{"value": ""}]}})
+
+    assert await vacuum.get_map_name() is None
+    assert await vacuum.get_map_name() is None
+
+    sent = vacuum._connector.get_other_info.call_args.kwargs["parameters"]["in"][0]["value"]
+    json.loads(sent)
