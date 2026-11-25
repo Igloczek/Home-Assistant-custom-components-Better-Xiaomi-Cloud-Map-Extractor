@@ -20,7 +20,16 @@ from custom_components.better_xiaomi_cloud_map_extractor.connector.utils.excepti
 )
 from custom_components.better_xiaomi_cloud_map_extractor.connector.xiaomi_cloud.connector import XiaomiCloudConnector
 
-from .fake_xiaomi import ACCOUNT, STS, VERIFICATION_CODE, VERIFY_CONTEXT, FakeResponse, FakeXiaomiCloud, json_response
+from .fake_xiaomi import (
+    ACCOUNT,
+    STS,
+    VERIFICATION_CODE,
+    VERIFY_CONTEXT,
+    FakeResponse,
+    FakeXiaomiCloud,
+    connection_timeout,
+    json_response,
+)
 
 VERIFY_EMAIL = f"{ACCOUNT}/identity/auth/verifyEmail"
 RESULT_CHECK = f"{ACCOUNT}/identity/result/check"
@@ -128,4 +137,44 @@ async def test_unfinished_verification_raises_and_keeps_no_session(endpoint, met
 
     with pytest.raises(raised):
         await connector.continue_login_with_two_factor("123456", verification)
+    assert not connector.has_service_token()
+
+
+# Every request of the verification, started by the password login and finished with the code.
+VERIFICATION_START = {
+    "authStart": ("GET", f"{ACCOUNT}/fe/service/identity/authStart"),
+    "identity/list": ("GET", f"{ACCOUNT}/identity/list"),
+    "verifyEmail options": ("GET", VERIFY_EMAIL),
+    "sendEmailTicket": ("POST", f"{ACCOUNT}/identity/auth/sendEmailTicket"),
+}
+VERIFICATION_FINISH = {
+    "verifyEmail": ("POST", VERIFY_EMAIL),
+    "result/check": ("GET", RESULT_CHECK),
+    "Auth2/end": ("GET", AUTH2_END),
+    "STS": ("GET", STS),
+}
+
+
+@pytest.mark.parametrize(("method", "endpoint"), VERIFICATION_START.values(), ids=VERIFICATION_START.keys())
+async def test_timeout_while_asking_for_the_code_is_a_connection_failure(method, endpoint) -> None:
+    """A Xiaomi host that times out is "can't connect", never a raw aiohttp error ("Unknown error")."""
+    cloud = FakeXiaomiCloud()
+    cloud.pass_token_login(accepted=False)
+    cloud.password_login("two_factor")
+    cloud.on(method, endpoint, connection_timeout)
+    connector = XiaomiCloudConnector(cloud.session_creator, server="de")
+
+    with pytest.raises(FailedConnectionException):
+        await connector.login_with_credentials("user@example.com", "made-up-password")
+    assert not connector.has_service_token()
+
+
+@pytest.mark.parametrize(("method", "endpoint"), VERIFICATION_FINISH.values(), ids=VERIFICATION_FINISH.keys())
+async def test_timeout_while_checking_the_code_is_a_connection_failure(method, endpoint) -> None:
+    cloud = FakeXiaomiCloud()
+    connector, verification = await _verification_asked(cloud)
+    cloud.on(method, endpoint, connection_timeout)
+
+    with pytest.raises(FailedConnectionException):
+        await connector.continue_login_with_two_factor(VERIFICATION_CODE, verification)
     assert not connector.has_service_token()
