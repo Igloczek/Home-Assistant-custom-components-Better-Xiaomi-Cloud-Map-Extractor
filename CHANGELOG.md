@@ -19,6 +19,12 @@
 
 ### Fixed
 
+- After importing a vacuum that came from v2 YAML, Repairs now says to remove the old
+  `camera: - platform: xiaomi_cloud_map_extractor` block: it shows the file, the line and the block
+  (username, password and token hidden) and that removing it is safe. Left in place, it made Home
+  Assistant log "Platform error: camera - Integration 'xiaomi_cloud_map_extractor' not found" at
+  every start once the original was uninstalled. The "moved from Xiaomi Cloud Map Extractor" repair
+  lists removing the block before uninstalling the original.
 - No more "Detected blocking call" warnings: the status and map-name requests to the vacuum on the
   local network, and the map decoding and drawing, run outside Home Assistant's event loop, so a slow
   or unreachable vacuum no longer freezes Home Assistant for seconds on every update (upstream PR

@@ -27,6 +27,7 @@ from homeassistant.helpers.storage import Store
 from homeassistant.loader import IntegrationNotFound, async_get_integration
 
 from .const import DOMAIN, ORIGINAL_DOMAIN, STORAGE_VERSION
+from .original_yaml import original_yaml_block
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -116,6 +117,13 @@ def async_flag_leftover_originals(hass: HomeAssistant) -> None:
 
 
 def _async_create_original_left_issue(hass: HomeAssistant, original: ConfigEntry) -> None:
+    """Tell the user what is left to switch; the original's YAML block goes before the uninstall.
+
+    Uninstalling the original with its YAML block still there logs a platform error at every start.
+    """
+    placeholders = {"name": original.title}
+    if (block := original_yaml_block(hass, dict(original.data))) is not None:
+        placeholders |= {"file": block.file, "line": block.line}
     ir.async_create_issue(
         hass,
         DOMAIN,
@@ -123,8 +131,8 @@ def _async_create_original_left_issue(hass: HomeAssistant, original: ConfigEntry
         is_fixable=False,
         is_persistent=False,
         severity=ir.IssueSeverity.WARNING,
-        translation_key="original_left",
-        translation_placeholders={"name": original.title},
+        translation_key="original_left_yaml" if block is not None else "original_left",
+        translation_placeholders=placeholders,
     )
 
 

@@ -105,6 +105,36 @@ def flow_results_render() -> Generator[None]:
 
 
 @pytest.fixture(autouse=True)
+def issues_render() -> Generator[None]:
+    """Every Repairs issue this integration raises is translated and gets each placeholder it uses.
+
+    Issues were not checked like flow results are; a missing placeholder shows a raw `{name}` in
+    Repairs.
+    """
+    from homeassistant.helpers.issue_registry import IssueRegistry
+
+    from custom_components.better_xiaomi_cloud_map_extractor.const import DOMAIN
+
+    get_or_create = IssueRegistry.async_get_or_create
+
+    def checked(self, domain, issue_id, *args, **kwargs):
+        if domain == DOMAIN:
+            key = kwargs["translation_key"]
+            texts = TRANSLATIONS["issues"].get(key)
+            assert texts is not None, f"issue {key!r} is not translated"
+            used = [texts.get("title", ""), texts.get("description", "")]
+            for step in texts.get("fix_flow", {}).get("step", {}).values():
+                used += [step.get("title", ""), step.get("description", "")]
+            provided = set(kwargs.get("translation_placeholders") or {})
+            missing = set().union(*(_placeholders(text) for text in used)) - provided
+            assert not missing, f"issue {key!r} lacks placeholders {sorted(missing)}"
+        return get_or_create(self, domain, issue_id, *args, **kwargs)
+
+    with patch.object(IssueRegistry, "async_get_or_create", checked):
+        yield
+
+
+@pytest.fixture(autouse=True)
 def detect_blocking_calls() -> Generator[None]:
     """Home Assistant's "Detected blocking call" check, as a running instance has it.
 
