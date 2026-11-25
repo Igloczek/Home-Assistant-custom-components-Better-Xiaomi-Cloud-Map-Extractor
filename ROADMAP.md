@@ -15,7 +15,7 @@ with a test that fails first (see [AGENTS.md](AGENTS.md)).
 
 ## In progress
 
-- **Login dead-ends** (fork PR #PRNUM, P2): verify's location followed on any host, SMS codes, refused
+- **Login dead-ends** (fork PR #26, P2): verify's location followed on any host, SMS codes, refused
   or unsent codes explained, a wrong password behind a captcha back to the credentials form, and 20 s
   per request so a region that never answers can't stall setup (upstream #700, #712, #780; PR #793
   not imported). The Xiaomi answers are modelled on XiaomiGateway3 and hass-xiaomi-miot, not
