@@ -64,8 +64,8 @@ def fixture_map(name: str) -> str:
     return (FIXTURES / name).read_text()
 
 
-def obj_name(name: str) -> str:
-    return json.dumps({"index": 1770000000, "obj_name": f"{USER_ID}/{DEVICE_ID}/{name}"})
+def obj_name(name: str, uid: str = str(USER_ID)) -> str:
+    return json.dumps({"index": 1770000000, "obj_name": f"{uid}/{DEVICE_ID}/{name}"})
 
 
 def encode_trajectory(points: list[tuple[int, int]], marker: int = 2) -> bytes:
@@ -75,11 +75,17 @@ def encode_trajectory(points: list[tuple[int, int]], marker: int = 2) -> bytes:
 
 
 class Cloud:
-    """The Xiaomi cloud: objects by name, and `/v2/home/rpc` forwarded to the vacuum (`cloud_rpc`)."""
+    """The Xiaomi cloud: the vacuum's objects, and `/v2/home/rpc` forwarded to the vacuum (`cloud_rpc`).
 
-    def __init__(self, objects: dict[str, bytes], vacuum: FakeLanVacuum | None = None) -> None:
+    The objects live under `<owner_uid>/<did>/<name>`. Like the real cloud (upstream #762), it signs a
+    URL for a path under any uid, and the download of a path where no object is answers 404 (None).
+    """
+
+    def __init__(self, objects: dict[str, bytes], vacuum: FakeLanVacuum | None = None,
+                 owner_uid: str = str(USER_ID)) -> None:
         self.objects = objects
         self.vacuum = vacuum
+        self.owner_uid = owner_uid
         self.connector = MagicMock()
         self.connector.get_api_url = MagicMock(return_value="https://de.api.io.mi.com/app")
         self.connector.execute_api_call_encrypted = AsyncMock(side_effect=self._file_url)
@@ -87,15 +93,18 @@ class Cloud:
         self.connector.get_other_info = AsyncMock(side_effect=self._rpc)
 
     async def _file_url(self, _url: str, params: dict[str, str]) -> dict[str, Any]:
-        name = json.loads(params["data"])["obj_name"].split("/")[-1]
-        if name not in self.objects:
+        path = json.loads(params["data"])["obj_name"]
+        if path.split("/")[-1] not in self.objects:
             return {"code": 0, "result": {}}
-        return {"code": 0, "result": {"url": OBJECT_URL + name}}
+        return {"code": 0, "result": {"url": OBJECT_URL + path}}
 
     async def _download(self, url: str | None) -> bytes | None:
         if url is None:
             return None
-        return self.objects.get(url.removeprefix(OBJECT_URL))
+        uid, did, name = url.removeprefix(OBJECT_URL).split("/")
+        if (uid, did) != (self.owner_uid, DEVICE_ID):
+            return None  # "404 Object Not Found"
+        return self.objects.get(name)
 
     async def _rpc(self, did: str, method: str, parameters: list[dict[str, Any]]) -> dict[str, Any]:
         assert did == DEVICE_ID
@@ -103,8 +112,12 @@ class Cloud:
             return {"code": -2, "message": "device offline"}
         return self.vacuum.cloud_rpc({"method": method, "params": parameters})
 
-    def downloaded(self) -> list[str]:
+    def requested(self) -> list[str]:
+        """The object paths whose download was tried."""
         return [c.args[0].removeprefix(OBJECT_URL) for c in self.connector.get_raw_map_data.await_args_list if c.args[0]]
+
+    def downloaded(self) -> list[str]:
+        return [path.split("/")[-1] for path in self.requested()]
 
 
 def make_vacuum(model: str, cloud: Cloud) -> XiaomiCloudVacuum:
@@ -356,6 +369,50 @@ async def test_lan_reachable_says_whether_the_vacuum_answered_on_the_lan(cloud_a
         map_data, _ = await vacuum.get_map()  # from the cloud, or the map of the previous answer
         assert map_data.map_name == "3"
         assert vacuum.lan_reachable is False
+
+
+# Upstream #762: on an H40 the vacuum's objects sit under a uid other than the account's (scrubbed: the
+# report's uids are replaced by made-up ones of the same length).
+VACUUM_UID = "5550001111"
+
+
+async def test_map_and_trajectory_come_from_the_path_the_vacuum_reports() -> None:
+    """The path was rebuilt with the account's uid, signed fine, and downloaded "404 Object Not Found"."""
+    model = "xiaomi.vacuum.ov51gl"
+    cloud = cleaning_cloud(model)
+    cloud.owner_uid = VACUUM_UID
+    lan = FakeLanVacuum(model, properties={
+        (2, 1): "4.5.6_0105", (2, 2): 4, (10, 1): obj_name("0", VACUUM_UID),
+        (10, 2): obj_name("traj-17", VACUUM_UID), (10, 4): json.dumps({"position": [120, -80, 1571]}),
+    })
+    cloud.objects["0"] = cloud.objects.pop("3")
+    with lan_vacuum(lan):
+        map_data, _ = await make_vacuum(model, cloud).get_map()
+
+    assert cloud.requested() == [f"{VACUUM_UID}/{DEVICE_ID}/traj-17", f"{VACUUM_UID}/{DEVICE_ID}/0"]
+    assert map_data.map_name == "0"
+    assert [(p.x, p.y) for p in map_data.path.path[0]] == PATH
+
+
+async def test_account_path_is_tried_when_the_reported_path_has_no_object() -> None:
+    """Never worse than before: if nothing is under the reported uid, the account's path is tried."""
+    model = "xiaomi.vacuum.ov81gl"
+    cloud = cleaning_cloud(model)
+    lan = FakeLanVacuum(model, properties={(2, 2): 1, (10, 1): obj_name("3", VACUUM_UID)})
+    with lan_vacuum(lan):
+        map_data, _ = await make_vacuum(model, cloud).get_map()
+
+    assert cloud.requested() == [f"{VACUUM_UID}/{DEVICE_ID}/3", f"{USER_ID}/{DEVICE_ID}/3"]
+    assert map_data.map_name == "3"
+
+
+async def test_map_name_without_a_path_uses_the_account_path() -> None:
+    model = "xiaomi.vacuum.ov81gl"
+    cloud = cleaning_cloud(model)
+    with lan_vacuum(FakeLanVacuum(model, properties={(2, 2): 1, (10, 1): None, (10, 6): 3})):
+        await make_vacuum(model, cloud).get_map()
+
+    assert cloud.requested() == [f"{USER_ID}/{DEVICE_ID}/3"]
 
 
 async def test_legacy_models_read_the_numeric_map_id() -> None:

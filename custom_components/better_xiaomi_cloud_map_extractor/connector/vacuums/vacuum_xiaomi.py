@@ -18,6 +18,7 @@ from .xiaomi_miot import (
     decode_trajectory,
     layout_for,
     object_name,
+    object_path,
     vacuum_position,
     with_live_data,
     with_unique_room_ids,
@@ -57,6 +58,8 @@ class XiaomiCloudVacuum(BaseXiaomiCloudVacuumV2):
         self._layout = layout_for(self.model)
         self._off_counter = 0
         self._state: dict[Property, Any] | None = None
+        # The object paths the vacuum reported, by object name (upstream #762).
+        self._object_paths: dict[str, str] = {}
         # The current map properties of the last answer, for when neither the LAN nor the cloud answers.
         self._last_map_state: dict[Property, Any] = {}
         self._live_path: list[dict[str, Any]] = []
@@ -102,6 +105,12 @@ class XiaomiCloudVacuum(BaseXiaomiCloudVacuumV2):
 
     async def get_map(self: Self) -> tuple[MapData, bytes]:
         self._state = await self._read_state()
+        layout = self._layout
+        self._object_paths = {
+            path.split("/")[-1]: path
+            for prop in (layout.map_obj_name, layout.trajectory_obj_name)
+            if prop and (path := object_path(self._state.get(prop))) is not None
+        }
         self._live_path, self._live_position = await self._read_live_data(self._state)
         return await super().get_map()
 
@@ -207,6 +216,24 @@ class XiaomiCloudVacuum(BaseXiaomiCloudVacuumV2):
 
     async def get_map_url(self, map_name: str) -> str | None:
         return await self.get_fallback_map_url(map_name)
+
+    async def get_raw_map_data(self: Self, map_name: str | None) -> bytes | None:
+        """The object at the path the vacuum reported, then at the account's path as before.
+
+        The vacuum may store its objects under another uid than the account's (upstream #762): the
+        cloud signs a URL for the account's path all the same, and the download answers 404.
+        """
+        path = self._object_paths.get(map_name) if map_name is not None else None
+        if path is not None and path != self._account_path(map_name):
+            url = await self.get_fallback_map_url(map_name, obj_name=path)
+            raw = await self._connector.get_raw_map_data(url) if url is not None else None
+            if raw is not None:
+                return raw
+            _LOGGER.debug("Nothing at the object path the vacuum reported, trying the account's")
+        return await super().get_raw_map_data(map_name)
+
+    def _account_path(self: Self, name: str) -> str:
+        return f"{self._user_id}/{self._device_id}/{name}"
 
     def decode_and_parse(self, raw_map: bytes) -> MapData:
         # Try parsing as JSON first (old format), otherwise use raw data directly (new format)

@@ -70,6 +70,9 @@
   reported map is kept. A vacuum that never said which map is current is reported unreachable
   instead of showing an old, deleted map; a map number missing from the vacuum's map name is read
   from its current map id (upstream #720).
+- A Xiaomi vacuum that stores its maps under another Xiaomi account id than the one logged in, as
+  an H40 (xiaomi.vacuum.ov51gl) does, gets its map instead of "404 Object Not Found": the map is
+  downloaded from the path the vacuum reports (upstream #762).
 - Rooms of the Xiaomi 5 Pro (xiaomi.vacuum.ov21gl) and any other map that repeats a room id stay
   separate instead of merging into one room (upstream PR #748 by Luciano Benitez, generalised;
   upstream #702, #657).

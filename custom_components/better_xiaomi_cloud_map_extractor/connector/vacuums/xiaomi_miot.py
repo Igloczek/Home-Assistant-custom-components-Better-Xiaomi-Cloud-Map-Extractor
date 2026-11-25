@@ -98,16 +98,35 @@ def object_name(value: Any) -> str | None:
     """The last part of an object name property: a number, `{"obj_name": "a/b/c"}` or `"a/b/c"`."""
     if as_int(value) is not None:
         return str(value)
+    path = object_path(value)
+    if path is not None:
+        return path.split("/")[-1]
+    if isinstance(value, str):
+        try:
+            parsed = json.loads(value)
+        except json.JSONDecodeError:
+            return None
+        return str(parsed) if as_int(parsed) is not None else None
+    return None
+
+
+def object_path(value: Any) -> str | None:
+    """The whole object name (`"<uid>/<did>/<name>"`) when the property carries a path.
+
+    The uid is the one the vacuum stores its objects under, which may not be the account's
+    (upstream #762).
+    """
     if not isinstance(value, str):
         return None
     try:
         parsed = json.loads(value)
     except json.JSONDecodeError:
-        return value.split("/")[-1] if "/" in value else None
+        parsed = value
     if isinstance(parsed, dict):
-        name = parsed.get("obj_name")
-        return name.split("/")[-1] if isinstance(name, str) and name else None
-    return str(parsed) if as_int(parsed) is not None else None
+        parsed = parsed.get("obj_name")
+    if not isinstance(parsed, str) or "/" not in parsed or not parsed.split("/")[-1]:
+        return None
+    return parsed
 
 
 # The parser's marker for a position the robot does not know.
