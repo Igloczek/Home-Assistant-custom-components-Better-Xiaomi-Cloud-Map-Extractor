@@ -1,6 +1,6 @@
 # Better Xiaomi Cloud Map Extractor
 
-[![Latest release](https://img.shields.io/github/v/release/Igloczek/better-xiaomi-cloud-map-extractor?include_prereleases)](https://github.com/Igloczek/better-xiaomi-cloud-map-extractor/releases)
+[![Latest release](https://img.shields.io/github/v/release/Igloczek/better-xiaomi-cloud-map-extractor)](https://github.com/Igloczek/better-xiaomi-cloud-map-extractor/releases)
 [![Tests](https://github.com/Igloczek/better-xiaomi-cloud-map-extractor/actions/workflows/tests.yml/badge.svg)](https://github.com/Igloczek/better-xiaomi-cloud-map-extractor/actions/workflows/tests.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
@@ -53,23 +53,30 @@ Restart Home Assistant afterwards.
 ## Coming from Xiaomi Cloud Map Extractor
 
 This integration has its own name (`better_xiaomi_cloud_map_extractor`), so it can be installed next
-to the original. Your vacuums move over with their settings, Xiaomi login and entity ids, so
-dashboards, automations and the map card keep working:
+to the original. Your vacuums move over with their settings, Xiaomi login, device and entity ids, so
+dashboards, automations and the map card keep working. Keep the original installed until the end:
 
-1. In HACS, remove **Xiaomi Cloud Map Extractor** (its configuration stays), install this one as
-   above, and restart Home Assistant.
+1. Install this integration as above, next to the original, and restart Home Assistant.
 2. Go to **Settings → Devices & services → Add integration → Better Xiaomi Cloud Map Extractor** and
-   pick **Import from Xiaomi Cloud Map Extractor**. Further vacuums then show up under
-   **Discovered**.
-3. Delete the old Xiaomi Cloud Map Extractor entry, which Home Assistant now lists as not loaded.
+   pick **Import from Xiaomi Cloud Map Extractor**. Choose the vacuum and confirm. Further vacuums
+   then show up under **Discovered**; import each the same way.
+3. The import disables the vacuum's entry in Xiaomi Cloud Map Extractor (you can enable it again;
+   nothing is deleted) and moves its device and entities here. No new login is needed.
+4. Settings → Repairs then shows "<vacuum> moved from Xiaomi Cloud Map Extractor" with what is left:
+   - if the original was set up from v2 YAML and its `camera:` block is still in your configuration,
+     open "Remove the leftover YAML of the original Xiaomi Cloud Map Extractor" and submit it: it
+     removes the block (a backup of the file is saved first; no restart needed);
+   - delete the disabled Xiaomi Cloud Map Extractor entry (the device and entities stay here);
+   - uninstall Xiaomi Cloud Map Extractor in HACS.
 
-The import refuses to run while the original is still installed, and it never changes the original's
-own configuration.
+The import never changes or deletes the original's configuration: it only disables the entry you
+confirm.
 
-Coming from v2 (YAML `camera:` configuration)? Change `platform: xiaomi_cloud_map_extractor` to
-`platform: better_xiaomi_cloud_map_extractor`. The entry is imported into a configured integration
-on start. Remove the YAML afterwards (Home Assistant shows a repair notice), and log in again if
-Home Assistant asks you to re-authenticate. The v2 documentation stays on the
+Still on v2 (YAML `camera:` configuration)? Change `platform: xiaomi_cloud_map_extractor` to
+`platform: better_xiaomi_cloud_map_extractor` and restart.
+The vacuum is imported into a configured integration on start, logging in with the username and
+password from the YAML. Then remove the YAML block and restart (Repairs says so), and log in again
+if Home Assistant asks you to re-authenticate. The v2 documentation stays on the
 [`v2` branch](https://github.com/Igloczek/better-xiaomi-cloud-map-extractor/tree/v2#readme).
 
 ## Setup
@@ -92,49 +99,53 @@ explored and enlarges it; it is off by default.
 
 ## Supported devices
 
-The map formats below are supported. A model not listed here may still work with one of them; pick
-the map format in the last setup step.
+The map format is detected from the model and marked with `*` in the last setup step (**Used map
+API**). A model not listed here may still work with one of the formats; pick it there.
 
+Tested on these vacuums:
 
-This integration was tested on following vacuums:
- - Xiaomi map format:
-   - `rockrobo.vacuum.v1` (Xiaomi Vacuum Gen 1, Mi Robot Vacuum, SDJQR01RR, SDJQR02RR)
-   - `roborock.vacuum.m1s` (Xiaomi Mi Robot 1S)
-   - `roborock.vacuum.s4` (Roborock S4)
-   - `roborock.vacuum.s5` (Roborock S5)
-   - `roborock.vacuum.s5e` (Roborock S5 Max)
-   - `rockrobo.vacuum.s6` (Roborock S6)
-   - `roborock.vacuum.a08` (Roborock S6 Pure)
-   - `roborock.vacuum.a10` (Roborock S6 MaxV)
-   - `roborock.vacuum.a15` (Roborock S7)
-   - `roborock.vacuum.a19` (Roborocka S4 Max)
-   - `roborock.vacuum.a27` (Roborock S7 MaxV)
-   - `roborock.vacuum.a70` (Roborock S8 Pro Ultra)
- - Viomi map format:
-   - `viomi.vacuum.v6` (Viomi Vacuum V2 Pro, Xiaomi Mijia STYJ02YM, Mi Robot Vacuum Mop Pro)
-   - `viomi.vacuum.v7` (Mi Robot Vacuum-Mop Pro)
-   - `viomi.vacuum.v8` (Mi Robot Vacuum-Mop Pro)
-   - `viomi.vacuum.v13` (Viomi V3)
- - Roidmi map format:
-   - `roidmi.vacuum.v60` (Roidmi EVE Plus)
-   - `viomi.vacuum.v18` (Viomi S9)
-   - `viomi.vacuum.v38` (Viomi V5 Pro)
-   - `zhimi.vacuum.xa1` (Lydsto R1)
-   - `chuangmi.vacuum.hmi707` (IMILAB V1 Vacuum)
- - Dreame map format:
-   - `dreame.vacuum.mc1808` (Xiaomi Mi Mop/Xiaomi Mijia 1C)
-   - `dreame.vacuum.p2008` (Dreame F9)
-   - `dreame.vacuum.p2009` (Dreame D9)
-   - `dreame.vacuum.p2028` (Dreame Z10 Pro)
-   - `dreame.vacuum.p2029` (Dreame L10 Pro)
-   - `dreame.vacuum.p2036` (Trouver LDS Cleaner)
-   - `dreame.vacuum.p2041o` (Xiaomi Mop 2 Pro+)
-   - `dreame.vacuum.p2140` (Mijia Robot Vacuum-Mop 2C)
-   - `dreame.vacuum.p2157` (MOVA L600)
-   - `dreame.vacuum.p2259` (Dreame D9 Max)
+- Roborock map format (`roborock.vacuum.*`, `rockrobo.vacuum.*`):
+  - `rockrobo.vacuum.v1` (Xiaomi Vacuum Gen 1, Mi Robot Vacuum, SDJQR01RR, SDJQR02RR)
+  - `roborock.vacuum.m1s` (Xiaomi Mi Robot 1S)
+  - `roborock.vacuum.s4` (Roborock S4)
+  - `roborock.vacuum.s5` (Roborock S5)
+  - `roborock.vacuum.s5e` (Roborock S5 Max)
+  - `rockrobo.vacuum.s6` (Roborock S6)
+  - `roborock.vacuum.a08` (Roborock S6 Pure)
+  - `roborock.vacuum.a10` (Roborock S6 MaxV)
+  - `roborock.vacuum.a15` (Roborock S7)
+  - `roborock.vacuum.a19` (Roborock S4 Max)
+  - `roborock.vacuum.a27` (Roborock S7 MaxV)
+  - `roborock.vacuum.a70` (Roborock S8 Pro Ultra)
+- Viomi map format (`viomi.vacuum.*`):
+  - `viomi.vacuum.v6` (Viomi Vacuum V2 Pro, Xiaomi Mijia STYJ02YM, Mi Robot Vacuum Mop Pro)
+  - `viomi.vacuum.v7` (Mi Robot Vacuum-Mop Pro)
+  - `viomi.vacuum.v8` (Mi Robot Vacuum-Mop Pro)
+  - `viomi.vacuum.v13` (Viomi V3)
+- Roidmi map format (`roidmi.vacuum.*`, `zhimi.vacuum.*`, `chuangmi.vacuum.*`, and
+  `viomi.vacuum.v18`, `v23` and `v38`):
+  - `roidmi.vacuum.v60` (Roidmi EVE Plus)
+  - `viomi.vacuum.v18` (Viomi S9)
+  - `viomi.vacuum.v38` (Viomi V5 Pro)
+  - `zhimi.vacuum.xa1` (Lydsto R1)
+  - `chuangmi.vacuum.hmi707` (IMILAB V1 Vacuum)
+- Dreame map format (`dreame.vacuum.*`):
+  - `dreame.vacuum.mc1808` (Xiaomi Mi Mop/Xiaomi Mijia 1C)
+  - `dreame.vacuum.p2008` (Dreame F9)
+  - `dreame.vacuum.p2009` (Dreame D9)
+  - `dreame.vacuum.p2028` (Dreame Z10 Pro)
+  - `dreame.vacuum.p2029` (Dreame L10 Pro)
+  - `dreame.vacuum.p2036` (Trouver LDS Cleaner)
+  - `dreame.vacuum.p2041o` (Xiaomi Mop 2 Pro+)
+  - `dreame.vacuum.p2140` (Mijia Robot Vacuum-Mop 2C)
+  - `dreame.vacuum.p2157` (MOVA L600)
+  - `dreame.vacuum.p2259` (Dreame D9 Max)
+- Ijai map format (`ijai.vacuum.*`, and `xiaomi.vacuum.b106eu`, `c103` and `d106gl`): Ijai vacuums
+  such as the Mi Robot Vacuum-Mop 2 Pro (`ijai.vacuum.v3`) and Xiaomi S10, S12 and S20.
+- Xiaomi map format (the other `xiaomi.vacuum.*` models), such as the H50 (`ov43gb`) and the M40S
+  (`ov31cn`).
 
- - Ijai map format (`ijai.vacuum.*`) and Xiaomi map format (`xiaomi.vacuum.*`): added in the v3
-   alphas. Several models still fail; see [ROADMAP.md](ROADMAP.md).
+Models that still fail, and what is needed to support them, are listed in [TRIAGE.md](TRIAGE.md).
 
 Vacuums that are only in the Roborock app are not in the Xiaomi cloud and cannot be read by this
 integration.
@@ -142,7 +153,8 @@ integration.
 ## Reporting a problem
 
 Report bugs on the [fork's issue tracker](https://github.com/Igloczek/better-xiaomi-cloud-map-extractor/issues). Include your vacuum model, the
-integration version and a debug log. To turn on debug logging, add this to `configuration.yaml`:
+integration version, the diagnostics (Settings → Devices & services → the integration's entry → ⋮ →
+**Download diagnostics**) and a debug log. To turn on debug logging, add this to `configuration.yaml`:
 
 ```yaml
 logger:

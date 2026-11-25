@@ -38,14 +38,18 @@ body:
   - type: checkboxes
     id: available-apis
     attributes:
-      label: Available APIs
+      label: Map formats tried
       description: >-
-        Please check if map appears when you use following APIs in `force_api` config
+        Set the vacuum up (Add integration → Better Xiaomi Cloud Map Extractor) and, in the last
+        setup step, pick each map format under **Used map API** in turn. Check the ones that show a
+        map.
       options:
-        - label: xiaomi
-        - label: viomi
-        - label: roidmi
-        - label: dreame
+        - label: Roborock
+        - label: Viomi
+        - label: Roidmi
+        - label: Dreame
+        - label: Ijai
+        - label: Xiaomi
   - type: textarea
     attributes:
       label: Errors shown in the HA logs (if applicable)

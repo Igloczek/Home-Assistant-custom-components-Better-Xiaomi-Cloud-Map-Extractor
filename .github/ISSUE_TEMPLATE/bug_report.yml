@@ -1,6 +1,6 @@
 ---
-name: Report an issue with Xiaomi Cloud Map Extractor
-description: Report an issue with Xiaomi Cloud Map Extractor.
+name: Report an issue with Better Xiaomi Cloud Map Extractor
+description: Report an issue with Better Xiaomi Cloud Map Extractor.
 labels: bug
 assignees: 'Igloczek'
 body:
@@ -82,17 +82,40 @@ body:
     attributes:
       value: |
         # Details
-  - type: textarea
+  - type: markdown
+    attributes:
+      value: |
+        **Remove secrets before posting.** Diagnostics and debug logs can contain Xiaomi account
+        tokens (`serviceToken`, `ssecurity`, `passToken`), passwords, the vacuum's token and IP
+        address. Replace anything that looks like one with `<redacted>`.
+  - type: input
+    id: map-format
     validations:
-      required: true
+      required: false
     attributes:
-      label: Camera's configuration
-      description: |
-        Please provide camera's YAML configuration to help with problem reproduction.
-      render: yaml
+      label: Map format
+      description: >
+        The map format (Used map API) picked in the last setup step, if you know it.
+      placeholder: Roborock, Viomi, Roidmi, Dreame, Ijai or Xiaomi
   - type: textarea
+    id: diagnostics
+    validations:
+      required: false
     attributes:
-      label: Errors shown in the HA logs (if applicable)
+      label: Diagnostics
+      description: >
+        Settings → Devices & services → Better Xiaomi Cloud Map Extractor → the vacuum's entry → ⋮ →
+        Download diagnostics. Attach the file or paste it here, after removing secrets.
+  - type: textarea
+    id: debug-log
+    validations:
+      required: false
+    attributes:
+      label: Debug log
+      description: >
+        Turn on debug logging for `custom_components.better_xiaomi_cloud_map_extractor` (see the
+        README, "Reporting a problem"), reproduce the problem and paste the log here, after removing
+        secrets.
       render: shell
   - type: textarea
     attributes:
