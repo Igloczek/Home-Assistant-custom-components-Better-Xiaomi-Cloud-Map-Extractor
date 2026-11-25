@@ -185,7 +185,7 @@ class XiaomiCloudMapExtractorOptionsFlowHandler(OptionsFlow):
                     # Stored as RGBA; the colour picker takes RGB.
                     list(configured_colors[room_id][:3])
                     if room_id in configured_colors
-                    else palette.get_room_color(room_id)
+                    else list(palette.get_room_color(room_id)[:3])
                 )
                 for room_id in self._room_color_ids
             }

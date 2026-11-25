@@ -86,3 +86,22 @@ async def test_parser_returning_nothing_is_a_parse_failure() -> None:
         pytest.raises(FailedMapParseException),
     ):
         await vacuum.get_map()
+
+
+@pytest.mark.parametrize("api", MODELS, ids=[api.value for api in MODELS])
+async def test_parser_failing_after_the_map_unpacked_is_a_parse_failure(api: VacuumApi) -> None:
+    """The map decompresses or decrypts, then the parser hits something it does not expect."""
+    import custom_components.better_xiaomi_cloud_map_extractor.connector.vacuums.vacuum_ijai as ijai
+
+    vacuum = _vacuum(api)
+    parser = type(vacuum.map_data_parser)
+    with (
+        patch.object(type(vacuum), "get_map_name", AsyncMock(return_value="map_0")),
+        patch.object(type(vacuum), "get_raw_map_data", AsyncMock(return_value=b"x")),
+        patch.object(parser, "unpack_map", MagicMock(return_value=b"unpacked"), create=True),
+        patch.object(ijai, "unpack_map", MagicMock(return_value=b"unpacked")),
+        patch.object(ijai, "_with_current_map_info", MagicMock(side_effect=lambda m: m)),
+        patch.object(parser, "parse", MagicMock(side_effect=KeyError("rooms"))),
+        pytest.raises(FailedMapParseException),
+    ):
+        await vacuum.get_map()

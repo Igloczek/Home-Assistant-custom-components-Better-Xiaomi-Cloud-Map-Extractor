@@ -101,7 +101,7 @@ class DreameCloudVacuum(BaseXiaomiCloudVacuumV2):
             raise FailedMapParseException() from err
         try:
             return self.map_data_parser.parse(decoded_map)
-        except (NotImplementedError, ValueError, IndexError) as err:
+        except Exception as err:  # noqa: BLE001 - whatever the parser hits is a map it could not read
             _LOGGER.debug("Failed to parse the map: %r", err)
             raise FailedMapParseException() from err
 
