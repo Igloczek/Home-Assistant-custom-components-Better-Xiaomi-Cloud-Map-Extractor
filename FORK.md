@@ -86,7 +86,7 @@ release, and must not come back. Refer to upstream versions by commit SHA (v3.0.
   on 2026-11-24. Upstream's last push was 2026-02-20.
 - Upstream `master` (v2) is not a source of imports; see **Branches**.
 - Upstream open pull requests are imported one by one with `git cherry-pick -x` or as a reviewed
-  re-implementation; the triage that ranks them is in [ROADMAP.md](ROADMAP.md).
+  re-implementation; [TRIAGE.md](TRIAGE.md) classifies them and [ROADMAP.md](ROADMAP.md) ranks them.
 - Refresh this snapshot in the same change as an upstream import. Recompute the ahead/behind counts
   with `git log --left-right --cherry-pick --oneline upstream/dev_extracted_libraries...master`.
 
