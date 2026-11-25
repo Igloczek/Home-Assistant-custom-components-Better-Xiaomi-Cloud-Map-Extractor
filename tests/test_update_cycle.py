@@ -120,6 +120,8 @@ VENDORS = [
     # charging, 1 sweeping.
     Vendor("viomi.vacuum.v8", "VIOMI", {"run_state": 5}, {"run_state": 3}, _opaque_map),
     Vendor("roidmi.vacuum.v60", "ROIDMI", {(2, 1): 6}, {(2, 1): 4}, _opaque_map),
+    # Upstream #572: the sdj60 map comes from the pro endpoint; no known state property.
+    Vendor("roidmi.vacuum.sdj60", "ROIDMI", {}, {}, _opaque_map),
     Vendor("dreame.vacuum.p2008", "DREAME", {(2, 1): 6}, {(2, 1): 1}, _dreame_map),
     # A model with no known state property: the map tells whether it moves.
     Vendor("viomi.vacuum.x1", "VIOMI", {}, {}, _opaque_map),
@@ -374,7 +376,7 @@ async def test_cleaning_brings_back_a_download_every_cycle(
 
 # Vendors that report whether they move; for the others the map is checked once a minute when docked.
 # The H50 (ov43gb) has its status at 2/2, which vacuum-map-parser-xiaomi does not map yet.
-NO_STATE = {"viomi.vacuum.x1", "xiaomi.vacuum.ov43gb"}
+NO_STATE = {"viomi.vacuum.x1", "roidmi.vacuum.sdj60", "xiaomi.vacuum.ov43gb"}
 REPORTS_STATE = [v for v in VENDORS if v.model not in NO_STATE]
 CLOUD_STATE = [v for v in REPORTS_STATE if v.api in ("VIOMI", "ROIDMI", "DREAME")]
 

@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Roidmi `roidmi.vacuum.sdj60` shows its map (upstream #572, ported from upstream PR #768 by
+  @winchester7). Its map is read from the endpoint the Mi Home app uses, where the other one points at
+  a file that is no map and failed with "list indices must be integers or slices, not str". Other
+  Roidmi models are unchanged.
+
 ## 1.0.0 - 2026-11-25
 
 The first stable release. Every open issue and pull request of the original is analysed in
