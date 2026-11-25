@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+## 1.0.1 - 2026-11-25
+
+### Fixed
+
+- Ijai vacuums (`ijai.vacuum.*` and Xiaomi models on the Ijai map format) no longer fail with `TypeError: aes_decrypt() takes 2 positional arguments but 3 were given` when installed side by side with the original `xiaomi_cloud_map_extractor` (whose `v3.0.0-alpha-24` pins `vacuum-map-parser-ijai==0.1.0`). Map decryption now runs directly via `pycryptodome`, so both key formats work whether parser `0.1.0` or `0.1.1` is loaded (#9, PR #49; verified on `ijai.vacuum.v3` by Altar82).
+
+### Changed
+
+- Rewrote `README.md` for end users with a side-by-side comparison table and clearer installation and migration steps (PR #39).
+- Added AI-agent-first problem reporting (`report-problem` skill, zero-dependency Python collector/redactor CLI, and automated issue triage, PR #40).
+
 ## 1.0.0 - 2026-11-25
 
 The first stable release. Every open issue and pull request of the original is analysed in
