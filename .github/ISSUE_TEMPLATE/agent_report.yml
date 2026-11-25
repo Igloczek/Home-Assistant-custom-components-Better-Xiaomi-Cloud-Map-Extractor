@@ -1,0 +1,19 @@
+name: Agent report
+description: A problem report collected and redacted by an AI agent with the report-problem skill. Your agent fills this in.
+title: ""
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **This form is filled in by an AI agent.** Do not write a report here by hand: give your
+        agent the instruction from [Report a problem](https://github.com/Igloczek/better-xiaomi-cloud-map-extractor/blob/master/docs/report-a-problem.md),
+        and it opens this form with everything filled in. You only press **Create**.
+
+        Complete reports are labelled `agent-report` when the issue is triaged.
+  - type: textarea
+    id: report
+    attributes:
+      label: Report
+      description: The output of `python3 scripts/agent-report/cli.py render`, unchanged.
+    validations:
+      required: true

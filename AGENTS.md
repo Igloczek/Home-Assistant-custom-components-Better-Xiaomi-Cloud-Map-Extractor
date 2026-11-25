@@ -21,6 +21,7 @@ When two pieces of work compete, the one higher on this list goes first. [`ROADM
 - Add every intentional fork-only feature or fix to `FORK.md` with what it changes and why, and add it to the [sync checklist](.agents/skills/sync-upstream/fork-differences.md).
 - [`ROADMAP.md`](ROADMAP.md) holds planned work and postponed items, [`TRIAGE.md`](TRIAGE.md) the classification of every open upstream issue and pull request; [`CHANGELOG.md`](CHANGELOG.md) holds released changes. Do not keep a record of completed work in a standing document.
 - To import an upstream commit or open upstream pull request, follow [`.agents/skills/sync-upstream/SKILL.md`](.agents/skills/sync-upstream/SKILL.md). Never push to `upstream` and never comment on upstream issues or pull requests.
+- The issue tracker is triaged by the issue triage agent (`Igloczek/issue-triage-agent`, private): a T3 webhook task on the maintainer's Mac runs its procedure for each new issue or comment, one thread per issue. What it needs to know about this project is in [`.github/triage.md`](.github/triage.md), and this project's end-to-end cases are in `.github/triage-e2e/`. No workflow comments on or edits issues; `.github/workflows/triage-e2e-file.yml` only files `triage-test` issues for that project's end-to-end test.
 
 ## Compatibility
 
@@ -37,6 +38,13 @@ The fork's domain is `better_xiaomi_cloud_map_extractor`, so it installs next to
 - Runtime: `coordinator.py` maps connector exceptions to `ConfigEntryAuthFailed` (reauth) or `UpdateFailed` (retry); entities in `image.py`, `camera.py`, `sensor.py`, `binary_sensor.py`, `button.py`, `switch.py`.
 - Cloud access: `connector/xiaomi_cloud/connector.py` (`XiaomiCloudConnector`, the one object callers use, `to_config`/`from_config`) composed of `session.py` (session data, stored config, `_login_attempt`), `login_credentials.py` (password login, captcha), `login_two_factor.py` (identity verification), `login_qr.py`, `renewal.py` (passToken), `devices.py` (homes and devices per region), `api.py` (RC4 encrypted calls, map download) and `network.py` (outage versus refusal). All log under the `connector.xiaomi_cloud.connector` logger. The session is persisted per MAC by `store.py`.
 - Vendors: `connector/vacuums/vacuum_*.py` download the map; parsing and drawing live in the external `vacuum-map-parser-*` packages pinned in `manifest.json`.
+- Agent problem reporting: [`.agents/skills/report-problem/SKILL.md`](.agents/skills/report-problem/SKILL.md) (procedure for users' AI agents), `scripts/agent-report/` (zero-dependency Python 3 collector, redactor, renderer and validator, tested by `tests/test_agent_report.py`), [`docs/report-a-problem.md`](docs/report-a-problem.md) and `.github/ISSUE_TEMPLATE/agent_report.yml`.
+
+## Fixes are for every user
+
+- Fix problems in the integration, for every supported vacuum and region. A report from one user's vacuum is a sample of a general bug: find the general cause and check the other vendors and flows for it.
+- Never create or change scripts, automations, helpers or Home Assistant configuration in a user's Home Assistant (including the maintainer's `ha.igielski.dev`) to work around an integration bug.
+- When a vacuum or cloud protocol cannot do what a feature needs, say so and surface it clearly in the UI or document the limitation; do not ship a per-installation workaround as the fix.
 
 ## Local checks
 
@@ -76,7 +84,7 @@ Agents drive this project: they investigate, reproduce, build, test, open pull r
 **From 1.0.0** (released 2026-11-25; see [ROADMAP.md](ROADMAP.md#since-100)), whether a change may be merged and released depends on what kind of change it is. Sort every change into one of these classes before merging; when it is not clearly class 1, it is class 2.
 
 1. **Clear bug: merge it yourself.** The report is binary (it works or it does not), the reproduction is a red test, and the fix restores documented or obviously intended behaviour with nothing visible changing beyond the fix. Merge after the local checks pass on the exact head.
-2. **Needs the maintainer's call: build it fully, then stop.** Anything that is not an obvious bug, and every change to what users see or how they set things up: config and options flow steps, wording and translations, entity names, defaults and which entities are enabled, how the map is drawn, new options or behaviour, compatibility or migrations, dependency upgrades of the map parsers. Do all the work, open the pull request, do not merge or release it, and hand it over.
+2. **Needs the maintainer's call: build it fully, then stop.** Anything that is not an obvious bug, and every change to what users see or how they set things up: config and options flow steps, wording and translations, entity names, defaults and which entities are enabled, how the map is drawn, new options or behaviour, compatibility or migrations, dependency upgrades of the map parsers. Do all the work, open the pull request, do not merge or release it, and hand it over. When the change answers an issue (a triage build thread), also publish a `vX.Y.Z-beta.N` pre-release from the pull request for the reporter's AI agent to try (see "GitHub releases"); a pre-release is not a release, so this needs no approval.
 3. **Cannot be reproduced here: pre-release.** The change depends on a vacuum, region or account state we do not have. Follow the pre-release rule under "GitHub releases".
 
 **What a hand-off contains.** It goes in the chat with the maintainer, never on GitHub: no hand-offs, screenshots or summaries as pull request or issue comments, and short pull request descriptions. GitHub comments are only for external contributors (the pre-release flow). Present it with the chat's visualization tools: the problem and the change in a short paragraph written for a user; what it looks like (config flow screens, the rendered map) before and after; how to try it; the alternatives and your recommendation; what is proven and what is not. End with one question the maintainer can answer yes or no, or by picking an option.

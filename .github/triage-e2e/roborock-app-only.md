@@ -1,0 +1,1 @@
+I installed Better Xiaomi Cloud Map Extractor v1.0.0 and logged into my Xiaomi account, but it says no vacuums found. My Roborock Q Revo is set up in the official Roborock app on my phone. How do I get its map here?
