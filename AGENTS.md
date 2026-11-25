@@ -64,6 +64,7 @@ The fork's domain is `better_xiaomi_cloud_map_extractor`, so it installs next to
 - Fix problems in the integration, for every supported vacuum and region. A report from one user's vacuum is a sample of a general bug: find the general cause and check the other vendors and flows for it.
 - Never create or change scripts, automations, helpers or Home Assistant configuration in a user's Home Assistant (including the maintainer's `ha.igielski.dev`) to work around an integration bug.
 - When a vacuum or cloud protocol cannot do what a feature needs, say so and surface it clearly in the UI or document the limitation; do not ship a per-installation workaround as the fix.
+- Vendors: `connector/vacuums/vacuum_*.py` download the map; parsing and drawing live in the external `vacuum-map-parser-*` packages pinned in `manifest.json`, except the XTL format (Jonr P20), parsed by `connector/vacuums/map_parser_xtl.py` (`vacuum_xtl.py` downloads it).
 
 ## Local checks
 

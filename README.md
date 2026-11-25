@@ -6,6 +6,9 @@
 
 A Home Assistant integration that brings your robot vacuum's live map from the Xiaomi cloud into
 Home Assistant — showing rooms, walls, obstacles, the dock, and the robot's live position and path.
+A Home Assistant integration that downloads your robot vacuum's map from the Xiaomi cloud and shows
+it as an image entity, with the robot's position, path, rooms, zones and obstacles drawn on it. It
+works with Xiaomi, Roborock (Mi Home app), Viomi, Roidmi, Dreame, Ijai and Jonr vacuums.
 
 It works with Xiaomi, Roborock (Mi Home app), Viomi, Roidmi, Dreame and Ijai vacuums.
 
