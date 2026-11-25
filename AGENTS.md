@@ -19,7 +19,7 @@ When two pieces of work compete, the one higher on this list goes first. [`ROADM
 - This repository is Igloczek's hard fork of `PiotrMachowski/Home-Assistant-custom-components-Xiaomi-Cloud-Map-Extractor`, published as **Better Xiaomi Cloud Map Extractor**. Upstream is abandoned; its v3 line (`dev_extracted_libraries` at `688fe3e`, released as v3.0.0-alpha-24) is the baseline, and the legacy v2 line is frozen on the `v2` branch.
 - [`FORK.md`](FORK.md) holds the compatibility promise, the differences from upstream and the import rules. Read it before changing fork-specific behaviour or importing upstream code. Every row under **Active differences** is a preservation criterion.
 - Add every intentional fork-only feature or fix to `FORK.md` with what it changes and why, and add it to the [sync checklist](.agents/skills/sync-upstream/fork-differences.md).
-- [`ROADMAP.md`](ROADMAP.md) holds planned work, the upstream triage and postponed items; [`CHANGELOG.md`](CHANGELOG.md) holds released changes. Do not keep a record of completed work in a standing document.
+- [`ROADMAP.md`](ROADMAP.md) holds planned work and postponed items, [`TRIAGE.md`](TRIAGE.md) the classification of every open upstream issue and pull request; [`CHANGELOG.md`](CHANGELOG.md) holds released changes. Do not keep a record of completed work in a standing document.
 - To import an upstream commit or open upstream pull request, follow [`.agents/skills/sync-upstream/SKILL.md`](.agents/skills/sync-upstream/SKILL.md). Never push to `upstream` and never comment on upstream issues or pull requests.
 
 ## Compatibility

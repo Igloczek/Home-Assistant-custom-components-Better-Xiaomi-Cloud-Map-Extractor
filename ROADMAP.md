@@ -2,7 +2,8 @@
 
 What this fork plans to work on next. The current state is described in the [README](README.md);
 released changes are in [CHANGELOG.md](CHANGELOG.md); the differences from upstream are in
-[FORK.md](FORK.md).
+[FORK.md](FORK.md); every open upstream issue and pull request is classified in
+[TRIAGE.md](TRIAGE.md).
 
 ## How to propose work
 
@@ -14,25 +15,53 @@ with a test that fails first (see [AGENTS.md](AGENTS.md)).
 
 ## In progress
 
-- **Xiaomi models: live data and map index** (backlog): upstream PRs #781 and a generalised #748.
-  Closes #720, advances #563, #657, #702, #739.
-- **Viomi: follow cleaning start sooner**: run state through the cloud, waiting for a check on a
-  Viomi V8 (the cloud's `get_prop` answer is modelled, not captured).
+- **Xiaomi models: live data and map index** (fork PR #18, pre-release for b108gl, ov21gl and ov81gl
+  owners): upstream PRs #781, #750 and a generalised #748. Robot position and path, the map index,
+  the current map through the cloud when the LAN does not answer, the status property of models such
+  as the d109gl and the H50 (`xiaomi.vacuum.ov43gb`), ov21gl rooms and S40 zones. Closes #563, #588,
+  #657, #702, #704, #720, #739.
+- **Roborock map without the local network**: read the map name through the cloud when Home
+  Assistant cannot reach the vacuum, as Ijai does for the WiFi serial (#601, and with fork PR #18
+  #381).
 
-Still open from the cloud login work: PR #793 (cloud region selection), #700, #712 and the
-`verifyEmail` finish location in #780. Unverified: an unencrypted API answer with code 2 or 3, or the
-message `invalid signature`, is treated as an expired session (renewal, then password login). That
-mirrors other Xiaomi cloud clients, not a captured response; replace it with a scrubbed capture of
-what Xiaomi really sends for an expired `serviceToken`.
+Unverified: an unencrypted API answer with code 2 or 3, or the message `invalid signature`, is
+treated as an expired session (renewal, then password login). That mirrors other Xiaomi cloud
+clients, not a captured response; replace it with a scrubbed capture of what Xiaomi really sends for
+an expired `serviceToken` (#697 reports `{"code":0,"message":"SERVICETOKEN_EXPIRED"}`, which is
+handled).
 
 ## Next, in order
 
 Ranked by the north star in [AGENTS.md](AGENTS.md#north-star): reliability of the cloud session and
 map download first, then failures the UI makes actionable, then the drop-in from the original, then
-the rest of the upstream backlog. Within a priority, work that hits more users goes first (upstream
-issues + comments + 👍; the backlog on 2026-11-24 was 141 open issues and 27 open pull requests),
-counting only what still happens on v3.0.0-alpha-24. Issue and PR numbers refer to the upstream
-repository; each item names the priority it serves.
+the rest of the upstream backlog. Within a priority, work that hits more users goes first (comments
+plus 👍 on the upstream items, from [TRIAGE.md](TRIAGE.md), taken on 2026-11-25). Issue and PR
+numbers refer to the upstream repository; each item names the priority it serves.
+
+1. **Xiaomi: map path from the vacuum's own uid** (P1, #762). The map object can sit under a uid
+   other than the logged-in account's (seen on the H40 `xiaomi.vacuum.ov51gl`); the connector keeps
+   only the last part of the object name the vacuum reports and rebuilds the path with the account's
+   uid, so the signed URL ends in "404 Object Not Found". Fork PR #18 keeps that behaviour
+   (`object_name`). Use the full object name from the MIoT property; test with a scrubbed property
+   answer.
+2. **Login dead-ends** (P2, #700, #712, #780, PR #793; 45 users). A two-factor code that ends in
+   "Unexpected error" after minutes, a retry that asks only for the captcha, the finish location after
+   `verifyEmail`, and the cloud region choice from PR #793. Each needs a recorded, scrubbed login
+   exchange as a fixture.
+3. **Ijai: say when the map is turned off** (P2, follow-up of #759). A map disabled in the Xiaomi
+   Home app fails to decrypt ("Padding is incorrect"); the update failure and repair should say to
+   turn the map on in Xiaomi Home.
+4. **Drop-in follow-up** (P3): decide whether to raise a repair issue that points users of the
+   original at the import once this integration is running. (The import itself was verified end to
+   end on a real Home Assistant, with the original installed and then removed, on 2026-11-24.)
+5. **Jonr P20** (P4, #621; 37 users): `xtl.vacuum.xm2216`, from a fork that three owners confirm;
+   needs its map as a fixture and an owner for the pre-release.
+6. **Roidmi sdj60** (P4, #572, PR #768): port to `vacuum_roidmi.py` (the `_pro` map URL and the byte
+   split).
+7. **Dreame md1808 "incorrect header check"** (P4, #450, #757, #772): a raw map is attached to #450;
+   check it against vacuum-map-parser-dreame.
+8. **Small import** (P4, PR #591) if `scripts/` keeps shipping.
+9. **Ijai rendering** (P4, PR #794): fit to the explored area, without the bundled font if possible.
 
 ## 1.0.0 criteria
 
@@ -46,31 +75,16 @@ repository; each item names the priority it serves.
    entities, config flow. Tests cover everything the refactor touches.
 
 When both hold, an agent brings the maintainer one question, "ready for 1.0.0?", with the evidence:
-the triage table, the fixed issues, the module map and the test coverage.
+the [triage table](TRIAGE.md), the fixed issues, the module map and the test coverage.
 
 ## Later
 
-- **Xiaomi H50 status** (`xiaomi.vacuum.ov43gb`): its status is siid 2 piid 2, which
-  vacuum-map-parser-xiaomi does not map, so it falls back to the once-a-minute map check like a
-  vacuum without status. Needs the property values from the miot-spec.
-- **Dreame: ask for a fresh map** (#655). On non-encrypted Dreame models (`dreame.vacuum.p2008`)
-  `get_map_name` asks the vacuum for a new map with python-miio `call_action("map_view")`, but
-  python-miio maps `map_view` as a property, not an action, so it raises before anything is sent and
-  the cloud keeps the map from the last upload (old robot position). Needs a Dreame owner to confirm
-  the right action (siid 6, aiid 1 as the encrypted models use through the cloud?); pre-release.
-- **Xiaomi and Roborock without the local network.** Both read the map name over the LAN, so a
-  vacuum that is not reachable from Home Assistant gets no map at all; a cloud fallback for the map
-  name (as Ijai does for the WiFi serial) would fix it. Related: #601 (rockrobo.vacuum.v1, v2).
-
-- **Dreame encrypted maps** ("incorrect header check" on p2140/p2150/r22xx) and Viomi V5 Pro
-  (#746, reported on alpha-24). Needs a captured map from a reporter.
-- **Roidmi sdj60**: port v2 PR #768 to `vacuum_roidmi.py` (#572).
-- **Ijai rendering**: #794 (fit to explored area), without the bundled font if possible.
-- **Drop-in follow-ups**: verify the import on a real Home Assistant with the original installed
-  and then removed (the pytest suite covers the registry moves); decide whether to raise a repair
-  issue that points original users at the import once this integration is running.
-- **Small imports**: #591 if
-  `scripts/` keeps shipping; check #636 (homes without `share_home_list`) against v3 discovery.
+- **Waiting for a capture**: 19 upstream items need a raw map, a debug log or a tester before they
+  can be fixed with a test; [TRIAGE.md](TRIAGE.md) says what each needs. The biggest groups: Dreame
+  encrypted maps ("incorrect header check", #459 with #571, #607, #608) and Viomi maps (#315, #534,
+  #613, #746); Xiaomi models not yet confirmed on v3 (#558, #602, #706, #751); Roidmi v62 and v66
+  (#477, #710); the Dreame fresh-map request (#655: python-miio maps `map_view` as a property, so
+  `call_action("map_view")` raises before anything is sent; needs a p2008 owner, pre-release).
 - **README for v3 in depth**: options flow, every entity and attribute, and the card integration.
 - **Real Home Assistant smoke test**: install the release zip into a Home Assistant container and
   set it up against a recorded cloud, like the card's end-to-end suite.
@@ -82,17 +96,23 @@ the triage table, the fixed issues, the module map and the test coverage.
 
 ## Feature requests kept
 
-Multi-floor maps (#67, #350), rotation by any angle and trim by coordinates (#137, #377), background
-image (#39), carpets and room order (#185), cleaning history map (#633), cloud-only mode without a
-local host (#381), RGBA room colours (#652), S40 walls and no-go zones (#739), a notification when
-re-authentication is needed (#338, #440).
+Multi-floor maps (#67, #350), trim by coordinates and negative trim (#137, #46), background image
+(#39), carpets and room order (#185), auto-rotating a map the vacuum flips (#303), Lydsto W2 path
+(#419), cleaning history map (#633), RGBA room colours (#652), Deerma vacuums (#687, #651, #738), the
+d103cn's live-frame map (#765).
 
 ## Not planned
 
+The 38 v2-only or obsolete items (v2 YAML login, the v2 camera platform and its blueprints, models
+that already work on v3) are listed with their reason in [TRIAGE.md](TRIAGE.md).
+
 | Item | Why |
 | --- | --- |
-| v2 YAML login failures (#157, #422, #533, #583, #629, #644, #645, #697, #752, #753, #760) | v2 is frozen; v3 login replaces it. #697 is covered by the login thread. |
-| Other v2-only display and blueprint issues (#20, #71, #75, #173, #236, #339, #351, #426, #462, #463, #487, #504, #507, #514, #536, #539, #540, #547, #562, #605) | Only on the v2 camera platform. |
-| Roborock-app-only vacuums (#100, #156, #388, #461, #528) | Those devices are not in the Xiaomi cloud. |
+| Roborock-app-only vacuums (#100, #156, #388, #461, #489, #528) | Those devices are not in the Xiaomi cloud; Home Assistant's Roborock integration covers them. |
 | PR #770 (IJAI/Xiaomi retrieval rewrite) | Changes the encrypted request format for every vendor; the targeted Ijai PRs cover the same bugs. |
-| PRs #749, #767, #527, #289 | Wrong base, junk, or superseded by the v3 code. |
+| PRs #749, #527, #289 | Wrong base or superseded by the v3 code and fork PR #18. |
+| Cairo instead of Pillow (#102) | Drawing lives in the parser packages; it already runs off the event loop and only when the map changes. |
+| Echo Show stream (#112) | Needs an RTSP stream; the integration serves still images. |
+| python-miio "unsupported model" warning (#490, #474) | Harmless; the map works. |
+| 3D map (#574) | The app draws it; the cloud has no 3D map. |
+| Deleting maps (#734) | Writes to the vacuum; this integration only reads. |
