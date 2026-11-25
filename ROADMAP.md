@@ -14,18 +14,19 @@ with a test that fails first (see [AGENTS.md](AGENTS.md)).
 
 ## In progress
 
-- **Ijai maps (the largest v3 cluster).** Upstream PRs #725, #782, #787, #792, #785, #789 and #786
-  in one change, shipping as a pre-release for owners to test. Closes #682, #696, #698, #703, #709,
-  #714, #742, #759.
-- **Re-authentication crash.** Reauth reaches `confirm_data` without an existing entry and ends in
-  "Unknown error occurred". Includes upstream #730 and the regression test from upstream PR #754.
-- **Cloud login robustness.** Telling a Xiaomi outage (5xx, HTML, undecodable body) from a refusal,
-  keeping the session through a failed login, and throttling background password logins are in
-  review. Still open: PR #793 (cloud region selection), #700, #712 and the `verifyEmail` finish
-  location in #780. Unverified: an unencrypted API answer with code 2 or 3, or the message
-  `invalid signature`, is treated as an expired session (renewal, then password login). That
-  mirrors other Xiaomi cloud clients, not a captured response; replace it with a scrubbed capture
-  of what Xiaomi really sends for an expired `serviceToken`.
+- **Repairs for failures that persist** (UI): a Repairs issue with a one-click fix when the same
+  failure lasts (vacuum not in the configured region, vacuum refusing the token or unreachable on
+  the network, map download failing).
+- **Xiaomi models: live data and map index** (backlog): upstream PRs #781 and a generalised #748.
+  Closes #720, advances #563, #657, #702, #739.
+- **Leftover original YAML after the import** (drop-in): a repair that names the
+  `platform: xiaomi_cloud_map_extractor` block to remove once the original is uninstalled.
+
+Still open from the cloud login work: PR #793 (cloud region selection), #700, #712 and the
+`verifyEmail` finish location in #780. Unverified: an unencrypted API answer with code 2 or 3, or the
+message `invalid signature`, is treated as an expired session (renewal, then password login). That
+mirrors other Xiaomi cloud clients, not a captured response; replace it with a scrubbed capture of
+what Xiaomi really sends for an expired `serviceToken`.
 
 ## Next, in order
 
@@ -36,18 +37,12 @@ issues + comments + 👍; the backlog on 2026-11-24 was 141 open issues and 27 o
 counting only what still happens on v3.0.0-alpha-24. Issue and PR numbers refer to the upstream
 repository; each item names the priority it serves.
 
-1. **Secrets in diagnostics and vendor logs** (reliability: a leaked session is a broken session).
-   The cloud connector's log is covered by `tests/test_secrets_in_logs.py`; still open: diagnostics
-   export the map decryption key in `device_data`. Extend the log scan to every other
-   vendor's map download (Ijai is covered). Closes #778.
-2. **Repairs for failures that persist** (UI). Every config flow step and map update failure has
-   a specific translated message; still open: a Repairs issue that says what to do when the same
-   failure lasts (vacuum offline, wrong region), like `repairs.py` does for the wrong map format.
-3. **Xiaomi models: live data and map index** (backlog). Robot position and path missing while cleaning, wrong
-   map after maps were deleted, missing walls and no-go zones (b108gl, ov43gb, ov81gl, S40 Pro).
-   Import #781 (skip #750, which does the same in 976 lines) and a generalised #748 (ov21gl rooms
-   with `room_id=0`, zones, walls; skip #749, wrong base). Closes #720, advances #563, #657, #702,
-   #739.
+1. **Secrets in vendor logs** (reliability: a leaked session is a broken session). Diagnostics no
+   longer export the map key or URL, and the cloud connector and Ijai logs are scanned by
+   `tests/test_secrets_in_logs.py`; extend the scan to every other vendor's map download.
+2. **Viomi: follow cleaning start sooner.** Viomi cannot report its status, so a docked Viomi is
+   checked once a minute and the map may start following a clean up to a minute late; read the
+   Viomi run state over the local network to switch back to 10-second updates at once.
 
 ## 1.0.0 criteria
 
