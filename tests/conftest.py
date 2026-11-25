@@ -171,6 +171,9 @@ def cloud_connector() -> Generator[MagicMock]:
         connector.login_with_credentials = AsyncMock(return_value="user_id")
         connector.get_devices = AsyncMock(return_value=[make_device()])
         connector.to_config = MagicMock(return_value=None)
+        # The miIO command forwarding (`/v2/home/rpc/<did>`) answers like the real cloud does for a
+        # vacuum it cannot reach, never with a mock that passes for any reply; tests opt in to an answer.
+        connector.get_other_info = AsyncMock(return_value={"code": -2, "message": "device offline"})
         yield connector
 
 

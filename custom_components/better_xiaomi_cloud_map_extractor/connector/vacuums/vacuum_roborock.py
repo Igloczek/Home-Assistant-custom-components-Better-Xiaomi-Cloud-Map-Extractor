@@ -1,6 +1,7 @@
 import asyncio
 import logging
-from typing import Self
+from collections.abc import Awaitable, Callable
+from typing import Any, Self
 
 from miio import RoborockVacuum, DeviceException
 
@@ -8,16 +9,58 @@ from vacuum_map_parser_roborock.map_data_parser import RoborockMapDataParser
 from .base.model import VacuumConfig, VacuumApi
 from .base.vacuum_base import BaseXiaomiCloudVacuum
 from ..utils.backoff import Backoff
-from ..utils.exceptions import InvalidDeviceTokenException
+from ..utils.exceptions import InvalidDeviceTokenException, SessionExpiredException
 from ..utils.dict_operations import path_extractor
 
 _LOGGER = logging.getLogger(__name__)
 
 MISSING_MAP_VALUE = "retry"
 OFF_UPDATES = 3
+MAP_NAME_ATTEMPTS = 10
+MOVING_STATES = frozenset({
+    1,  # Starting
+    4,  # Remote control active
+    5,  # Cleaning
+    6,  # Returning home
+    7,  # Manual mode
+    11,  # Spot cleaning
+    15,  # Docking
+    16,  # Going to target
+    17,  # Zoned cleaning
+    18,  # Segment cleaning
+    26,  # Going to wash the mop
+})
+
+
+class _NoAnswer(Exception):
+    """The vacuum did not answer, on the local network or through the cloud."""
+
+
+def roborock_state(response: Any) -> int | None:
+    """The state code of a `get_status` answer forwarded by the cloud (`[{"state": 8, ...}]`)."""
+    result = path_extractor(response, "result")
+    if not isinstance(result, list) or len(result) != 1 or not isinstance(result[0], dict):
+        return None
+    state = result[0].get("state")
+    return state if isinstance(state, int) and not isinstance(state, bool) else None
+
+
+def roborock_map_name(response: Any) -> str | None:
+    """The map name of a `get_map_v1` answer forwarded by the cloud (`["<map name>"]`)."""
+    result = path_extractor(response, "result")
+    if not isinstance(result, list) or len(result) != 1 or not isinstance(result[0], str):
+        return None
+    return result[0]
 
 
 class RoborockCloudVacuum(BaseXiaomiCloudVacuum):
+    """Roborock reads its map name and state on the local network (python-miio).
+
+    When Home Assistant can't reach it there (another network, VLAN isolation, a changed IP), the same
+    miIO commands go through the Xiaomi cloud (`/v2/home/rpc/<did>`), which forwards them to the vacuum
+    over its own cloud connection, so the map keeps working. `lan_reachable` still reports the LAN.
+    """
+
     _roborock_map_data_parser: RoborockMapDataParser
     _vacuum: RoborockVacuum
     _backoff: Backoff
@@ -48,34 +91,37 @@ class RoborockCloudVacuum(BaseXiaomiCloudVacuum):
         try:
             code = (await asyncio.to_thread(self._vacuum.status)).state_code
             self.lan_reachable = True
-            _LOGGER.debug("Vacuum status: %d", code)
-            is_moving = code in [
-                1,  # Starting
-                4,  # Remote control active
-                5,  # Cleaning
-                6,  # Returning home
-                7,  # Manual mode
-                11,  # Spot cleaning
-                15,  # Docking
-                16,  # Going to target
-                17,  # Zoned cleaning
-                18,  # Segment cleaning
-                26,  # Going to wash the mop
-            ]
-            if is_moving:
-                self._off_counter = 0
-                _LOGGER.debug("Vacuum is moving. Updating map.")
-                return True
-            else:
-                self._off_counter += 1
-                _LOGGER.debug("Vacuum is not moving. Off counter: %d", self._off_counter)
-                return self._off_counter <= OFF_UPDATES
-
         except DeviceException as de:
             if "token" in repr(de):
                 raise InvalidDeviceTokenException()
             self.lan_reachable = False
-            return False
+            code = await self._cloud_state()
+            if code is None:
+                # Neither tells: the connector checks the map for changes less often instead.
+                return None
+        _LOGGER.debug("Vacuum status: %d", code)
+        if code in MOVING_STATES:
+            self._off_counter = 0
+            _LOGGER.debug("Vacuum is moving. Updating map.")
+            return True
+        self._off_counter += 1
+        _LOGGER.debug("Vacuum is not moving. Off counter: %d", self._off_counter)
+        return self._off_counter <= OFF_UPDATES
+
+    async def _cloud_state(self: Self) -> int | None:
+        try:
+            response = await self._cloud_rpc("get_status")
+        except Exception as ex:  # the map download that may follow handles the session and reports failures
+            _LOGGER.debug("Could not read the state through the cloud: %r", ex)
+            return None
+        code = roborock_state(response)
+        if code is None:
+            _LOGGER.debug("The cloud did not report a state (code %s)",
+                          response.get("code") if isinstance(response, dict) else None)
+        return code
+
+    async def _cloud_rpc(self: Self, method: str) -> Any:
+        return await self._connector.get_other_info(str(self._device_id), method, [], server=self._server)
 
     @staticmethod
     def vacuum_platform() -> VacuumApi:
@@ -90,21 +136,49 @@ class RoborockCloudVacuum(BaseXiaomiCloudVacuum):
         return self._roborock_map_data_parser
 
     async def get_map_name(self: Self) -> str:
-        map_name = MISSING_MAP_VALUE
+        # The LAN first, unless the vacuum did not answer there at the last status check; a source that
+        # does not answer hands over to the other one right away. "retry" means the vacuum is still
+        # uploading the map: ask the same source again after a backoff.
+        sources: list[tuple[str, Callable[[], Awaitable[str]]]] = [
+            ("local network", self._map_name_from_lan), ("cloud", self._map_name_from_cloud)]
+        if self.lan_reachable is False:
+            sources.reverse()
         self._backoff.reset()
-        remaining_attempts = 10
-        while map_name == MISSING_MAP_VALUE and remaining_attempts > 0:
-            _LOGGER.debug("Retrieving map name from device, remaining_attempts: %d", remaining_attempts)
+        failed_in_a_row = 0
+        for remaining_attempts in range(MAP_NAME_ATTEMPTS - 1, -1, -1):
+            source, read = sources[0]
+            _LOGGER.debug("Retrieving map name through the %s, remaining_attempts: %d", source, remaining_attempts)
             try:
-                map_name = (await asyncio.to_thread(self._vacuum.map))[0]
+                map_name = await read()
+            except _NoAnswer as exc:
+                _LOGGER.debug("No map name through the %s: %s", source, exc)
+                sources.append(sources.pop(0))
+                failed_in_a_row += 1
+                if failed_in_a_row < len(sources):
+                    continue
+            else:
+                failed_in_a_row = 0
                 _LOGGER.debug("Map name %s", map_name)
                 if map_name != MISSING_MAP_VALUE:
                     return map_name
-            except OSError as exc:
-                _LOGGER.warning("Got OSError while fetching the state: %s", exc)
-            except DeviceException as exc:
-                _LOGGER.warning("Got exception while fetching the state: %s", exc)
-            remaining_attempts = remaining_attempts - 1
             if remaining_attempts > 0:
                 await self._backoff.sleep()
+        return MISSING_MAP_VALUE
+
+    async def _map_name_from_lan(self: Self) -> str:
+        try:
+            return (await asyncio.to_thread(self._vacuum.map))[0]
+        except (OSError, DeviceException) as exc:
+            raise _NoAnswer(repr(exc)) from exc
+
+    async def _map_name_from_cloud(self: Self) -> str:
+        try:
+            response = await self._cloud_rpc("get_map_v1")
+        except SessionExpiredException:
+            raise  # the connector renews the session and downloads again
+        except Exception as exc:
+            raise _NoAnswer(repr(exc)) from exc
+        map_name = roborock_map_name(response)
+        if map_name is None:
+            raise _NoAnswer(f"code {response.get('code') if isinstance(response, dict) else None}")
         return map_name
