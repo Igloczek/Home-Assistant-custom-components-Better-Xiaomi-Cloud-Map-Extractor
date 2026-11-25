@@ -42,6 +42,11 @@
   cannot (Viomi, Roidmi, Dreame, and the Xiaomi H50, whose status property holds the firmware
   version) are downloaded every update only while the map changes, and checked once a minute after
   three unchanged downloads.
+- A Viomi (V6, V7, V8, V10, V13), Roidmi Eve Plus (v60) or Dreame (1C, F9, D9, Z10 Pro, Mop 2
+  family) that starts cleaning is followed from the next update (10 seconds) instead of up to a
+  minute late: the vacuum's run state is read through the Xiaomi cloud on every update, so it works
+  even when Home Assistant can't reach the vacuum on the local network. When the cloud can't tell,
+  the map is checked once a minute as before.
 - Updates that bring the same map no longer write new states to the recorder and logbook (upstream
   #719). The `last_update_timestamp` and `last_successful_update_timestamp` attributes now change
   with the map, not with every check; diagnostics still show the last check.

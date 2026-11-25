@@ -50,8 +50,8 @@ from custom_components.better_xiaomi_cloud_map_extractor.repairs import LAN_UNRE
 
 from .const import ENTRY_DATA, HOST, MAC, TOKEN
 from .fake_miio import FakeLanVacuum, lan_vacuum
-from .fake_xiaomi import API, USER_ID, FakeResponse, FakeXiaomiCloud, connection_timeout
-from .ijai_map import DEVICE_ID, WIFI_SN, build_map, encrypt_map, fixture, map_key
+from .fake_xiaomi import API, USER_ID, FakeResponse, FakeXiaomiCloud, bad_gateway, connection_timeout
+from .ijai_map import DEVICE_ID, WIFI_SN, build_map, encrypt_map, map_key
 from .log_secrets import MAP_URL_QUERY, assert_no_secrets, leaked
 from .test_session_lifecycle import stored_session
 from .test_vacuum_xiaomi import MAP_JSON, app_key, encrypt_xiaomi_map
@@ -70,9 +70,9 @@ PARSER_DRAWN = (ViomiCloudVacuum, RoidmiCloudVacuum, DreameCloudVacuum, Roborock
 class Vendor:
     model: str
     api: str
-    # MIoT properties the vacuum reports while docked and while cleaning.
-    docked: dict[tuple[int, int], object]
-    cleaning: dict[tuple[int, int], object]
+    # Properties the vacuum reports while docked and while cleaning: MIoT by (siid, piid), miIO by name.
+    docked: dict[tuple[int, int] | str, object]
+    cleaning: dict[tuple[int, int] | str, object]
     # Builds the map the cloud serves; `version` makes a different map.
     raw_map: Callable[[int], bytes]
 
@@ -110,9 +110,14 @@ OBJ_NAME = {(10, 1): json.dumps({"obj_name": f"{USER_ID}/{DEVICE_ID}/0"})}
 IJAI_SN = {(1, 3): WIFI_SN}
 
 VENDORS = [
-    Vendor("viomi.vacuum.v8", "VIOMI", {}, {}, _opaque_map),
-    Vendor("roidmi.vacuum.v60", "ROIDMI", {}, {}, _opaque_map),
-    Vendor("dreame.vacuum.p2008", "DREAME", {}, {}, _opaque_map),
+    # Viomi, Roidmi and Dreame report their state only through the cloud (python-miio mappings):
+    # Viomi miIO `run_state` 5 docked, 3 cleaning; Roidmi 2/1 6 charging, 4 sweeping; Dreame 2/1 6
+    # charging, 1 sweeping.
+    Vendor("viomi.vacuum.v8", "VIOMI", {"run_state": 5}, {"run_state": 3}, _opaque_map),
+    Vendor("roidmi.vacuum.v60", "ROIDMI", {(2, 1): 6}, {(2, 1): 4}, _opaque_map),
+    Vendor("dreame.vacuum.p2008", "DREAME", {(2, 1): 6}, {(2, 1): 1}, _opaque_map),
+    # A model with no known state property: the map tells whether it moves.
+    Vendor("viomi.vacuum.x1", "VIOMI", {}, {}, _opaque_map),
     # Roborock reports its state through miIO `get_status`, set on FakeLanVacuum.
     Vendor("roborock.vacuum.s5", "ROBOROCK", {}, {}, _opaque_map),
     Vendor("ijai.vacuum.v3", "IJAI", {**IJAI_SN, (2, 1): 2}, {**IJAI_SN, (2, 1): 5}, _ijai_map("ijai.vacuum.v3")),
@@ -161,7 +166,7 @@ class VacuumHome:
         url = {"result": {"url": f"{MAP_URL}?{MAP_URL_QUERY}"}}
         for endpoint in ("/v2/home/get_interim_file_url", "/v2/home/get_interim_file_url_pro", "/home/getmapfileurl"):
             self.cloud.encrypted_api(endpoint, url)
-        self.cloud.encrypted_api(f"/v2/home/rpc/{DEVICE_ID}", fixture("cloud_responses.json")["get_properties_unknown"])
+        self.cloud.encrypted_rpc(f"/v2/home/rpc/{DEVICE_ID}", self.lan.cloud_rpc)
         self.cloud.on("GET", MAP_URL, lambda _request: FakeResponse(body=vendor.raw_map(self.map_version)))
 
     @property
@@ -358,6 +363,112 @@ async def test_cleaning_brings_back_a_download_every_cycle(
     before = vacuum.home.downloads
     await vacuum.cycles(freezer, 3)
     assert vacuum.home.downloads - before == 3
+
+
+# Vendors that report whether they move; for the others the map is checked once a minute when docked.
+# The H50 (ov43gb) has its status at 2/2, which vacuum-map-parser-xiaomi does not map yet.
+NO_STATE = {"viomi.vacuum.x1", "xiaomi.vacuum.ov43gb"}
+REPORTS_STATE = [v for v in VENDORS if v.model not in NO_STATE]
+CLOUD_STATE = [v for v in REPORTS_STATE if v.api in ("VIOMI", "ROIDMI", "DREAME")]
+
+
+async def _settle_docked(vacuum: AsyncVacuum, freezer: FrozenDateTimeFactory) -> None:
+    # Long enough for a vendor that cannot report its state to be down to a check per minute, and to
+    # end 40 s after that check: a clean starting now is the worst case for the minute check.
+    await vacuum.cycles(freezer, 2 * CYCLES_PER_MINUTE)
+
+
+@pytest.mark.parametrize("vendor", REPORTS_STATE, ids=str)
+async def test_cleaning_start_is_followed_at_the_next_update(
+    hass: HomeAssistant, setup_vacuum, freezer: FrozenDateTimeFactory, vendor: Vendor
+) -> None:
+    """A docked Viomi was checked once a minute, so the map started following a clean up to 60 s late."""
+    vacuum = setup_vacuum(vendor)
+    await vacuum.setup()
+    await _settle_docked(vacuum, freezer)
+
+    vacuum.home.start_cleaning()
+    vacuum.home.map_version += 1
+    before = vacuum.home.downloads
+    shown = hass.states.get(IMAGE).state
+    await vacuum.cycles(freezer, 1)
+
+    assert vacuum.home.downloads - before == 1
+    assert hass.states.get(IMAGE).state != shown
+
+
+@pytest.mark.parametrize("vendor", CLOUD_STATE, ids=str)
+async def test_cloud_state_works_without_the_lan(
+    hass: HomeAssistant, setup_vacuum, freezer: FrozenDateTimeFactory, vendor: Vendor
+) -> None:
+    """The state is read through the Xiaomi cloud, so a vacuum on another network is followed too."""
+    vacuum = setup_vacuum(vendor)
+    vacuum.home.lan.reachable = False
+    await vacuum.setup()
+    await _settle_docked(vacuum, freezer)
+    before = vacuum.home.downloads
+    await vacuum.cycles(freezer, DOCKED_MINUTES * CYCLES_PER_MINUTE)
+    assert vacuum.home.downloads == before, "a vacuum the cloud reports docked needs no map check"
+
+    vacuum.home.start_cleaning()
+    await vacuum.cycles(freezer, 3)
+
+    assert vacuum.home.downloads - before == 3
+    assert _lan_issue(hass, vacuum.entry.entry_id) is None
+
+
+@pytest.mark.parametrize("vendor", CLOUD_STATE, ids=str)
+async def test_cloud_state_is_read_with_the_python_miio_property(
+    hass: HomeAssistant, setup_vacuum, freezer: FrozenDateTimeFactory, vendor: Vendor
+) -> None:
+    """One small cloud RPC per update: miIO `get_prop` for Viomi, MIoT `get_properties` for the others."""
+    vacuum = setup_vacuum(vendor)
+    await vacuum.setup()
+    vacuum.home.lan.cloud_calls.clear()
+    await vacuum.cycles(freezer, 1)
+
+    (state_key,) = vendor.docked
+    if isinstance(state_key, str):
+        expected = {"method": "get_prop", "params": [state_key]}
+    else:
+        siid, piid = state_key
+        expected = {"method": "get_properties", "params": [{"did": DEVICE_ID, "siid": siid, "piid": piid}]}
+    assert vacuum.home.lan.cloud_calls == [expected]
+
+
+@pytest.mark.parametrize("vendor", CLOUD_STATE, ids=str)
+@pytest.mark.parametrize(
+    "fault",
+    ["offline", "unexpected", "session expired", "bad gateway"],
+)
+async def test_unreadable_cloud_state_falls_back_to_the_map_check(
+    hass: HomeAssistant, setup_vacuum, freezer: FrozenDateTimeFactory, vendor: Vendor, fault: str
+) -> None:
+    """When the cloud cannot tell the state, the map is checked once a minute as before: never a failed
+    update and never a map that stops following."""
+    vacuum = setup_vacuum(vendor)
+    await vacuum.setup()
+    rpc = f"/v2/home/rpc/{DEVICE_ID}"
+    if fault == "offline":
+        vacuum.home.lan.online = False
+    elif fault == "unexpected":
+        vacuum.home.lan.properties = {key: "busy" for key in vendor.docked}
+    elif fault == "bad gateway":
+        vacuum.home.cloud.on("POST", f"{API}{rpc}", bad_gateway)
+    else:
+        # Only the state read is refused; the download that follows still works.
+        vacuum.home.cloud.on("POST", f"{API}{rpc}", lambda _r: FakeResponse(
+            status=401, body='{"code":3,"message":"auth err"}'))
+
+    await _settle_docked(vacuum, freezer)
+    before = vacuum.home.downloads
+    await vacuum.cycles(freezer, DOCKED_MINUTES * CYCLES_PER_MINUTE)
+    assert 0 < vacuum.home.downloads - before <= DOCKED_MINUTES
+
+    vacuum.home.map_version += 1
+    shown = hass.states.get(IMAGE).state
+    await vacuum.cycles(freezer, CYCLES_PER_MINUTE)
+    assert hass.states.get(IMAGE).state != shown
 
 
 @pytest.mark.parametrize(

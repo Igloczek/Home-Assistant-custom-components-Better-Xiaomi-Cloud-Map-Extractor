@@ -44,12 +44,16 @@ class LanCall:
 class FakeLanVacuum:
     model: str
     # MIoT properties by (siid, piid); a missing one answers code -4003 like the real vacuums.
-    properties: dict[tuple[int, int], Any] = field(default_factory=dict)
+    # miIO properties (`get_prop`, Viomi) by name, e.g. "run_state".
+    properties: dict[tuple[int, int] | str, Any] = field(default_factory=dict)
     # Roborock `get_status` state: 8 is "Charging" (docked), 5 is "Cleaning".
     roborock_state: int = 8
     roborock_map_name: str = "map-name"
     reachable: bool = True
+    # Whether the vacuum is connected to the Xiaomi cloud, which forwards `/v2/home/rpc` to it.
+    online: bool = True
     calls: list[LanCall] = field(default_factory=list)
+    cloud_calls: list[dict[str, Any]] = field(default_factory=list)
 
     def send(self, command: str, parameters: Any = None) -> Any:
         self.calls.append(LanCall(command, parameters, _on_event_loop()))
@@ -59,8 +63,21 @@ class FakeLanVacuum:
         if command == "miIO.info":  # python-miio asks once for the model it was not given
             return {"model": self.model, "fw_ver": "3.5.8_0000", "hw_ver": "Linux", "mac": "AA:BB:CC:DD:EE:FF",
                     "token": "0" * 32, "ap": {"ssid": "home", "rssi": -50}, "netif": {"localIp": "192.168.1.50"}}
+        return self._answer(command, parameters)
+
+    def cloud_rpc(self, request: dict[str, Any]) -> dict[str, Any]:
+        """The Xiaomi cloud's `/v2/home/rpc/<did>`: the miIO command is forwarded to the vacuum over its
+        own cloud connection, so it works whether or not Home Assistant reaches it on the LAN."""
+        self.cloud_calls.append(request)
+        if not self.online:
+            return {"code": -2, "message": "device offline"}  # modelled, not captured
+        return {"code": 0, "message": "ok", "result": self._answer(request["method"], request["params"])}
+
+    def _answer(self, command: str, parameters: Any) -> Any:
         if command == "get_properties":
             return [self._property(p["siid"], p["piid"]) for p in parameters]
+        if command == "get_prop":  # miIO properties by name; the vacuum answers values in order
+            return [self.properties.get(name) for name in parameters]
         if command == "action":
             return {"code": 0}
         if command == "get_status":
