@@ -44,12 +44,12 @@ def _placeholders(text: str) -> set[str]:
     return {name for _, name, _, _ in string.Formatter().parse(text) if name}
 
 
-def assert_renders(section: str, result: dict) -> None:
+def assert_renders(texts: dict, result: dict) -> None:
     """The frontend can show this flow result: every text exists and gets each placeholder it uses.
 
     A missing placeholder shows as `MISSING_VALUE` in the frontend (the QR login step, upstream #795).
     """
-    texts = TRANSLATIONS[section]
+    texts = {"abort": {}, "error": {}, "step": {}, "progress": {}, **texts}
     kind, step_id = result["type"], result.get("step_id")
     provided = set(result.get("description_placeholders") or {})
     if kind is FlowResultType.ABORT:
@@ -74,7 +74,11 @@ def assert_renders(section: str, result: dict) -> None:
 
 @pytest.fixture(autouse=True)
 def flow_results_render() -> Generator[None]:
-    """Checks every config and options flow result of this integration against translations/en.json."""
+    """Checks every config, options and repair flow result of this integration against translations/en.json."""
+    from homeassistant.components.repairs import RepairsFlow
+    from homeassistant.helpers import issue_registry as ir
+
+    from custom_components.better_xiaomi_cloud_map_extractor.const import DOMAIN
     from custom_components.better_xiaomi_cloud_map_extractor.config_flow import XiaomiCloudMapExtractorFlowHandler
     from custom_components.better_xiaomi_cloud_map_extractor.options_flow import (
         XiaomiCloudMapExtractorOptionsFlowHandler,
@@ -85,9 +89,15 @@ def flow_results_render() -> Generator[None]:
     async def checked(self, flow, step_id, user_input):
         result = await handle_step(self, flow, step_id, user_input)
         if isinstance(flow, XiaomiCloudMapExtractorOptionsFlowHandler):
-            assert_renders("options", result)
+            assert_renders(TRANSLATIONS["options"], result)
         elif isinstance(flow, XiaomiCloudMapExtractorFlowHandler):
-            assert_renders("config", result)
+            assert_renders(TRANSLATIONS["config"], result)
+        elif isinstance(flow, RepairsFlow) and flow.handler == DOMAIN:
+            issue = ir.async_get(flow.hass).async_get_issue(DOMAIN, flow.issue_id)
+            if issue is not None and result["type"] is not FlowResultType.CREATE_ENTRY:
+                fix_flow = TRANSLATIONS["issues"].get(issue.translation_key, {}).get("fix_flow")
+                assert fix_flow is not None, f"issue {issue.translation_key!r} has no fix_flow texts"
+                assert_renders(fix_flow, result)
         return result
 
     with patch.object(FlowManager, "_async_handle_step", checked):

@@ -2,6 +2,21 @@
 
 ## Unreleased
 
+### Added
+
+- Failures that keep happening show up under Settings → Repairs with a one-click fix, and go away by
+  themselves once the problem is gone:
+  - the vacuum is not in the configured Xiaomi region: the fix finds the region (and IP address and
+    token) that has it and moves the entry there, without logging in again;
+  - the vacuum refuses the stored token, or has not answered on the local network for 5 minutes: the
+    fix offers the IP address and token Xiaomi Cloud lists now (the stored ones when Xiaomi can't be
+    reached);
+  - the map download keeps failing: the fix checks the region and address, and says what to do when
+    they are already right.
+
+  A login is asked for only when the saved session can't be renewed or the account no longer has
+  the vacuum.
+
 ### Fixed
 
 - No more "Detected blocking call" warnings: the status and map-name requests to the vacuum on the
@@ -22,6 +37,10 @@
   the cloud instead of keeping the first one.
 - A map that failed to download at startup is retried while the vacuum is docked, instead of never.
 - Roborock no longer waits after a successful map name request.
+- A vacuum that is not in the configured region, or refuses the stored token, no longer starts
+  re-authentication: the login was never the problem. The Repairs issue above handles it.
+- Setup no longer finishes with a session that could not be saved, which made every restart ask for
+  a login: the last step shows an error and one click tries again.
 
 ## 0.1.3 - 2026-11-24
 

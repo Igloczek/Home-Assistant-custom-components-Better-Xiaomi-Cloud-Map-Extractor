@@ -64,6 +64,8 @@ class XiaomiCloudMapExtractorData:
     last_real_update_timestamp: datetime | None = None
     status: XiaomiCloudMapExtractorConnectorStatus = XiaomiCloudMapExtractorConnectorStatus.UNKNOWN
     additional_vacuum_data: dict[str, Any] | None = field(default=None, compare=False)
+    # Whether the vacuum answered on the local network during this update; None when it was not asked.
+    lan_reachable: bool | None = field(default=None, compare=False)
 
     def as_dict(self: Self) -> dict[str, Any]:
         map_data_dict = self.map_data and {

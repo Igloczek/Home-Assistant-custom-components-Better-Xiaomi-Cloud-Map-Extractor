@@ -47,6 +47,7 @@ class RoborockCloudVacuum(BaseXiaomiCloudVacuum):
     async def should_update_map(self: Self) -> bool | None:
         try:
             code = (await asyncio.to_thread(self._vacuum.status)).state_code
+            self.lan_reachable = True
             _LOGGER.debug("Vacuum status: %d", code)
             is_moving = code in [
                 1,  # Starting
@@ -73,6 +74,7 @@ class RoborockCloudVacuum(BaseXiaomiCloudVacuum):
         except DeviceException as de:
             if "token" in repr(de):
                 raise InvalidDeviceTokenException()
+            self.lan_reachable = False
             return False
 
     @staticmethod

@@ -14,9 +14,6 @@ with a test that fails first (see [AGENTS.md](AGENTS.md)).
 
 ## In progress
 
-- **Repairs for failures that persist** (UI): a Repairs issue with a one-click fix when the same
-  failure lasts (vacuum not in the configured region, vacuum refusing the token or unreachable on
-  the network, map download failing).
 - **Xiaomi models: live data and map index** (backlog): upstream PRs #781 and a generalised #748.
   Closes #720, advances #563, #657, #702, #739.
 - **Leftover original YAML after the import** (drop-in): a repair that names the

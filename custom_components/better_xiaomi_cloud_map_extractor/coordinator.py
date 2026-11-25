@@ -25,7 +25,7 @@ from .connector.utils.exceptions import (
     RetryLaterException,
 )
 from .const import DOMAIN, DEFAULT_UPDATE_INTERVAL
-from .repairs import async_check_map_format
+from .repairs import async_check_map_format, async_report_update
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -53,6 +53,11 @@ def update_failure_key(err: Exception) -> str:
     """Why a map update failed, as a translated message (`exceptions` in translations/en.json)."""
     if isinstance(err, RetryLaterException):
         return "login_retry_later"
+    if isinstance(err, DeviceNotFoundException):
+        return "vacuum_not_in_region"
+    if isinstance(err, InvalidDeviceTokenException) or (
+            isinstance(err, FailedConnectionException) and isinstance(err.base_exception, DeviceException)):
+        return "vacuum_token_refused"
     if isinstance(err, (FailedConnectionException, ClientError, TimeoutError)):
         return "cloud_unavailable"
     if isinstance(err, FailedMapDownloadException):
@@ -84,10 +89,8 @@ class XiaomiCloudMapExtractorDataUpdateCoordinator(DataUpdateCoordinator[XiaomiC
         except (
                 FailedLoginException,
                 InvalidCredentialsException,
-                InvalidDeviceTokenException,
                 TwoFactorAuthRequiredException,
                 CaptchaRequiredException,
-                DeviceNotFoundException,
         ) as err:
             self.auth_issue = auth_issue_for(err)
             _LOGGER.debug("Triggering reauth flow (%s)...", self.auth_issue.reason)
@@ -95,11 +98,14 @@ class XiaomiCloudMapExtractorDataUpdateCoordinator(DataUpdateCoordinator[XiaomiC
                 str(err), translation_domain=DOMAIN, translation_key=self.auth_issue.reason
             ) from err
         except Exception as err:  # noqa: BLE001 - every failure gets a translated message
+            if self.config_entry is not None:
+                async_report_update(self.hass, self.config_entry, err)
             key = update_failure_key(err)
             raise UpdateFailed(str(err) or key, translation_domain=DOMAIN, translation_key=key) from err
         self.auth_issue = None
         if self.config_entry is not None:
             async_check_map_format(self.hass, self.config_entry, data.status)
+            async_report_update(self.hass, self.config_entry, data)
         return data
 
     async def force_update_data(self) -> None:

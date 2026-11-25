@@ -85,6 +85,7 @@ class IjaiCloudVacuum(BaseXiaomiCloudVacuumV2):
             status_value = (await asyncio.to_thread(
                 self._miot_device.get_property_by, self._status_mapping.siid, self._status_mapping.piid
             ))[0].get("value")
+            self.lan_reachable = True
 
             if not isinstance(status_value, int):
                 return None
@@ -99,6 +100,7 @@ class IjaiCloudVacuum(BaseXiaomiCloudVacuumV2):
         except DeviceException as de:
             if "token" not in repr(de):
                 # Not reachable on the local network: the map itself comes from the cloud.
+                self.lan_reachable = False
                 return None
             raise FailedConnectionException(de)
 

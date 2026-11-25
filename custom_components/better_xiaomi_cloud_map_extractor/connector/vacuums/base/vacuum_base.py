@@ -29,6 +29,9 @@ class BaseXiaomiCloudVacuum(ABC):
     _image_config: ImageConfig
     _sizes: Sizes
     _texts: list[Text]
+    # Whether the vacuum answered on the local network at the last should_update_map; None when it
+    # was not asked (vendors whose maps and status come only from the cloud).
+    lan_reachable: bool | None = None
 
     def __init__(self: Self, vacuum_config: VacuumConfig) -> None:
         self.model = vacuum_config.model

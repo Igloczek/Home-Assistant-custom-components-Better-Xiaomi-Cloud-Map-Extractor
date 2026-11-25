@@ -262,7 +262,9 @@ COORDINATOR_ERRORS = {
     "raw connection error": (ClientConnectionError(), UpdateFailed, "cloud_unavailable"),
     "vacuum unreachable (python-miio)": (DeviceException("timeout"), UpdateFailed, "vacuum_unreachable"),
     "unexpected answer": (KeyError("result"), UpdateFailed, "unexpected_error"),
-    "invalid device token": (InvalidDeviceTokenException(), ConfigEntryAuthFailed, "device_not_found"),
+    "invalid device token": (InvalidDeviceTokenException(), UpdateFailed, "vacuum_token_refused"),
+    "vacuum not in region": (DeviceNotFoundException(), UpdateFailed, "vacuum_not_in_region"),
+    "login refused": (InvalidCredentialsException(), ConfigEntryAuthFailed, "invalid_credentials"),
 }
 
 
@@ -282,3 +284,60 @@ async def test_coordinator_failures_are_translated(
     assert failure.value.translation_domain == DOMAIN
     assert failure.value.translation_key == key
     assert key in TRANSLATIONS["exceptions"]
+
+
+# Re-authentication goes through the same login steps; its own entry point is the saved credentials.
+
+
+async def _reauth_with_saved_credentials(hass: HomeAssistant) -> dict:
+    from pytest_homeassistant_custom_component.common import MockConfigEntry
+
+    from .const import ENTRY_DATA, MAC
+
+    entry = MockConfigEntry(domain=DOMAIN, unique_id=MAC, title="Living room vacuum", data=ENTRY_DATA)
+    entry.add_to_hass(hass)
+    result = await entry.start_reauth_flow(hass)
+    result = await hass.config_entries.flow.async_configure(result["flow_id"], {})
+    assert result["menu_options"][0] == "auth_saved_credentials"
+    return await hass.config_entries.flow.async_configure(
+        result["flow_id"], {"next_step_id": "auth_saved_credentials"}
+    )
+
+
+@pytest.mark.parametrize(("raised", "error"), LOGIN_ERRORS.values(), ids=LOGIN_ERRORS.keys())
+async def test_reauth_login_errors(
+    hass: HomeAssistant, cloud_connector: MagicMock, raised: Exception, error: str
+) -> None:
+    cloud_connector.login_with_credentials.side_effect = raised
+
+    result = await _reauth_with_saved_credentials(hass)
+
+    _assert_form_error(result, "auth_credentials", error)
+
+
+@pytest.mark.parametrize(("raised", "error"), DEVICE_LIST_ERRORS.values(), ids=DEVICE_LIST_ERRORS.keys())
+async def test_reauth_device_list_errors(
+    hass: HomeAssistant, cloud_connector: MagicMock, raised: Exception, error: str
+) -> None:
+    cloud_connector.get_devices.side_effect = [raised, [make_device()]]
+
+    result = await _reauth_with_saved_credentials(hass)
+
+    _assert_form_error(result, "devices_failed", error)
+    result = await hass.config_entries.flow.async_configure(result["flow_id"], {})
+    assert result["step_id"] == ("auth_method_selection" if error == "session_rejected" else "confirm_data")
+
+
+async def test_session_that_cannot_be_saved_shows_error_and_retries(
+    hass: HomeAssistant, cloud_connector: MagicMock, no_store: AsyncMock
+) -> None:
+    """Without the stored session the entry could not log in after setup (QR logins have no password)."""
+    no_store.side_effect = [OSError("No space left on device"), None]
+    result = await _submit_credentials(hass, await _start(hass))
+    user_input = {"host": "192.168.1.50", "token": "0" * 32, "used_map_api": "VIOMI"}
+
+    result = await hass.config_entries.flow.async_configure(result["flow_id"], user_input)
+    _assert_form_error(result, "confirm_data", "session_not_saved")
+
+    result = await hass.config_entries.flow.async_configure(result["flow_id"], user_input)
+    assert result["type"] is FlowResultType.CREATE_ENTRY

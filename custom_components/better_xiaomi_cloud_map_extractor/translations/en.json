@@ -20,7 +20,8 @@
       "qr_rejected": "Xiaomi did not complete the QR login (it was declined or the code was already used). Submit to get a new code.",
       "qr_failed": "The QR login failed unexpectedly. Submit to get a new code, or log in with username and password instead.",
       "unexpected_response": "Xiaomi answered in a way this integration does not understand. Try again in a few minutes; if it keeps happening, report it on the integration's issue tracker.",
-      "session_rejected": "Xiaomi accepted the login but then refused the session. Submit to log in again."
+      "session_rejected": "Xiaomi accepted the login but then refused the session. Submit to log in again.",
+      "session_not_saved": "Home Assistant could not save the Xiaomi Cloud session (is the disk full or read-only?). Fix that and submit again."
     },
     "flow_title": "{name}",
     "step": {
@@ -715,6 +716,158 @@
           }
         }
       }
+    },
+    "device_not_found": {
+      "title": "{name} is not in the {server} Xiaomi Cloud region",
+      "fix_flow": {
+        "step": {
+          "lookup_failed": {
+            "title": "Could not reach Xiaomi Cloud",
+            "description": "Looking up {name} in Xiaomi Cloud failed. Submit to try again."
+          },
+          "not_in_account": {
+            "title": "{name} is not in this Xiaomi account",
+            "description": "No Xiaomi Cloud region of the logged-in account lists {name}. It may have been removed from the account or added to another one.\n\nSubmit to log in with the account that has the vacuum."
+          },
+          "login_needed": {
+            "title": "Log in to Xiaomi Cloud again",
+            "description": "The saved Xiaomi Cloud session for {name} no longer works and could not be renewed.\n\nSubmit to log in again; {name} is looked up afterwards."
+          },
+          "confirm_device": {
+            "title": "Update {name}",
+            "description": "Xiaomi Cloud lists {name} in the **{server}** region at **{host}**. Submit to use these settings and reload the integration. Entities and options stay as they are."
+          },
+          "settings_match": {
+            "title": "{name} is set up correctly",
+            "description": "{name} is in the configured region ({server}) at {host}, so the settings are not the problem. Xiaomi has no map to hand out yet: open the map in the Xiaomi Home app once, or let the vacuum finish a cleaning, then wait for the next update. Submit to close this."
+          },
+          "vacuum": {
+            "title": "Vacuum address and token",
+            "description": "Enter the IP address and token of {name}. The values filled in come from Xiaomi Cloud when it could be reached, otherwise they are the stored ones.",
+            "data": {
+              "host": "IP address",
+              "token": "Token"
+            }
+          }
+        },
+        "error": {
+          "cannot_connect": "Could not reach Xiaomi Cloud. Check Home Assistant's internet connection."
+        }
+      }
+    },
+    "vacuum_token": {
+      "title": "{name} refuses the stored token",
+      "fix_flow": {
+        "step": {
+          "lookup_failed": {
+            "title": "Could not reach Xiaomi Cloud",
+            "description": "Looking up {name} in Xiaomi Cloud failed. Submit to try again."
+          },
+          "not_in_account": {
+            "title": "{name} is not in this Xiaomi account",
+            "description": "No Xiaomi Cloud region of the logged-in account lists {name}. It may have been removed from the account or added to another one.\n\nSubmit to log in with the account that has the vacuum."
+          },
+          "login_needed": {
+            "title": "Log in to Xiaomi Cloud again",
+            "description": "The saved Xiaomi Cloud session for {name} no longer works and could not be renewed.\n\nSubmit to log in again; {name} is looked up afterwards."
+          },
+          "confirm_device": {
+            "title": "Update {name}",
+            "description": "Xiaomi Cloud lists {name} in the **{server}** region at **{host}**. Submit to use these settings and reload the integration. Entities and options stay as they are."
+          },
+          "settings_match": {
+            "title": "{name} is set up correctly",
+            "description": "{name} is in the configured region ({server}) at {host}, so the settings are not the problem. Xiaomi has no map to hand out yet: open the map in the Xiaomi Home app once, or let the vacuum finish a cleaning, then wait for the next update. Submit to close this."
+          },
+          "vacuum": {
+            "title": "Vacuum address and token",
+            "description": "Enter the IP address and token of {name}. The values filled in come from Xiaomi Cloud when it could be reached, otherwise they are the stored ones.",
+            "data": {
+              "host": "IP address",
+              "token": "Token"
+            }
+          }
+        },
+        "error": {
+          "cannot_connect": "Could not reach Xiaomi Cloud. Check Home Assistant's internet connection."
+        }
+      }
+    },
+    "vacuum_unreachable": {
+      "title": "{name} does not answer on the local network",
+      "fix_flow": {
+        "step": {
+          "lookup_failed": {
+            "title": "Could not reach Xiaomi Cloud",
+            "description": "Looking up {name} in Xiaomi Cloud failed. Submit to try again."
+          },
+          "not_in_account": {
+            "title": "{name} is not in this Xiaomi account",
+            "description": "No Xiaomi Cloud region of the logged-in account lists {name}. It may have been removed from the account or added to another one.\n\nSubmit to log in with the account that has the vacuum."
+          },
+          "login_needed": {
+            "title": "Log in to Xiaomi Cloud again",
+            "description": "The saved Xiaomi Cloud session for {name} no longer works and could not be renewed.\n\nSubmit to log in again; {name} is looked up afterwards."
+          },
+          "confirm_device": {
+            "title": "Update {name}",
+            "description": "Xiaomi Cloud lists {name} in the **{server}** region at **{host}**. Submit to use these settings and reload the integration. Entities and options stay as they are."
+          },
+          "settings_match": {
+            "title": "{name} is set up correctly",
+            "description": "{name} is in the configured region ({server}) at {host}, so the settings are not the problem. Xiaomi has no map to hand out yet: open the map in the Xiaomi Home app once, or let the vacuum finish a cleaning, then wait for the next update. Submit to close this."
+          },
+          "vacuum": {
+            "title": "Vacuum address and token",
+            "description": "{name} has not answered at {host} for 5 minutes, so Home Assistant can't tell when it cleans. Its IP address or token may have changed (new router lease, reset, re-pairing in the Xiaomi Home app).\n\nEnter its IP address and token. The values filled in come from Xiaomi Cloud when it could be reached, otherwise they are the stored ones. If they are already right, check that the vacuum is on and on the same network as Home Assistant; this goes away by itself once it answers. If Home Assistant can't reach the vacuum on purpose (another network or VLAN), close this window and choose Ignore on the repair.",
+            "data": {
+              "host": "IP address",
+              "token": "Token"
+            }
+          }
+        },
+        "error": {
+          "cannot_connect": "Could not reach Xiaomi Cloud. Check Home Assistant's internet connection."
+        }
+      }
+    },
+    "map_download_failing": {
+      "title": "The map of {name} cannot be downloaded",
+      "fix_flow": {
+        "step": {
+          "lookup_failed": {
+            "title": "Could not reach Xiaomi Cloud",
+            "description": "Looking up {name} in Xiaomi Cloud failed. Submit to try again."
+          },
+          "not_in_account": {
+            "title": "{name} is not in this Xiaomi account",
+            "description": "No Xiaomi Cloud region of the logged-in account lists {name}. It may have been removed from the account or added to another one.\n\nSubmit to log in with the account that has the vacuum."
+          },
+          "login_needed": {
+            "title": "Log in to Xiaomi Cloud again",
+            "description": "The saved Xiaomi Cloud session for {name} no longer works and could not be renewed.\n\nSubmit to log in again; {name} is looked up afterwards."
+          },
+          "confirm_device": {
+            "title": "Update {name}",
+            "description": "Xiaomi Cloud lists {name} in the **{server}** region at **{host}**. Submit to use these settings and reload the integration. Entities and options stay as they are."
+          },
+          "settings_match": {
+            "title": "{name} is set up correctly",
+            "description": "{name} is in the configured region ({server}) at {host}, so the settings are not the problem. Xiaomi has no map to hand out yet: open the map in the Xiaomi Home app once, or let the vacuum finish a cleaning, then wait for the next update. Submit to close this."
+          },
+          "vacuum": {
+            "title": "Vacuum address and token",
+            "description": "Enter the IP address and token of {name}. The values filled in come from Xiaomi Cloud when it could be reached, otherwise they are the stored ones.",
+            "data": {
+              "host": "IP address",
+              "token": "Token"
+            }
+          }
+        },
+        "error": {
+          "cannot_connect": "Could not reach Xiaomi Cloud. Check Home Assistant's internet connection."
+        }
+      }
     }
   },
   "exceptions": {
@@ -750,6 +903,12 @@
     },
     "unexpected_error": {
       "message": "The map update failed unexpectedly. It is retried on the next update; if it keeps happening, report it on the integration's issue tracker with a debug log."
+    },
+    "vacuum_not_in_region": {
+      "message": "The vacuum was not found in the configured Xiaomi Cloud region. If this continues, Settings → Repairs offers to look it up."
+    },
+    "vacuum_token_refused": {
+      "message": "The vacuum refused the stored token. If this continues, Settings → Repairs offers to update it."
     }
   }
 }
