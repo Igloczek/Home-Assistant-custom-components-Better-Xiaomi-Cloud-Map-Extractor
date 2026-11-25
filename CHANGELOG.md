@@ -12,6 +12,13 @@
 - Dreame models with encrypted maps: a status answer without a time no longer breaks the next map request.
 - `protobuf` is installed with the integration; Ijai map parsing needs it and some installations did not have it.
 
+### Changed
+
+- Docs: the README's switch from Xiaomi Cloud Map Extractor matches what the import does (install
+  next to the original; Repairs then lists what is left), the issue forms carry this integration's
+  name and ask for diagnostics instead of a YAML configuration, and the "moved from Xiaomi Cloud Map
+  Extractor" repair points at the one-click removal of the leftover YAML.
+
 ## 0.1.6 - 2026-11-25
 
 ### Changed
