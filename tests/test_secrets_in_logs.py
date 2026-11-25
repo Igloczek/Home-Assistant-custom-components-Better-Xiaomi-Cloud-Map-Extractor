@@ -201,7 +201,8 @@ async def test_failed_email_verification(debug_log) -> None:
     with pytest.raises(TwoFactorAuthRequiredException) as verification:
         await connector.login_with_credentials("user@example.com", PASSWORD)
 
-    assert await connector.continue_login_with_two_factor("123456", verification.value) is False
+    with pytest.raises(FailedConnectionException):
+        await connector.continue_login_with_two_factor("123456", verification.value)
     assert_no_secrets(debug_log)
 
 

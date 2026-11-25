@@ -21,7 +21,10 @@
       "qr_failed": "The QR login failed unexpectedly. Submit to get a new code, or log in with username and password instead.",
       "unexpected_response": "Xiaomi answered in a way this integration does not understand. Try again in a few minutes; if it keeps happening, report it on the integration's issue tracker.",
       "session_rejected": "Xiaomi accepted the login but then refused the session. Submit to log in again.",
-      "session_not_saved": "Home Assistant could not save the Xiaomi Cloud session (is the disk full or read-only?). Fix that and submit again."
+      "session_not_saved": "Home Assistant could not save the Xiaomi Cloud session (is the disk full or read-only?). Fix that and submit again.",
+      "invalid_two_factor_code": "Xiaomi did not accept this code. Enter the newest code Xiaomi sent, or leave the field empty and submit after verifying through the page linked above.",
+      "two_factor_code_not_sent": "Xiaomi did not send a code this time. Open the verification page linked above, finish the verification there, then submit this form with the field left empty.",
+      "verification_incomplete": "Xiaomi accepted the code but did not finish the login. Submit this form with the field left empty to log in again, or log in with the QR code instead."
     },
     "flow_title": "{name}",
     "step": {
