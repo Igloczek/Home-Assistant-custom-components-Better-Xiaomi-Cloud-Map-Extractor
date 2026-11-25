@@ -506,9 +506,9 @@ async def test_undecryptable_map_keeps_the_last_map(ijai) -> None:
     model = "ijai.vacuum.v3"
     vacuum, cloud = ijai(model)
     extractor = XiaomiCloudMapExtractorConnector(MagicMock(), MagicMock(), None)
-    extractor._cloud_connector = MagicMock(spec=XiaomiCloudConnector)
-    extractor._cloud_connector.has_service_token.return_value = True
-    extractor._cloud_connector.is_session_expiring.return_value = False
+    extractor._cloud.cloud_connector = MagicMock(spec=XiaomiCloudConnector)
+    extractor._cloud.cloud_connector.has_service_token.return_value = True
+    extractor._cloud.cloud_connector.is_session_expiring.return_value = False
     extractor._vacuum_connector = vacuum
     extractor._status = XiaomiCloudMapExtractorConnectorStatus.OK
 
@@ -588,9 +588,9 @@ async def test_a_working_map_does_not_ask_about_map_saving(ijai) -> None:
 
 def _extractor(vacuum: IjaiCloudVacuum) -> XiaomiCloudMapExtractorConnector:
     extractor = XiaomiCloudMapExtractorConnector(MagicMock(), MagicMock(), None)
-    extractor._cloud_connector = MagicMock(spec=XiaomiCloudConnector)
-    extractor._cloud_connector.has_service_token.return_value = True
-    extractor._cloud_connector.is_session_expiring.return_value = False
+    extractor._cloud.cloud_connector = MagicMock(spec=XiaomiCloudConnector)
+    extractor._cloud.cloud_connector.has_service_token.return_value = True
+    extractor._cloud.cloud_connector.is_session_expiring.return_value = False
     extractor._vacuum_connector = vacuum
     extractor._status = XiaomiCloudMapExtractorConnectorStatus.OK
     return extractor
