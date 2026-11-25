@@ -107,6 +107,11 @@ Testing the Roborock-without-the-local-network or Jonr P20 / Roidmi sdj60 pre-re
 - Rewrote `README.md` for end users with a side-by-side comparison table and clearer installation and migration steps (PR #39).
 - Added AI-agent-first problem reporting (`report-problem` skill, zero-dependency Python collector/redactor CLI, and automated issue triage, PR #40).
 
+- Roidmi `roidmi.vacuum.sdj60` shows its map (upstream #572, ported from upstream PR #768 by
+  @winchester7). Its map is read from the endpoint the Mi Home app uses, where the other one points at
+  a file that is no map and failed with "list indices must be integers or slices, not str". Other
+  Roidmi models are unchanged.
+
 ## 1.0.0 - 2026-11-25
 
 The first stable release. Every open issue and pull request of the original is analysed in
