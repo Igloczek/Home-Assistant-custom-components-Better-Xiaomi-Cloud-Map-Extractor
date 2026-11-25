@@ -61,6 +61,7 @@ from .migration import (
     async_original_changed,
     importable_original_entries,
 )
+from .original_yaml import async_check_original_yaml, async_find_original_yaml, original_yaml_issue_id
 from .repairs import issue_ids
 from .store import restore_connector_config, save_connector_config
 from .types import XiaomiCloudMapExtractorConfigEntry, XiaomiCloudMapExtractorRuntimeData
@@ -79,6 +80,7 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
             async_original_changed(hass, changed, removed=change is ConfigEntryChange.REMOVED)
 
     async_dispatcher_connect(hass, SIGNAL_CONFIG_ENTRY_CHANGED, original_changed)
+    async_find_original_yaml(hass, config)
     async_flag_leftover_originals(hass)
 
     for original in importable_original_entries(hass):
@@ -93,6 +95,7 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
 
 async def async_setup_entry(hass: HomeAssistant, entry: XiaomiCloudMapExtractorConfigEntry) -> bool:
     async_fill_unique_id(hass, entry)
+    async_check_original_yaml(hass, entry)
     await async_adopt_original_entities(hass, entry)
     xcme_configuration = to_configuration(entry)
 
@@ -126,6 +129,7 @@ async def async_unload_entry(hass: HomeAssistant, entry: XiaomiCloudMapExtractor
 async def async_remove_entry(hass: HomeAssistant, entry: XiaomiCloudMapExtractorConfigEntry) -> None:
     for issue_id in issue_ids(entry.entry_id):
         ir.async_delete_issue(hass, DOMAIN, issue_id)
+    ir.async_delete_issue(hass, DOMAIN, original_yaml_issue_id(entry))
 
 
 async def async_reload_entry(hass: HomeAssistant, entry: XiaomiCloudMapExtractorConfigEntry) -> None:
