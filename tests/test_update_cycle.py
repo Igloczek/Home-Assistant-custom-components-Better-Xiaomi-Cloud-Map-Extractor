@@ -23,6 +23,7 @@ from homeassistant.config_entries import ConfigEntryState
 from homeassistant.const import EVENT_STATE_CHANGED
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import entity_registry as er
+from homeassistant.helpers import issue_registry as ir
 from pytest_homeassistant_custom_component.common import MockConfigEntry, async_capture_events
 
 from custom_components.better_xiaomi_cloud_map_extractor.config_flow import XiaomiCloudMapExtractorFlowHandler
@@ -41,6 +42,7 @@ from custom_components.better_xiaomi_cloud_map_extractor.const import (
     DEFAULT_UPDATE_INTERVAL,
     DOMAIN,
 )
+from custom_components.better_xiaomi_cloud_map_extractor.repairs import LAN_UNREACHABLE_UPDATES
 
 from .const import ENTRY_DATA, MAC, TOKEN
 from .fake_miio import FakeLanVacuum, lan_vacuum
@@ -355,6 +357,53 @@ async def test_first_map_is_retried_while_docked(
     await vacuum.cycles(freezer, 1)
 
     assert vacuum.entry.runtime_data.coordinator.data.map_data is not None
+
+
+# --- the vacuum on the local network --------------------------------------------------------------
+
+# Vendors that read the vacuum's status on the local network; the others only talk to the cloud.
+LAN_STATUS = [v for v in VENDORS if v.api in ("ROBOROCK", "IJAI", "XIAOMI")]
+CLOUD_ONLY = [v for v in VENDORS if v not in LAN_STATUS]
+
+
+def _lan_issue(hass: HomeAssistant, entry_id: str) -> ir.IssueEntry | None:
+    return ir.async_get(hass).async_get_issue(DOMAIN, f"vacuum_unreachable_{entry_id}")
+
+
+@pytest.mark.parametrize("vendor", LAN_STATUS, ids=str)
+async def test_vacuum_unreachable_on_the_lan_raises_a_repair_until_it_answers(
+    hass: HomeAssistant, setup_vacuum, freezer: FrozenDateTimeFactory, vendor: Vendor
+) -> None:
+    """A vacuum that stops answering on the LAN (new IP address, new token after a reset) used to fail
+    quietly: the map froze or went cloud-only and only the debug log said why."""
+    vacuum = setup_vacuum(vendor)
+    await vacuum.setup()
+    vacuum.home.lan.reachable = False
+
+    await vacuum.cycles(freezer, LAN_UNREACHABLE_UPDATES - 1)
+    assert _lan_issue(hass, vacuum.entry.entry_id) is None, "a short Wi-Fi drop is not worth a repair"
+
+    await vacuum.cycles(freezer, 1)
+    issue = _lan_issue(hass, vacuum.entry.entry_id)
+    assert issue is not None and issue.is_fixable
+    assert issue.translation_placeholders["host"] == vacuum.entry.data["host"]
+
+    vacuum.home.lan.reachable = True
+    await vacuum.cycles(freezer, 1)
+    assert _lan_issue(hass, vacuum.entry.entry_id) is None
+
+
+@pytest.mark.parametrize("vendor", CLOUD_ONLY, ids=str)
+async def test_cloud_only_vendors_never_raise_the_lan_repair(
+    hass: HomeAssistant, setup_vacuum, freezer: FrozenDateTimeFactory, vendor: Vendor
+) -> None:
+    vacuum = setup_vacuum(vendor)
+    await vacuum.setup()
+    vacuum.home.lan.reachable = False
+
+    await vacuum.cycles(freezer, LAN_UNREACHABLE_UPDATES + 1)
+
+    assert _lan_issue(hass, vacuum.entry.entry_id) is None
 
 
 # --- state writes --------------------------------------------------------------------------------

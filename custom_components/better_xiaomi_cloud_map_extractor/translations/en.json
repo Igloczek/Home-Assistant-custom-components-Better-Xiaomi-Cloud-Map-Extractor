@@ -793,6 +793,44 @@
         }
       }
     },
+    "vacuum_unreachable": {
+      "title": "{name} does not answer on the local network",
+      "fix_flow": {
+        "step": {
+          "lookup_failed": {
+            "title": "Could not reach Xiaomi Cloud",
+            "description": "Looking up {name} in Xiaomi Cloud failed. Submit to try again."
+          },
+          "not_in_account": {
+            "title": "{name} is not in this Xiaomi account",
+            "description": "No Xiaomi Cloud region of the logged-in account lists {name}. It may have been removed from the account or added to another one.\n\nSubmit to log in with the account that has the vacuum."
+          },
+          "login_needed": {
+            "title": "Log in to Xiaomi Cloud again",
+            "description": "The saved Xiaomi Cloud session for {name} no longer works and could not be renewed.\n\nSubmit to log in again; {name} is looked up afterwards."
+          },
+          "confirm_device": {
+            "title": "Update {name}",
+            "description": "Xiaomi Cloud lists {name} in the **{server}** region at **{host}**. Submit to use these settings and reload the integration. Entities and options stay as they are."
+          },
+          "settings_match": {
+            "title": "{name} is set up correctly",
+            "description": "{name} is in the configured region ({server}) at {host}, so the settings are not the problem. Xiaomi has no map to hand out yet: open the map in the Xiaomi Home app once, or let the vacuum finish a cleaning, then wait for the next update. Submit to close this."
+          },
+          "vacuum": {
+            "title": "Vacuum address and token",
+            "description": "{name} has not answered at {host} for 5 minutes, so Home Assistant can't tell when it cleans. Its IP address or token may have changed (new router lease, reset, re-pairing in the Xiaomi Home app).\n\nEnter its IP address and token. The values filled in come from Xiaomi Cloud when it could be reached, otherwise they are the stored ones. If they are already right, check that the vacuum is on and on the same network as Home Assistant; this goes away by itself once it answers.",
+            "data": {
+              "host": "IP address",
+              "token": "Token"
+            }
+          }
+        },
+        "error": {
+          "cannot_connect": "Could not reach Xiaomi Cloud. Check Home Assistant's internet connection."
+        }
+      }
+    },
     "map_download_failing": {
       "title": "The map of {name} cannot be downloaded",
       "fix_flow": {

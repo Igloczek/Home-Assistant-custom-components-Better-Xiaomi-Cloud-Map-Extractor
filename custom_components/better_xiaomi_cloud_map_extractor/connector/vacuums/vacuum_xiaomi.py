@@ -98,6 +98,7 @@ class XiaomiCloudVacuum(BaseXiaomiCloudVacuumV2):
             status_value = (await asyncio.to_thread(
                 self._miot_device.get_property_by, self._status_mapping.siid, self._status_mapping.piid
             ))[0].get("value")
+            self.lan_reachable = True
 
             if not isinstance(status_value, int):
                 return None  # not a status: on the H50 (ov43gb) this property is the firmware version
@@ -111,6 +112,7 @@ class XiaomiCloudVacuum(BaseXiaomiCloudVacuumV2):
                 return True
         except DeviceException as de:
             if "token" not in repr(de):
+                self.lan_reachable = False
                 return False
             raise FailedConnectionException(de)
 

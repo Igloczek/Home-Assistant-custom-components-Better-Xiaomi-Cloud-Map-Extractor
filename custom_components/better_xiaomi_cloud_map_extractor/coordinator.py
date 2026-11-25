@@ -105,7 +105,7 @@ class XiaomiCloudMapExtractorDataUpdateCoordinator(DataUpdateCoordinator[XiaomiC
         self.auth_issue = None
         if self.config_entry is not None:
             async_check_map_format(self.hass, self.config_entry, data.status)
-            async_report_update(self.hass, self.config_entry, data.status)
+            async_report_update(self.hass, self.config_entry, data)
         return data
 
     async def force_update_data(self) -> None:

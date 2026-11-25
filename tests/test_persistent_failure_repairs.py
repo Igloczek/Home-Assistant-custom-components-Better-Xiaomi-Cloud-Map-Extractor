@@ -33,7 +33,7 @@ from custom_components.better_xiaomi_cloud_map_extractor.connector.utils.excepti
     InvalidDeviceTokenException,
 )
 from custom_components.better_xiaomi_cloud_map_extractor.const import DOMAIN
-from custom_components.better_xiaomi_cloud_map_extractor.repairs import FAILURE_THRESHOLD
+from custom_components.better_xiaomi_cloud_map_extractor.repairs import FAILURE_THRESHOLD, LAN_UNREACHABLE_UPDATES
 from custom_components.better_xiaomi_cloud_map_extractor.store import (
     restore_connector_config,
     save_connector_config,
@@ -315,6 +315,40 @@ async def test_fix_with_xiaomi_unreachable_shows_an_error_and_retries(
     )
     result = await manager.async_configure(result["flow_id"], {})
     assert result["step_id"] == "confirm_device"
+
+
+def _lan(map_connector: MagicMock, reachable: bool | None) -> None:
+    map_connector.get_data.side_effect = None
+    map_connector.get_data.return_value = XiaomiCloudMapExtractorData(status=Status.OK, lan_reachable=reachable)
+
+
+async def test_lan_fix_offers_the_cloud_address_and_the_map_alone_does_not_clear_it(
+    hass: HomeAssistant, cloud: FakeXiaomiCloud, map_connector: MagicMock
+) -> None:
+    """Cloud maps keep working while the vacuum is unreachable on the LAN, so only the vacuum answering
+    again clears this issue. The fix is the same as for a refused token: the address and token Xiaomi
+    Cloud lists now."""
+    entry = await _entry(hass, cloud, map_connector, server="de")
+    _lan(map_connector, False)
+    await _updates(entry, LAN_UNREACHABLE_UPDATES)
+    assert "vacuum_unreachable" in _issues(hass)
+
+    _lan(map_connector, None)  # an update that did not ask the vacuum tells nothing
+    await _updates(entry, 1)
+    assert "vacuum_unreachable" in _issues(hass)
+
+    manager, result = await _fix(hass, "vacuum_unreachable")
+    assert result["step_id"] == "vacuum"
+    defaults = {str(key): key.default() for key in result["data_schema"].schema}
+    assert defaults == {"host": CLOUD_HOST, "token": CLOUD_TOKEN}
+
+    _lan(map_connector, True)
+    result = await manager.async_configure(result["flow_id"], {"host": CLOUD_HOST, "token": CLOUD_TOKEN})
+    await hass.async_block_till_done()
+
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+    assert entry.data["host"] == CLOUD_HOST
+    assert not _issues(hass)
 
 
 async def test_removing_the_entry_removes_its_issues(

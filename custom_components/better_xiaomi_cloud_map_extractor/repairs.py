@@ -6,6 +6,9 @@
   offers what the cloud knows (region, IP address, token); a login is asked for only when the
   session can't be renewed or the account doesn't have the vacuum. Every issue goes away once the
   map works again.
+- `vacuum_unreachable`: the vacuum has not answered on the local network for LAN_UNREACHABLE_UPDATES
+  updates. Same fix as a refused token (IP address and token); it goes away once the vacuum answers,
+  since cloud maps can keep working without it.
 """
 
 from __future__ import annotations
@@ -25,6 +28,7 @@ from homeassistant.helpers.device_registry import format_mac
 from miio import DeviceException
 
 from .connector.model import XiaomiCloudMapExtractorConnectorStatus as Status
+from .connector.model import XiaomiCloudMapExtractorData
 from .connector.utils.exceptions import (
     DeviceNotFoundException,
     FailedConnectionException,
@@ -43,9 +47,16 @@ WRONG_MAP_FORMAT = "wrong_map_format"
 DEVICE_NOT_FOUND = "device_not_found"
 VACUUM_TOKEN = "vacuum_token"
 MAP_DOWNLOAD_FAILING = "map_download_failing"
-PERSISTENT_FAILURES = (DEVICE_NOT_FOUND, VACUUM_TOKEN, MAP_DOWNLOAD_FAILING)
+VACUUM_UNREACHABLE = "vacuum_unreachable"
+MAP_FAILURES = (DEVICE_NOT_FOUND, VACUUM_TOKEN, MAP_DOWNLOAD_FAILING)
+PERSISTENT_FAILURES = (*MAP_FAILURES, VACUUM_UNREACHABLE)
+# Fixed with the vacuum's own IP address and token, which can be typed in without the cloud.
+LAN_FAILURES = (VACUUM_TOKEN, VACUUM_UNREACHABLE)
 # Map updates in a row that fail the same way before it is worth asking the user.
 FAILURE_THRESHOLD = 3
+# Map updates in a row without an answer from the vacuum on the local network: 5 minutes at the
+# default interval, so a Wi-Fi drop or a restart of the vacuum raises nothing.
+LAN_UNREACHABLE_UPDATES = 30
 
 
 def wrong_map_format_issue_id(entry_id: str) -> str:
@@ -71,20 +82,36 @@ def persistent_failure(outcome: Exception | Status) -> str | None:
 
 
 @callback
-def async_report_update(hass: HomeAssistant, entry: ConfigEntry, outcome: Exception | Status) -> None:
-    """Counts failures in a row; raises the issue at FAILURE_THRESHOLD, clears all once the map works."""
+def async_report_update(
+    hass: HomeAssistant, entry: ConfigEntry, outcome: Exception | XiaomiCloudMapExtractorData
+) -> None:
+    """Counts failures in a row and raises an issue once they keep happening; clears it once fixed."""
     counters: dict[str, dict[str, int]] = hass.data.setdefault(DOMAIN, {}).setdefault("failures", {})
-    failure = persistent_failure(outcome)
-    if outcome is Status.OK:
-        counters.pop(entry.entry_id, None)
-        for key in PERSISTENT_FAILURES:
-            ir.async_delete_issue(hass, DOMAIN, f"{key}_{entry.entry_id}")
-        return
     previous = counters.get(entry.entry_id, {})
-    count = previous.get(failure, 0) + 1 if failure is not None else 0
-    counters[entry.entry_id] = {failure: count} if failure is not None else {}
-    if failure is None or count < FAILURE_THRESHOLD:
-        return
+    counts: dict[str, int] = {}
+    if isinstance(outcome, XiaomiCloudMapExtractorData):
+        if outcome.lan_reachable is None and VACUUM_UNREACHABLE in previous:
+            counts[VACUUM_UNREACHABLE] = previous[VACUUM_UNREACHABLE]  # not asked: nothing new
+        elif outcome.lan_reachable is False:
+            counts[VACUUM_UNREACHABLE] = previous.get(VACUUM_UNREACHABLE, 0) + 1
+        elif outcome.lan_reachable:
+            ir.async_delete_issue(hass, DOMAIN, f"{VACUUM_UNREACHABLE}_{entry.entry_id}")
+        if outcome.status is Status.OK:
+            for key in MAP_FAILURES:
+                ir.async_delete_issue(hass, DOMAIN, f"{key}_{entry.entry_id}")
+        outcome = outcome.status
+    elif VACUUM_UNREACHABLE in previous:
+        counts[VACUUM_UNREACHABLE] = previous[VACUUM_UNREACHABLE]  # the cloud failed: nothing new
+    if (failure := persistent_failure(outcome)) is not None:
+        counts[failure] = previous.get(failure, 0) + 1
+    counters[entry.entry_id] = counts
+    for failure, count in counts.items():
+        threshold = LAN_UNREACHABLE_UPDATES if failure == VACUUM_UNREACHABLE else FAILURE_THRESHOLD
+        if count >= threshold:
+            _async_raise(hass, entry, failure, count)
+
+
+def _async_raise(hass: HomeAssistant, entry: ConfigEntry, failure: str, count: int) -> None:
     issue_id = f"{failure}_{entry.entry_id}"
     if ir.async_get(hass).async_get_issue(DOMAIN, issue_id) is None:
         _LOGGER.warning("%s: %s for %d map updates in a row, see Settings → Repairs", entry.title,
@@ -207,14 +234,14 @@ class VacuumLookupRepairFlow(RepairsFlow):
         try:
             self._device = await self._find_vacuum()
         except (FailedLoginException, FailedConnectionException, ClientError, TimeoutError) as err:
-            if self._failure == VACUUM_TOKEN:
+            if self._failure in LAN_FAILURES:
                 # The vacuum's own settings can be typed in without the cloud.
                 return await self.async_step_vacuum()
             if isinstance(err, FailedLoginException):
                 return await self.async_step_login_needed()
             self._error = "cannot_connect"
             return await self.async_step_lookup_failed()
-        if self._failure == VACUUM_TOKEN:
+        if self._failure in LAN_FAILURES:
             return await self.async_step_vacuum()
         if self._device is None:
             return await self.async_step_not_in_account()

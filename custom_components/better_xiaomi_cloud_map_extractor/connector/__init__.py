@@ -109,6 +109,7 @@ class XiaomiCloudMapExtractorConnector:
 
     async def get_data(self: Self) -> XiaomiCloudMapExtractorData:
         async with self._lock:
+            self._map_cache.lan_reachable = None
             if await self._should_get_map():
                 _LOGGER.debug("Downloading new map.")
                 await self._get_map()
@@ -235,6 +236,7 @@ class XiaomiCloudMapExtractorConnector:
         if not self._auto_update:
             return False
         moving = await self._vacuum_connector.should_update_map()
+        self._map_cache.lan_reachable = self._vacuum_connector.lan_reachable
         if moving is not None:
             return moving
         return (
