@@ -41,6 +41,9 @@ from .connector.utils.exceptions import (
     FailedConnectionException,
     QrLoginTimeoutException,
     RetryLaterException,
+    InvalidCredentialsException,
+    InvalidTwoFactorCodeException,
+    VerificationIncompleteException,
 )
 from .connector.vacuums.base.model import VacuumApi
 from .connector.xiaomi_cloud.connector import XiaomiCloudConnector, XiaomiCloudDeviceInfo
@@ -333,11 +336,14 @@ class XiaomiCloudMapExtractorFlowHandler(ConfigFlow, domain=DOMAIN):
 
             if not errors:
                 return await self._after_auth()
+        return self._credentials_form(errors)
+
+    def _credentials_form(self: Self, errors: dict[str, str]) -> ConfigFlowResult:
         return self.async_show_form(
             step_id="auth_credentials",
             data_schema=vol.Schema(
                 {
-                    vol.Required(CONF_USERNAME): str,
+                    vol.Required(CONF_USERNAME, default=self._username or vol.UNDEFINED): str,
                     vol.Required(CONF_PASSWORD): str
                 }
             ),
@@ -605,6 +611,9 @@ class XiaomiCloudMapExtractorFlowHandler(ConfigFlow, domain=DOMAIN):
             except TwoFactorAuthRequiredException as e:
                 self._two_factor_exception = e
                 return await self.async_step_auth_two_factor()
+            except InvalidCredentialsException:
+                # The captcha was right, the password is not: only the credentials form can fix that (#712).
+                return self._credentials_form({"base": "cloud_login_error"})
             except Exception as e:  # noqa: BLE001 - every error becomes a message on the form
                 errors["base"] = login_error(e)
         captcha_image_data = self._captcha_exception.image_data
@@ -641,13 +650,20 @@ class XiaomiCloudMapExtractorFlowHandler(ConfigFlow, domain=DOMAIN):
             try:
                 if not await self._connector.continue_login_with_two_factor(
                         two_factor_code, self._two_factor_exception):
-                    raise FailedLoginException()
+                    raise VerificationIncompleteException()
                 return await self._after_auth()
             except TwoFactorAuthRequiredException as e:
                 self._two_factor_exception = e
                 return await self.async_step_auth_two_factor()
+            except InvalidTwoFactorCodeException:
+                errors[CONF_TWO_FACTOR_CODE] = "invalid_two_factor_code"
+            except VerificationIncompleteException:
+                errors["base"] = "verification_incomplete"
             except Exception as e:  # noqa: BLE001 - every error becomes a message on the form
                 errors["base"] = login_error(e)
+        elif not self._two_factor_exception.code_sent:
+            # Xiaomi did not send a code (it wanted a captcha first, or refused): the link is the way.
+            errors["base"] = "two_factor_code_not_sent"
 
         return self.async_show_form(
             step_id="auth_two_factor",

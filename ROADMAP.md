@@ -15,6 +15,11 @@ with a test that fails first (see [AGENTS.md](AGENTS.md)).
 
 ## In progress
 
+- **Login dead-ends** (fork PR #PRNUM, P2): verify's location followed on any host, SMS codes, refused
+  or unsent codes explained, a wrong password behind a captcha back to the credentials form, and 20 s
+  per request so a region that never answers can't stall setup (upstream #700, #712, #780; PR #793
+  not imported). The Xiaomi answers are modelled on XiaomiGateway3 and hass-xiaomi-miot, not
+  captured: a `ru` account owner should confirm with a pre-release.
 - **Xiaomi models: live data and map index** (fork PR #18, pre-release for b108gl, ov21gl and ov81gl
   owners): upstream PRs #781, #750 and a generalised #748. Robot position and path, the map index,
   the current map through the cloud when the LAN does not answer, the status property of models such
@@ -44,21 +49,17 @@ numbers refer to the upstream repository; each item names the priority it serves
    uid, so the signed URL ends in "404 Object Not Found". Fork PR #18 keeps that behaviour
    (`object_name`). Use the full object name from the MIoT property; test with a scrubbed property
    answer.
-2. **Login dead-ends** (P2, #700, #712, #780, PR #793; 45 users). A two-factor code that ends in
-   "Unexpected error" after minutes, a retry that asks only for the captcha, the finish location after
-   `verifyEmail`, and the cloud region choice from PR #793. Each needs a recorded, scrubbed login
-   exchange as a fixture.
-3. **Drop-in follow-up** (P3): decide whether to raise a repair issue that points users of the
+2. **Drop-in follow-up** (P3): decide whether to raise a repair issue that points users of the
    original at the import once this integration is running. (The import itself was verified end to
    end on a real Home Assistant, with the original installed and then removed, on 2026-11-24.)
-4. **Jonr P20** (P4, #621; 37 users): `xtl.vacuum.xm2216`, from a fork that three owners confirm;
+3. **Jonr P20** (P4, #621; 37 users): `xtl.vacuum.xm2216`, from a fork that three owners confirm;
    needs its map as a fixture and an owner for the pre-release.
-5. **Roidmi sdj60** (P4, #572, PR #768): port to `vacuum_roidmi.py` (the `_pro` map URL and the byte
+4. **Roidmi sdj60** (P4, #572, PR #768): port to `vacuum_roidmi.py` (the `_pro` map URL and the byte
    split).
-6. **Dreame md1808 "incorrect header check"** (P4, #450, #757, #772): a raw map is attached to #450;
+5. **Dreame md1808 "incorrect header check"** (P4, #450, #757, #772): a raw map is attached to #450;
    check it against vacuum-map-parser-dreame.
-7. **Small import** (P4, PR #591) if `scripts/` keeps shipping.
-8. **Ijai rendering** (P4, PR #794): fit to the explored area, without the bundled font if possible.
+6. **Small import** (P4, PR #591) if `scripts/` keeps shipping.
+7. **Ijai rendering** (P4, PR #794): fit to the explored area, without the bundled font if possible.
 
 ## 1.0.0 criteria
 
@@ -112,6 +113,7 @@ that already work on v3) are listed with their reason in [TRIAGE.md](TRIAGE.md).
 | --- | --- |
 | Roborock-app-only vacuums (#100, #156, #388, #461, #489, #528) | Those devices are not in the Xiaomi cloud; Home Assistant's Roborock integration covers them. |
 | PR #770 (IJAI/Xiaomi retrieval rewrite) | Changes the encrypted request format for every vendor; the targeted Ijai PRs cover the same bugs. |
+| PR #793 (cloud region step) | Worked around regions that never answer; setup now gives each region 20 s and lists the others, without an extra step for everyone. |
 | PRs #749, #527, #289 | Wrong base or superseded by the v3 code and fork PR #18. |
 | Cairo instead of Pillow (#102) | Drawing lives in the parser packages; it already runs off the event loop and only when the map changes. |
 | Echo Show stream (#112) | Needs an RTSP stream; the integration serves still images. |

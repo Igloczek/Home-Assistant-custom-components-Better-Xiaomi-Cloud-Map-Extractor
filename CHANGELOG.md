@@ -24,6 +24,20 @@
 
 ### Fixed
 
+- Logging in with a verification code no longer dead-ends:
+  - after the emailed code, setup finishes even when Xiaomi sends the login on through a regional
+    account address (seen on `ru` accounts) or skips a step, instead of failing with "Unable to
+    determine finish location after verifyEmail" (upstream #780);
+  - accounts verified by phone get the code by SMS; before, an email was requested that never came;
+  - a mistyped code asks for the code again, and the form says so when Xiaomi did not send a code
+    (then the verification page linked on the form is the way), instead of "check the credentials".
+- After the code, setup no longer sits for minutes and then fails when a Xiaomi region never answers
+  (for example `us` from Russia): each region gets 20 seconds and the vacuums of the others are
+  listed (upstream #700). This also covers what the region choice of upstream PR #793 by MTrab worked
+  around, so no extra setup step was added.
+- A wrong password typed while Xiaomi asks for a captcha now goes back to the username and password
+  form ("Xiaomi rejected the login") instead of asking for the captcha again and again; this also
+  covers re-authentication after a password change (upstream #712).
 - When Xiaomi Cloud or the map storage did not answer in time, the "Failed to update" message and the
   log quoted the whole request address, including the session secret (`ssecurity`) or, during a
   login, the `clientSign`. They now show only the host and path. If you posted such a message

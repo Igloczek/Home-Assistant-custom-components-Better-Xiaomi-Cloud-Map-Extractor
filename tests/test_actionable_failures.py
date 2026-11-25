@@ -30,11 +30,13 @@ from custom_components.better_xiaomi_cloud_map_extractor.connector.utils.excepti
     MapSavingDisabledException,
     InvalidCredentialsException,
     InvalidDeviceTokenException,
+    InvalidTwoFactorCodeException,
     QrLoginTimeoutException,
     RetryLaterException,
     SessionExpiredException,
     TwoFactorAuthRequiredException,
     UnexpectedResponseError,
+    VerificationIncompleteException,
 )
 from custom_components.better_xiaomi_cloud_map_extractor.connector.xiaomi_cloud.connector import XiaomiCloudConnector
 from custom_components.better_xiaomi_cloud_map_extractor.const import DOMAIN
@@ -66,6 +68,16 @@ LOGIN_ERRORS = {
     "raw connection error": (ClientConnectionError(), "cannot_connect"),
     "unexpected answer": (KeyError("ssecurity"), "unexpected_response"),
     "other connector error": (FailedMapDownloadException(), "cloud_login_error"),
+}
+
+# A wrong password found out at the captcha step can only be fixed on the credentials form (#712).
+CAPTCHA_ERROR_STEP = {"wrong password": "auth_credentials"}
+
+# The verification step adds what only checking a code can raise.
+TWO_FACTOR_ERRORS = {
+    **LOGIN_ERRORS,
+    "code refused": (InvalidTwoFactorCodeException(), "invalid_two_factor_code"),
+    "code accepted, no session": (VerificationIncompleteException(), "verification_incomplete"),
 }
 
 # Everything the device list right after the login can raise, and the error its retry form shows.
@@ -124,17 +136,17 @@ async def test_credentials_login_errors(
 
 @pytest.mark.parametrize(("raised", "error"), LOGIN_ERRORS.values(), ids=LOGIN_ERRORS.keys())
 async def test_captcha_login_errors(
-    hass: HomeAssistant, cloud_connector: MagicMock, raised: Exception, error: str
+    hass: HomeAssistant, cloud_connector: MagicMock, raised: Exception, error: str, request: pytest.FixtureRequest
 ) -> None:
     result = await _to_captcha(hass, cloud_connector)
     cloud_connector.continue_login_with_captcha = AsyncMock(side_effect=raised)
 
     result = await hass.config_entries.flow.async_configure(result["flow_id"], {"captcha_code": "abcd"})
 
-    _assert_form_error(result, "auth_captcha", error)
+    _assert_form_error(result, CAPTCHA_ERROR_STEP.get(request.node.callspec.id, "auth_captcha"), error)
 
 
-@pytest.mark.parametrize(("raised", "error"), LOGIN_ERRORS.values(), ids=LOGIN_ERRORS.keys())
+@pytest.mark.parametrize(("raised", "error"), TWO_FACTOR_ERRORS.values(), ids=TWO_FACTOR_ERRORS.keys())
 async def test_two_factor_login_errors(
     hass: HomeAssistant, cloud_connector: MagicMock, raised: Exception, error: str
 ) -> None:
