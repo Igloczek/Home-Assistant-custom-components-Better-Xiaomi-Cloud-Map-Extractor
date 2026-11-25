@@ -27,6 +27,7 @@ from custom_components.better_xiaomi_cloud_map_extractor.connector.utils.excepti
     FailedLoginException,
     FailedMapDownloadException,
     FailedMapParseException,
+    MapSavingDisabledException,
     InvalidCredentialsException,
     InvalidDeviceTokenException,
     QrLoginTimeoutException,
@@ -257,6 +258,7 @@ COORDINATOR_ERRORS = {
     "login throttled": (RetryLaterException(), UpdateFailed, "login_retry_later"),
     "map download": (FailedMapDownloadException(), UpdateFailed, "map_download_failed"),
     "map parse": (FailedMapParseException(), UpdateFailed, "map_parse_failed"),
+    "map saving off (Ijai)": (MapSavingDisabledException(), UpdateFailed, "map_saving_disabled"),
     "QR timeout (login error)": (QrLoginTimeoutException(), ConfigEntryAuthFailed, "session_expired"),
     "raw timeout": (TimeoutError(), UpdateFailed, "cloud_unavailable"),
     "raw connection error": (ClientConnectionError(), UpdateFailed, "cloud_unavailable"),
@@ -284,6 +286,19 @@ async def test_coordinator_failures_are_translated(
     assert failure.value.translation_domain == DOMAIN
     assert failure.value.translation_key == key
     assert key in TRANSLATIONS["exceptions"]
+
+
+async def test_map_saving_off_says_what_to_do(hass: HomeAssistant) -> None:
+    """The update failure names the one fix: map saving in the Xiaomi Home app (upstream #759)."""
+    connector = MagicMock()
+    connector.get_data = AsyncMock(side_effect=MapSavingDisabledException())
+    coordinator = XiaomiCloudMapExtractorDataUpdateCoordinator(hass, connector)
+
+    with pytest.raises(UpdateFailed) as failure:
+        await coordinator.update_data()
+
+    message = TRANSLATIONS["exceptions"][failure.value.translation_key]["message"]
+    assert "turn on map saving in the xiaomi home app" in message.lower()
 
 
 # Re-authentication goes through the same login steps; its own entry point is the saved credentials.

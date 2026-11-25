@@ -876,6 +876,10 @@
           "cannot_connect": "Could not reach Xiaomi Cloud. Check Home Assistant's internet connection."
         }
       }
+    },
+    "map_saving_disabled": {
+      "title": "Map saving is turned off on {name}",
+      "description": "{name} reports that map saving is turned off, so Xiaomi Cloud has no map for Home Assistant to download.\n\nTurn on map saving in the Xiaomi Home app: open {name} there and switch on map saving in its settings. This issue goes away by itself with the next map."
     }
   },
   "exceptions": {
@@ -905,6 +909,9 @@
     },
     "map_parse_failed": {
       "message": "The downloaded map could not be read. It is retried on the next update."
+    },
+    "map_saving_disabled": {
+      "message": "Map saving is turned off on the vacuum, so Xiaomi Cloud has no map to download. Turn on map saving in the Xiaomi Home app, in the vacuum's settings; the map comes back on the next update."
     },
     "vacuum_unreachable": {
       "message": "The vacuum did not answer on the local network. Check that it is on and that the IP address in the integration is right."

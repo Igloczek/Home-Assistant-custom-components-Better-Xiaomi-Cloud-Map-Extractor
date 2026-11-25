@@ -31,6 +31,7 @@ from custom_components.better_xiaomi_cloud_map_extractor.connector.utils.excepti
     DeviceNotFoundException,
     FailedConnectionException,
     InvalidDeviceTokenException,
+    MapSavingDisabledException,
 )
 from custom_components.better_xiaomi_cloud_map_extractor.const import DOMAIN
 from custom_components.better_xiaomi_cloud_map_extractor.repairs import FAILURE_THRESHOLD, LAN_UNREACHABLE_UPDATES
@@ -39,6 +40,7 @@ from custom_components.better_xiaomi_cloud_map_extractor.store import (
     save_connector_config,
 )
 
+from .conftest import TRANSLATIONS
 from .fake_xiaomi import API, FakeResponse, FakeXiaomiCloud
 from .test_actionable_failures import _other_regions_empty
 from .test_session_lifecycle import DEVICE_ID, stored_session, vacuum_cloud
@@ -71,7 +73,7 @@ def cloud() -> Generator[FakeXiaomiCloud]:
         yield cloud
 
 
-async def _entry(hass: HomeAssistant, cloud: FakeXiaomiCloud, map_connector: MagicMock, **data) -> MockConfigEntry:
+async def _unloaded_entry(hass: HomeAssistant, cloud: FakeXiaomiCloud, **data) -> MockConfigEntry:
     flow = XiaomiCloudMapExtractorFlowHandler
     entry = MockConfigEntry(
         domain=DOMAIN,
@@ -91,6 +93,11 @@ async def _entry(hass: HomeAssistant, cloud: FakeXiaomiCloud, map_connector: Mag
     session = stored_session(expires_in=datetime.timedelta(days=20))
     cloud.valid_service_tokens.add(session.service_token)
     await save_connector_config(hass, MAC, session)
+    return entry
+
+
+async def _entry(hass: HomeAssistant, cloud: FakeXiaomiCloud, map_connector: MagicMock, **data) -> MockConfigEntry:
+    entry = await _unloaded_entry(hass, cloud, **data)
     assert await hass.config_entries.async_setup(entry.entry_id)
     await hass.async_block_till_done()
     assert entry.state is ConfigEntryState.LOADED
@@ -150,6 +157,54 @@ async def test_repeated_failure_raises_a_fixable_issue_and_success_clears_it(
     _fails(map_connector, Status.OK)
     await _updates(entry, 1)
     assert key not in _issues(hass)
+
+
+MAP_SAVING_OFF = {
+    "last map kept": Status.MAP_SAVING_DISABLED,
+    "no map to keep": MapSavingDisabledException(),
+}
+
+
+@pytest.mark.parametrize("failure", MAP_SAVING_OFF.values(), ids=MAP_SAVING_OFF.keys())
+async def test_map_saving_off_raises_one_issue_until_the_next_good_map(
+    hass: HomeAssistant, cloud: FakeXiaomiCloud, map_connector: MagicMock, failure
+) -> None:
+    """An Ijai vacuum with map saving off in Xiaomi Home (upstream #759): one issue that says so.
+
+    Nothing in Home Assistant fixes it, so the issue has no fix flow; it goes away with the next map.
+    """
+    entry = await _entry(hass, cloud, map_connector)
+
+    _fails(map_connector, failure)
+    await _updates(entry, FAILURE_THRESHOLD - 1)
+    assert not _issues(hass), "a single bad update is not worth a repair"
+
+    await _updates(entry, FAILURE_THRESHOLD + 1)
+    assert list(_issues(hass)) == ["map_saving_disabled"], "one issue, not the generic map failure too"
+    issue = _issues(hass)["map_saving_disabled"]
+    assert not issue.is_fixable
+    assert issue.translation_placeholders["name"] == "Viomi V8"
+    texts = TRANSLATIONS["issues"]["map_saving_disabled"]
+    assert "turn on map saving in the xiaomi home app" in texts["description"].lower()
+    assert not _reauth_flows(hass)
+
+    _fails(map_connector, Status.OK)
+    await _updates(entry, 1)
+    assert not _issues(hass)
+
+
+async def test_map_saving_off_at_setup_says_what_to_do(
+    hass: HomeAssistant, cloud: FakeXiaomiCloud, map_connector: MagicMock
+) -> None:
+    """No map yet: setup is retried with the message on the integration card ("Failed setup, will retry")."""
+    map_connector.get_data.side_effect = MapSavingDisabledException()
+    entry = await _unloaded_entry(hass, cloud)
+
+    await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+
+    assert entry.state is ConfigEntryState.SETUP_RETRY
+    assert entry.error_reason_translation_key == "map_saving_disabled"
 
 
 async def test_failures_must_be_consecutive(

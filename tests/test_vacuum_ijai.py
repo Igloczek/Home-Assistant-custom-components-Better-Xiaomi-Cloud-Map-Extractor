@@ -26,6 +26,7 @@ from custom_components.better_xiaomi_cloud_map_extractor.connector.utils.excepti
     FailedConnectionException,
     FailedMapDownloadException,
     FailedMapParseException,
+    MapSavingDisabledException,
     SessionExpiredException,
 )
 from custom_components.better_xiaomi_cloud_map_extractor.connector.vacuums.base.model import VacuumConfig
@@ -37,6 +38,7 @@ from custom_components.better_xiaomi_cloud_map_extractor.connector.xiaomi_cloud.
 from custom_components.better_xiaomi_cloud_map_extractor.sensor import SENSOR_TYPES
 
 from .const import TOKEN
+from .log_secrets import assert_no_secrets
 from .ijai_map import (
     DEVICE_ID,
     LOGGED_IN_ID,
@@ -62,20 +64,34 @@ UNREACHABLE = "unreachable"
 
 
 class FakeCloud:
-    """The Xiaomi cloud as the vacuum class sees it, answering with recorded responses."""
+    """The Xiaomi cloud as the vacuum class sees it, answering with recorded responses.
 
-    def __init__(self, raw_map: bytes, urls: dict[str, Any], properties: Any, logged_in_id: str) -> None:
+    `get_properties` answers only the properties asked for, from the entries of the recorded
+    responses; any other property gets code -4003, as from the real cloud. (It used to hand back
+    one recorded answer whatever was asked, which hid a second request for another property.)
+    """
+
+    def __init__(self, raw_map: bytes, urls: dict[str, Any], properties: list[Any], logged_in_id: str) -> None:
         self.connector = MagicMock(spec=XiaomiCloudConnector)
         self.connector.get_api_url = MagicMock(return_value=API)
         self.connector.execute_api_call_encrypted = AsyncMock(side_effect=self._call)
         self.connector.get_raw_map_data = AsyncMock(
             side_effect=lambda url: self.raw_map if url == MAP_URL else None
         )
-        self.connector.get_other_info = AsyncMock(return_value=properties)
+        self.properties = {
+            (entry["siid"], entry["piid"]): entry for response in properties for entry in response["result"]
+        }
+        self.connector.get_other_info = AsyncMock(side_effect=self._get_properties)
         self.connector.to_config = MagicMock(return_value=MagicMock(user_id=logged_in_id))
         self.raw_map = raw_map
         self.urls = urls
         self.calls: list[str] = []
+
+    async def _get_properties(self, device_id: str, method: str, parameters: list[dict[str, Any]]) -> Any:
+        assert method == "get_properties"
+        return {"code": 0, "message": "ok", "result": [
+            self.properties.get((p["siid"], p["piid"]), {**p, "code": -4003}) for p in parameters
+        ]}
 
     async def _call(self, url: str, params: dict[str, str]) -> Any:
         self.calls.append(url)
@@ -101,7 +117,7 @@ def ijai() -> Callable[..., tuple[IjaiCloudVacuum, FakeCloud]]:
         cloud = FakeCloud(
             encrypt_map(model) if raw_map is None else raw_map,
             urls or {STANDARD_URL: CLOUD["interim_file_url"], PRO_URL: CLOUD["interim_file_url"]},
-            cloud_properties or CLOUD["get_properties_unknown"],
+            cloud_properties if isinstance(cloud_properties, list) else [cloud_properties or CLOUD["get_properties_unknown"]],
             logged_in_id,
         )
         miot_patch = patch(
@@ -498,6 +514,111 @@ async def test_undecryptable_map_keeps_the_last_map(ijai) -> None:
 
     assert data.status == XiaomiCloudMapExtractorConnectorStatus.FAILED_MAP_PARSING
     assert data.map_data is last_map
+
+
+# Map saving turned off in Xiaomi Home -----------------------------------------------------------
+#
+# With map saving off in the Xiaomi Home app, an Ijai map fails to decrypt ("Padding is incorrect")
+# or the cloud has none (upstream #759: turning it back on fixed the map). The switch is
+# remember-state, siid 10 piid 1 (0 Close, 1 Open) in the miot-spec of every ijai.vacuum model and of
+# xiaomi.vacuum.b106eu, c103 and d106gl. It is read through the cloud, only once the map failed.
+
+MAP_SAVING_OFF = CLOUD["get_properties_map_saving_off"]
+MAP_SAVING_ON = CLOUD["get_properties_map_saving_on"]
+MAP_SAVING_PROPERTY = [{"did": DEVICE_ID, "siid": 10, "piid": 1}]
+WRONG_SERIAL = "ZZZZZZZZZZZZZZZZZZ"
+
+
+@pytest.mark.parametrize("model", ["xiaomi.vacuum.b106eu", "ijai.vacuum.v3", "ijai.vacuum.v17"])
+async def test_map_saving_off_explains_an_undecryptable_map(ijai, model: str) -> None:
+    vacuum, cloud = ijai(model, encrypt_map(model, wifi_sn=WRONG_SERIAL), cloud_properties=[MAP_SAVING_OFF])
+
+    with pytest.raises(MapSavingDisabledException) as failure:
+        await vacuum.get_map()
+
+    assert "Turn on map saving in the Xiaomi Home app" in str(failure.value)
+    cloud.connector.get_other_info.assert_awaited_once_with(DEVICE_ID, "get_properties", parameters=MAP_SAVING_PROPERTY)
+
+
+async def test_map_saving_off_explains_a_missing_map(ijai) -> None:
+    no_map = CLOUD["interim_file_url_pro_no_storage"]
+    vacuum, _ = ijai(
+        "ijai.vacuum.v3", urls={STANDARD_URL: no_map, PRO_URL: no_map}, cloud_properties=[MAP_SAVING_OFF]
+    )
+
+    with pytest.raises(MapSavingDisabledException):
+        await vacuum.get_map()
+
+
+@pytest.mark.parametrize(
+    "answer", [MAP_SAVING_ON, CLOUD["get_properties_unknown"]], ids=["map saving on", "switch not reported"]
+)
+async def test_map_saving_on_keeps_the_parse_failure(ijai, answer: Any) -> None:
+    """Only a vacuum that reports map saving off gets the message; any other failure stays as it was."""
+    model = "ijai.vacuum.v3"
+    vacuum, _ = ijai(model, encrypt_map(model, wifi_sn=WRONG_SERIAL), cloud_properties=[answer])
+
+    with pytest.raises(FailedMapParseException):
+        await vacuum.get_map()
+
+
+async def test_unreadable_map_saving_switch_keeps_the_parse_failure(ijai) -> None:
+    model = "ijai.vacuum.v3"
+    vacuum, cloud = ijai(model, encrypt_map(model, wifi_sn=WRONG_SERIAL))
+    cloud.connector.get_other_info.side_effect = FailedConnectionException(TimeoutError())
+
+    with pytest.raises(FailedMapParseException):
+        await vacuum.get_map()
+
+
+async def test_a_working_map_does_not_ask_about_map_saving(ijai) -> None:
+    vacuum, cloud = ijai("ijai.vacuum.v3", cloud_properties=[MAP_SAVING_OFF])
+
+    await vacuum.get_map()
+
+    cloud.connector.get_other_info.assert_not_awaited()
+
+
+def _extractor(vacuum: IjaiCloudVacuum) -> XiaomiCloudMapExtractorConnector:
+    extractor = XiaomiCloudMapExtractorConnector(MagicMock(), MagicMock(), None)
+    extractor._cloud_connector = MagicMock(spec=XiaomiCloudConnector)
+    extractor._cloud_connector.has_service_token.return_value = True
+    extractor._cloud_connector.is_session_expiring.return_value = False
+    extractor._vacuum_connector = vacuum
+    extractor._status = XiaomiCloudMapExtractorConnectorStatus.OK
+    return extractor
+
+
+async def test_map_saving_off_keeps_the_last_map(ijai, caplog: pytest.LogCaptureFixture) -> None:
+    caplog.set_level(logging.DEBUG)
+    model = "xiaomi.vacuum.b106eu"
+    vacuum, cloud = ijai(model, cloud_properties=[MAP_SAVING_OFF])
+    extractor = _extractor(vacuum)
+    extractor.force_refresh()
+    last_map = (await extractor.get_data()).map_data
+
+    cloud.raw_map = encrypt_map(model, wifi_sn=WRONG_SERIAL)
+    extractor.force_refresh()
+    data = await extractor.get_data()
+
+    assert data.status == XiaomiCloudMapExtractorConnectorStatus.MAP_SAVING_DISABLED
+    assert data.map_data is last_map
+    assert "Turn on map saving in the Xiaomi Home app" in caplog.text
+    assert_no_secrets(caplog)
+
+
+async def test_map_saving_off_without_a_map_fails_the_update(ijai, caplog: pytest.LogCaptureFixture) -> None:
+    """With no map to keep, the update fails, so Home Assistant shows the message (setup: "will retry")."""
+    caplog.set_level(logging.DEBUG)
+    model = "xiaomi.vacuum.b106eu"
+    vacuum, _ = ijai(model, encrypt_map(model, wifi_sn=WRONG_SERIAL), cloud_properties=[MAP_SAVING_OFF])
+    extractor = _extractor(vacuum)
+
+    with pytest.raises(MapSavingDisabledException) as failure:
+        await extractor.get_data()
+
+    assert extractor._map_cache.status == XiaomiCloudMapExtractorConnectorStatus.MAP_SAVING_DISABLED
+    assert_no_secrets(caplog, None, str(failure.value))
 
 
 # Map parsing ---------------------------------------------------------------------------------

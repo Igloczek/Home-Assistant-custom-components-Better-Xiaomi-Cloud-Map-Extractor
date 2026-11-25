@@ -12,6 +12,11 @@ other entries of property 7/45 as `...`; they are placeholders here.
     `result.url` the integration reads).
   - `get_properties_*`: `/v2/home/rpc/<did>` method `get_properties` for the WiFi serial
     number properties (upstream PR #782).
+  - `get_properties_map_saving_off` / `_on`: the same method for `remember-state` (siid 10, piid
+    1), the map saving switch. Not captured: the value list (0 Close, 1 Open) is from the
+    miot-spec of ijai.vacuum.v1, v3, v17 and xiaomi.vacuum.b106eu, and the answer has the shape
+    of the recorded `get_properties` answers above. Upstream #759 links map saving off to
+    "Padding is incorrect".
 - `local_properties.json`: `MiotDevice.get_property_by(siid, piid)` answers.
   - `healthy`: a vacuum that reports its serial in 1/3, as the integration expects.
   - `v1`: ijai.vacuum.v1 (issue #742): 1/3 has no value, 1/5 answers -4003, the serial is a

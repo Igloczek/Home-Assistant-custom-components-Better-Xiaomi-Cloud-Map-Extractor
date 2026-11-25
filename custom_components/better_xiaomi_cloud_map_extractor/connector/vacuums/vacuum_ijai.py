@@ -21,7 +21,9 @@ from .base.model import VacuumConfig, VacuumApi
 from ..utils.dict_operations import path_extractor
 from ..utils.exceptions import (
     FailedConnectionException,
+    FailedMapDownloadException,
     FailedMapParseException,
+    MapSavingDisabledException,
     XiaomiCloudMapExtractorException,
 )
 
@@ -45,6 +47,12 @@ WIFI_SN_PROPERTIES = [(1, 3), (1, 5), (7, 45)]
 WIFI_SN_IN_MULTI_PROPERTY = re.compile(r"[0-9A-Z/]*[A-Z][0-9A-Z/]*")
 # v3.0.0-alpha-24 accepted only these lengths; 19 (ijai.vacuum.v1) is tried after its rules.
 ALPHA_24_WIFI_SN_LEN = [18, 20]
+
+# "remember-state" in the map service (0 Close, 1 Open): the map saving switch of the Xiaomi Home app.
+# Same place in the miot-spec of every ijai.vacuum model and of xiaomi.vacuum.b106eu, c103 and d106gl.
+# With it off the uploaded map does not decrypt or there is none (upstream #759).
+MAP_SAVING_PROPERTY = (10, 1)
+MAP_SAVING_OFF = 0
 
 # Models that only upload a fresh map when asked to, like the Mi Home app does: action
 # "upload-by-maptype" (siid 10, aiid 6) with map type 0 (real-time map). Without it the cloud keeps
@@ -115,6 +123,32 @@ class IjaiCloudVacuum(BaseXiaomiCloudVacuumV2):
     @property
     def map_data_parser(self) -> IjaiMapDataParser:
         return self._ijai_map_data_parser
+
+    async def get_map(self) -> tuple[MapData, bytes]:
+        try:
+            return await super().get_map()
+        except (FailedMapDownloadException, FailedMapParseException) as err:
+            if await self._map_saving_off():
+                _LOGGER.warning("%s: %s", self.model, MapSavingDisabledException())
+                raise MapSavingDisabledException() from err
+            raise
+
+    async def _map_saving_off(self) -> bool:
+        # Asked only once the map failed; any doubt keeps the original failure.
+        siid, piid = MAP_SAVING_PROPERTY
+        try:
+            response = await self._connector.get_other_info(
+                str(self._device_id), "get_properties",
+                parameters=[{"did": str(self._device_id), "siid": siid, "piid": piid}])
+        except Exception as ex:
+            _LOGGER.debug("Failed to read the map saving switch: %r", ex)
+            return False
+        for item in path_extractor(response, "result") or []:
+            if (
+                    isinstance(item, dict) and (item.get("siid"), item.get("piid")) == MAP_SAVING_PROPERTY
+                    and item.get("code", 0) == 0 and type(item.get("value")) in (int, bool)):
+                return item["value"] == MAP_SAVING_OFF
+        return False
 
     async def get_map_url(self, map_name: str) -> str | None:
         action = REALTIME_UPLOAD_ACTION.get(self.model)

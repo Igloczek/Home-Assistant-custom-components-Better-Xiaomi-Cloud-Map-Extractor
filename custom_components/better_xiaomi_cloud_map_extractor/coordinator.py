@@ -22,6 +22,7 @@ from .connector.utils.exceptions import (
     FailedConnectionException,
     FailedMapDownloadException,
     FailedMapParseException,
+    MapSavingDisabledException,
     RetryLaterException,
 )
 from .const import DOMAIN, DEFAULT_UPDATE_INTERVAL
@@ -62,6 +63,8 @@ def update_failure_key(err: Exception) -> str:
         return "cloud_unavailable"
     if isinstance(err, FailedMapDownloadException):
         return "map_download_failed"
+    if isinstance(err, MapSavingDisabledException):
+        return "map_saving_disabled"
     if isinstance(err, FailedMapParseException):
         return "map_parse_failed"
     if isinstance(err, DeviceException):
