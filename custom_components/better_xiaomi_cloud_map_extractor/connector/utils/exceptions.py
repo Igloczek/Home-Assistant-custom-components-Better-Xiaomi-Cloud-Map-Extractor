@@ -80,6 +80,13 @@ class FailedMapParseException(XiaomiCloudMapExtractorException):
     pass
 
 
+class MapSavingDisabledException(XiaomiCloudMapExtractorException):
+    """The vacuum reports map saving off in the Xiaomi Home app, so the cloud has no usable map."""
+
+    def __str__(self) -> str:
+        return "Map saving is turned off on the vacuum. Turn on map saving in the Xiaomi Home app"
+
+
 @dataclass
 class TwoFactorAuthRequiredException(XiaomiCloudMapExtractorException):
     url: str

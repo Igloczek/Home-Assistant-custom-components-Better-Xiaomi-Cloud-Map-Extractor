@@ -48,20 +48,17 @@ numbers refer to the upstream repository; each item names the priority it serves
    "Unexpected error" after minutes, a retry that asks only for the captcha, the finish location after
    `verifyEmail`, and the cloud region choice from PR #793. Each needs a recorded, scrubbed login
    exchange as a fixture.
-3. **Ijai: say when the map is turned off** (P2, follow-up of #759). A map disabled in the Xiaomi
-   Home app fails to decrypt ("Padding is incorrect"); the update failure and repair should say to
-   turn the map on in Xiaomi Home.
-4. **Drop-in follow-up** (P3): decide whether to raise a repair issue that points users of the
+3. **Drop-in follow-up** (P3): decide whether to raise a repair issue that points users of the
    original at the import once this integration is running. (The import itself was verified end to
    end on a real Home Assistant, with the original installed and then removed, on 2026-11-24.)
-5. **Jonr P20** (P4, #621; 37 users): `xtl.vacuum.xm2216`, from a fork that three owners confirm;
+4. **Jonr P20** (P4, #621; 37 users): `xtl.vacuum.xm2216`, from a fork that three owners confirm;
    needs its map as a fixture and an owner for the pre-release.
-6. **Roidmi sdj60** (P4, #572, PR #768): port to `vacuum_roidmi.py` (the `_pro` map URL and the byte
+5. **Roidmi sdj60** (P4, #572, PR #768): port to `vacuum_roidmi.py` (the `_pro` map URL and the byte
    split).
-7. **Dreame md1808 "incorrect header check"** (P4, #450, #757, #772): a raw map is attached to #450;
+6. **Dreame md1808 "incorrect header check"** (P4, #450, #757, #772): a raw map is attached to #450;
    check it against vacuum-map-parser-dreame.
-8. **Small import** (P4, PR #591) if `scripts/` keeps shipping.
-9. **Ijai rendering** (P4, PR #794): fit to the explored area, without the bundled font if possible.
+7. **Small import** (P4, PR #591) if `scripts/` keeps shipping.
+8. **Ijai rendering** (P4, PR #794): fit to the explored area, without the bundled font if possible.
 
 ## 1.0.0 criteria
 
@@ -78,6 +75,11 @@ When both hold, an agent brings the maintainer one question, "ready for 1.0.0?",
 the [triage table](TRIAGE.md), the fixed issues, the module map and the test coverage.
 
 ## Later
+
+- **Ijai map saving off: confirm with an owner.** The message relies on `remember-state` (siid 10,
+  piid 1) reading 0 when map saving is off in Xiaomi Home; that comes from the miot-spec and #759,
+  not a captured answer. Replace the fixture with a scrubbed `get_properties` answer from an owner,
+  and record what the cloud's map endpoints return in that state.
 
 - **Waiting for a capture**: 19 upstream items need a raw map, a debug log or a tester before they
   can be fixed with a test; [TRIAGE.md](TRIAGE.md) says what each needs. The biggest groups: Dreame

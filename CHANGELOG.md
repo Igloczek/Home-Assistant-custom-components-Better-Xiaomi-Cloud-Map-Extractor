@@ -16,6 +16,11 @@
 
   A login is asked for only when the saved session can't be renewed or the account no longer has
   the vacuum.
+- Ijai vacuums (and the Xiaomi models on the Ijai map format, such as the S12) say when map
+  saving is turned off in the Xiaomi Home app, instead of failing with "Padding is incorrect" or a
+  generic map failure (upstream #759). The update message and a Repairs issue say to turn on map
+  saving in the Xiaomi Home app; the last map stays on screen meanwhile, and the issue goes away
+  with the next map.
 
 ### Fixed
 

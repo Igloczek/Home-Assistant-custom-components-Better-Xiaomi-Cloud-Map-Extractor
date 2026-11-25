@@ -6,6 +6,8 @@
   offers what the cloud knows (region, IP address, token); a login is asked for only when the
   session can't be renewed or the account doesn't have the vacuum. Every issue goes away once the
   map works again.
+- `map_saving_disabled`: an Ijai vacuum reports map saving off in the Xiaomi Home app, FAILURE_THRESHOLD
+  map updates in a row. Only the app can fix it, so the issue just says so; the next good map clears it.
 - `vacuum_unreachable`: the vacuum has not answered on the local network for LAN_UNREACHABLE_UPDATES
   updates. Same fix as a refused token (IP address and token); it goes away once the vacuum answers,
   since cloud maps can keep working without it.
@@ -34,6 +36,7 @@ from .connector.utils.exceptions import (
     FailedConnectionException,
     FailedLoginException,
     InvalidDeviceTokenException,
+    MapSavingDisabledException,
     SessionExpiredException,
 )
 from .connector.vacuums.base.model import VacuumApi
@@ -48,8 +51,11 @@ DEVICE_NOT_FOUND = "device_not_found"
 VACUUM_TOKEN = "vacuum_token"
 MAP_DOWNLOAD_FAILING = "map_download_failing"
 VACUUM_UNREACHABLE = "vacuum_unreachable"
-MAP_FAILURES = (DEVICE_NOT_FOUND, VACUUM_TOKEN, MAP_DOWNLOAD_FAILING)
+MAP_SAVING_DISABLED = "map_saving_disabled"
+MAP_FAILURES = (DEVICE_NOT_FOUND, VACUUM_TOKEN, MAP_DOWNLOAD_FAILING, MAP_SAVING_DISABLED)
 PERSISTENT_FAILURES = (*MAP_FAILURES, VACUUM_UNREACHABLE)
+# Fixed outside Home Assistant: the issue explains, it has no fix flow.
+UNFIXABLE_FAILURES = (MAP_SAVING_DISABLED,)
 # Fixed with the vacuum's own IP address and token, which can be typed in without the cloud.
 LAN_FAILURES = (VACUUM_TOKEN, VACUUM_UNREACHABLE)
 # Map updates in a row that fail the same way before it is worth asking the user.
@@ -78,6 +84,8 @@ def persistent_failure(outcome: Exception | Status) -> str | None:
         return VACUUM_TOKEN
     if outcome is Status.FAILED_MAP_DOWNLOAD:
         return MAP_DOWNLOAD_FAILING
+    if isinstance(outcome, MapSavingDisabledException) or outcome is Status.MAP_SAVING_DISABLED:
+        return MAP_SAVING_DISABLED
     return None
 
 
@@ -120,7 +128,7 @@ def _async_raise(hass: HomeAssistant, entry: ConfigEntry, failure: str, count: i
         hass,
         DOMAIN,
         issue_id,
-        is_fixable=True,
+        is_fixable=failure not in UNFIXABLE_FAILURES,
         # A vacuum Home Assistant can't reach may be on another network on purpose: not an error.
         severity=ir.IssueSeverity.WARNING if failure == VACUUM_UNREACHABLE else ir.IssueSeverity.ERROR,
         translation_key=failure,

@@ -24,7 +24,8 @@ from .utils.exceptions import (
     TwoFactorAuthRequiredException,
     FailedLoginException,
     FailedMapDownloadException,
-    FailedMapParseException
+    FailedMapParseException,
+    MapSavingDisabledException,
 )
 from .vacuums.base.model import VacuumConfig, VacuumApi
 from .vacuums.base.vacuum_base import BaseXiaomiCloudVacuum
@@ -277,6 +278,10 @@ class XiaomiCloudMapExtractorConnector:
             self._map_cache.status = XiaomiCloudMapExtractorConnectorStatus.FAILED_MAP_DOWNLOAD
         except FailedMapParseException:
             self._map_cache.status = XiaomiCloudMapExtractorConnectorStatus.FAILED_MAP_PARSING
+        except MapSavingDisabledException:
+            self._map_cache.status = XiaomiCloudMapExtractorConnectorStatus.MAP_SAVING_DISABLED
+            if self._map_cache.map_data is None:
+                raise  # nothing to keep showing: the update failure carries the message
         except TwoFactorAuthRequiredException as e:
             self._map_cache.status = XiaomiCloudMapExtractorConnectorStatus.TWO_FACTOR_REQUIRED
             self._map_cache.two_factor_url = e.url

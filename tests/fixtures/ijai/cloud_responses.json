@@ -30,5 +30,19 @@
       {"did": "123456789", "siid": 1, "piid": 5, "code": -4003},
       {"did": "123456789", "siid": 7, "piid": 45, "code": -4003}
     ]
+  },
+  "get_properties_map_saving_off": {
+    "code": 0,
+    "message": "ok",
+    "result": [
+      {"did": "123456789", "siid": 10, "piid": 1, "code": 0, "value": 0}
+    ]
+  },
+  "get_properties_map_saving_on": {
+    "code": 0,
+    "message": "ok",
+    "result": [
+      {"did": "123456789", "siid": 10, "piid": 1, "code": 0, "value": 1}
+    ]
   }
 }

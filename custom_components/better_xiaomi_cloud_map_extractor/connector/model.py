@@ -28,6 +28,7 @@ class XiaomiCloudMapExtractorConnectorStatus(IntEnum):
     INVALID_TOKEN = enum.auto()
     FAILED_MAP_DOWNLOAD = enum.auto()
     FAILED_MAP_PARSING = enum.auto()
+    MAP_SAVING_DISABLED = enum.auto()
 
 
 @dataclass
