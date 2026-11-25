@@ -54,6 +54,12 @@
   the cloud instead of keeping the first one.
 - A map that failed to download at startup is retried while the vacuum is docked, instead of never.
 - Roborock no longer waits after a successful map name request.
+- A Roborock that Home Assistant can't reach on the local network (another network or VLAN, a
+  changed IP address) gets its map again (upstream #601): the map name and the cleaning state are
+  asked through Xiaomi Cloud, which passes the request on to the vacuum. Before, it retried the
+  vacuum for up to a minute and then had no map, and once it had one, the map stopped updating.
+  Such a Roborock can now also be added: setup accepts it when Xiaomi Cloud reaches it. The Repairs
+  issue that says the vacuum does not answer on the local network still appears.
 - A vacuum that is not in the configured region, or refuses the stored token, no longer starts
   re-authentication: the login was never the problem. The Repairs issue above handles it.
 - Setup no longer finishes with a session that could not be saved, which made every restart ask for

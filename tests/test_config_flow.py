@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from homeassistant import config_entries
+from miio import DeviceException
 from homeassistant.config_entries import ConfigEntryState
 from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResultType
@@ -197,6 +198,56 @@ async def test_roborock_unreachable_shows_error(
 
     assert result["type"] is FlowResultType.FORM
     assert result["errors"] == {"base": "invalid_vacuum"}
+
+
+UNREACHABLE = DeviceException("Unable to discover the device 192.168.1.50")
+
+
+async def _confirm_roborock_off_the_lan(hass: HomeAssistant, cloud_connector: MagicMock, lan_error: Exception) -> dict:
+    cloud_connector.get_devices.return_value = [make_device(model="roborock.vacuum.s5")]
+    result = await _submit_credentials(hass, await _start_credentials_login(hass))
+    with patch(
+        "custom_components.better_xiaomi_cloud_map_extractor.config_flow.RoborockVacuum.status",
+        side_effect=lan_error,
+    ):
+        return await _confirm(hass, result, used_map_api="ROBOROCK")
+
+
+async def test_roborock_off_the_lan_is_set_up_when_the_cloud_reaches_it(
+    hass: HomeAssistant, cloud_connector: MagicMock
+) -> None:
+    """A Roborock on another network could not be added at all; the cloud forwards `get_status` to it."""
+    cloud_connector.get_other_info.return_value = {"code": 0, "message": "ok", "result": [{"state": 8}]}
+
+    result = await _confirm_roborock_off_the_lan(hass, cloud_connector, UNREACHABLE)
+
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+    cloud_connector.get_other_info.assert_awaited_once_with(
+        ENTRY_DATA["device_id"], "get_status", [], server=ENTRY_DATA["server"]
+    )
+
+
+async def test_roborock_off_the_lan_and_the_cloud_shows_error(
+    hass: HomeAssistant, cloud_connector: MagicMock
+) -> None:
+    result = await _confirm_roborock_off_the_lan(hass, cloud_connector, UNREACHABLE)
+
+    assert result["type"] is FlowResultType.FORM
+    assert result["errors"] == {"base": "invalid_vacuum"}
+
+
+async def test_roborock_wrong_token_shows_error_without_asking_the_cloud(
+    hass: HomeAssistant, cloud_connector: MagicMock
+) -> None:
+    """The vacuum answered and refused the token: the LAN is configured wrong, the cloud can't fix that."""
+    cloud_connector.get_other_info.return_value = {"code": 0, "message": "ok", "result": [{"state": 8}]}
+
+    result = await _confirm_roborock_off_the_lan(
+        hass, cloud_connector, DeviceException("Unable to decrypt, token may be wrong")
+    )
+
+    assert result["errors"] == {"base": "invalid_vacuum"}
+    cloud_connector.get_other_info.assert_not_awaited()
 
 
 async def test_device_list_error_shows_retry_form(hass: HomeAssistant, cloud_connector: MagicMock) -> None:
