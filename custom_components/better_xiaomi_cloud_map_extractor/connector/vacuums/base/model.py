@@ -41,9 +41,11 @@ class VacuumApi(StrEnum):
 
     @staticmethod
     def configured(used_map_api: str | None, vacuum_model: str) -> VacuumApi:
-        """The API stored in a config entry. The YAML import stores None unless the YAML set `force_api`."""
+        """The API stored in a config entry. The YAML import stores None unless the YAML set `force_api`.
+
+        Entries imported before 0.1.5 hold `force_api` as the YAML spelled it, in lower case."""
         if used_map_api:
-            return VacuumApi(used_map_api)
+            return VacuumApi(used_map_api.upper())
         return VacuumApi.detect(vacuum_model)
 
     @staticmethod
