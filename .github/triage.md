@@ -65,9 +65,11 @@ maintainer.
   belong to `Igloczek/lovelace-better-xiaomi-vacuum-map-card`. Redirect the user there.
 - **Testing & feedback issues:** issues opened to test unmerged pre-releases (currently #24, #29)
   stay open only until their fix ships in a stable release; once shipped, close them as `completed`
-  rather than keeping them open indefinitely. When confirmation or captures arrive — even for a
-  single model on a multi-model testing issue — route them immediately to `Chief of staff` so
-  confirmed fixes are merged, shipped and closed right away. If a user later comments on a closed
-  issue reporting a bug or regression, reopen it and act on it. Never post an empty "recorded,
-  waiting for others" reply that triggers no action; only reply when you have a concrete next step
-  (routing for merge/release, launching a build, or asking one specific follow-up question).
+  with a clear, marked closing comment stating what version fixed it, what was verified, and that
+  replying with a problem will reopen it (never close an issue silently). When confirmation or
+  captures arrive — even for a single model on a multi-model testing issue — route them immediately
+  to `Chief of staff` so confirmed fixes are merged, shipped and closed right away. If a user later
+  comments on a closed issue reporting a bug or regression, reopen it and act on it. Never post an
+  empty "recorded, waiting for others" reply that triggers no action; every comment should explain
+  a concrete action or next step (closing as fixed in `vX.Y.Z`, routing for merge/release,
+  launching a build, or asking one specific follow-up question).
