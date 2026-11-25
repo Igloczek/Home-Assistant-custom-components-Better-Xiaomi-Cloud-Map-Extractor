@@ -37,8 +37,10 @@ class EncryptedApi(XiaomiCloudSession):
 
         return None
 
-    async def get_other_info(self: Self, device_id: str, method: str, parameters: dict) -> Any:
-        url = self.get_api_url() + "/v2/home/rpc/" + device_id
+    async def get_other_info(
+            self: Self, device_id: str, method: str, parameters: Any, server: str | None = None) -> Any:
+        """A miIO command the cloud forwards to the vacuum over its own connection (as Mi Home does)."""
+        url = self.get_api_url(server) + "/v2/home/rpc/" + device_id
         params = {
             "data": json.dumps({"method": method, "params": parameters}, separators=(",", ":"))
         }

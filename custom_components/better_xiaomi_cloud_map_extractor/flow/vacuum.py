@@ -32,6 +32,7 @@ from vacuum_map_parser_base.config.size import Sizes
 from .base import FlowBase
 from .errors import device_list_error
 from ..connector.vacuums.base.model import VacuumApi
+from ..connector.vacuums.vacuum_roborock import roborock_state
 from ..const import (
     CONF_USED_MAP_API,
     CONF_SERVER,
@@ -242,8 +243,21 @@ class VacuumSteps(FlowBase):
             status = await self.hass.async_add_executor_job(roborock_vacuum.status)
             return status is not None
         except Exception as e:
-            _LOGGER.error(e, exc_info=True)
+            if "token" in repr(e):  # it answered and refused the token: the cloud can't fix that
+                _LOGGER.error(e, exc_info=True)
+                return False
+            _LOGGER.debug("The vacuum did not answer on the local network (%r), asking the cloud", e)
+        # A vacuum on another network: the map name and status come through the cloud then.
+        try:
+            response = await self._connector.get_other_info(
+                str(self._cloud_vacuum.device_id), "get_status", [], server=self._cloud_vacuum.server)
+        except Exception as e:  # noqa: BLE001 - reported as the form error below
+            _LOGGER.debug("The cloud did not reach the vacuum either: %r", e)
             return False
+        if roborock_state(response) is None:
+            _LOGGER.error("The vacuum answers neither on the local network nor through Xiaomi Cloud")
+            return False
+        return True
 
     def _unique_id_for(self: Self, entry: XiaomiCloudMapExtractorConfigEntry, unique_id: str) -> str | None:
         """Give an entry without unique_id (YAML import) the vacuum's MAC, unless another entry already uses it."""

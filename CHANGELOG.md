@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- A Roborock that Home Assistant can't reach on the local network (another network or VLAN, a
+  changed IP address) gets its map again (upstream #601): the map name and the cleaning state are
+  asked through Xiaomi Cloud, which passes the request on to the vacuum. Before, it retried the
+  vacuum for up to a minute and then had no map, and once it had one, the map stopped updating.
+  Such a Roborock can now also be added: setup accepts it when Xiaomi Cloud reaches it. The Repairs
+  issue that says the vacuum does not answer on the local network still appears.
+
 ## 0.1.5 - 2026-11-25
 
 ### Fixed

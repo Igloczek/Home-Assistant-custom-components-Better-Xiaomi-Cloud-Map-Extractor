@@ -20,9 +20,9 @@ with a test that fails first (see [AGENTS.md](AGENTS.md)).
   the current map through the cloud when the LAN does not answer, the status property of models such
   as the d109gl and the H50 (`xiaomi.vacuum.ov43gb`), ov21gl rooms and S40 zones. Closes #563, #588,
   #657, #702, #704, #720, #739.
-- **Roborock map without the local network**: read the map name through the cloud when Home
-  Assistant cannot reach the vacuum, as Ijai does for the WiFi serial (#601, and with fork PR #18
-  #381).
+- **Roborock without the local network** (#601): map name and status through the cloud when Home
+  Assistant can't reach the vacuum, in a pre-release until a Roborock owner off the LAN confirms it
+  (the cloud's `get_map_v1` and `get_status` answers are modelled on the LAN ones, not captured).
 
 Unverified: an unencrypted API answer with code 2 or 3, or the message `invalid signature`, is
 treated as an expired session (renewal, then password login). That mirrors other Xiaomi cloud
