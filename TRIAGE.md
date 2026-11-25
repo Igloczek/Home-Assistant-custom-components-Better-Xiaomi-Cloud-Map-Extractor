@@ -30,8 +30,8 @@ whose fix shipped to *fixed*. Update this header's date and counts and the ROADM
 
 | Status | Count |
 | --- | ---: |
-| planned | 13 |
-| needs a capture | 19 |
+| planned | 12 |
+| needs a capture | 20 |
 | feature request kept | 12 |
 | fixed | 56 |
 | duplicate | 14 |
@@ -51,7 +51,6 @@ Unreleased.
 | [572](https://github.com/PiotrMachowski/Home-Assistant-custom-components-Xiaomi-Cloud-Map-Extractor/issues/572) | Not load map from roidmi.vacuum.sdj60 | issue | planned | P4 backlog: PR #768. | 5 |
 | [712](https://github.com/PiotrMachowski/Home-Assistant-custom-components-Xiaomi-Cloud-Map-Extractor/issues/712) | bad login retry asks for captcha instead of whole username/password | issue | planned | P2 actionable failures: a failed login retry asks only for the captcha. | 4 |
 | [381](https://github.com/PiotrMachowski/Home-Assistant-custom-components-Xiaomi-Cloud-Map-Extractor/issues/381) | Cloud-Only Mode | issue | planned | P1 reliability: map without the local network (Xiaomi in fork PR #18, Roborock in progress). | 3 |
-| [450](https://github.com/PiotrMachowski/Home-Assistant-custom-components-Xiaomi-Cloud-Map-Extractor/issues/450) | Please add support for dreame.vacuum.md1808 | issue | planned | P4 backlog: a raw md1808 map is attached upstream; check it against vacuum-map-parser-dreame ("incorrect header check"). | 1 |
 | [591](https://github.com/PiotrMachowski/Home-Assistant-custom-components-Xiaomi-Cloud-Map-Extractor/pull/591) | fix pip install line | PR | planned | P4 backlog. | 1 |
 | [601](https://github.com/PiotrMachowski/Home-Assistant-custom-components-Xiaomi-Cloud-Map-Extractor/issues/601) | Map is not updating. ever. | issue | planned | P1 reliability: Roborock map name through the cloud (in progress). | 1 |
 | [762](https://github.com/PiotrMachowski/Home-Assistant-custom-components-Xiaomi-Cloud-Map-Extractor/issues/762) | Add map support for Xiaomi Robot Vacuum H40 (xiaomi.vacuum.ov51gl) | issue | planned | P1 reliability: build the map path from the uid the vacuum reports, not the account's. | 1 |
@@ -61,7 +60,8 @@ Unreleased.
 | [794](https://github.com/PiotrMachowski/Home-Assistant-custom-components-Xiaomi-Cloud-Map-Extractor/pull/794) | Ijai: fit the rendered map to the explored area | PR | planned | P4 backlog: Ijai rendering, without the bundled font if possible. | 0 |
 | [558](https://github.com/PiotrMachowski/Home-Assistant-custom-components-Xiaomi-Cloud-Map-Extractor/issues/558) | Add suport for Xiaomi Robot Vacuum X20+ | issue | needs a capture | A debug log from the fork for xiaomi.vacuum.c102gl (d102gl and d109gl work on v3). | 23 |
 | [259](https://github.com/PiotrMachowski/Home-Assistant-custom-components-Xiaomi-Cloud-Map-Extractor/issues/259) | Support for the 'mijia.vacuum.v2' cleaner. | issue | needs a capture | `mijia.vacuum.v2` has no vendor mapping: a raw map and diagnostics from the fork with each map API. | 21 |
-| [459](https://github.com/PiotrMachowski/Home-Assistant-custom-components-Xiaomi-Cloud-Map-Extractor/issues/459) | Add support for Dreame vacuums with encrypted map | issue | needs a capture | A raw map from an encrypted Dreame model that fails on the fork ("incorrect header check"). | 16 |
+| [450](https://github.com/PiotrMachowski/Home-Assistant-custom-components-Xiaomi-Cloud-Map-Extractor/issues/450) | Please add support for dreame.vacuum.md1808 | issue | needs a capture | The attached map is AES-CBC encrypted like the models in `DreameMapDataParser.IVs`. Since Unreleased the update and Repairs say the map can't be decrypted yet, instead of an unknown error. Decrypting it needs the md1808 IV (Dreame's Xiaomi Home plugin; in no public table) and a raw map captured with its object name (`<path>,<key>`, property 23/3). | 1 |
+| [459](https://github.com/PiotrMachowski/Home-Assistant-custom-components-Xiaomi-Cloud-Map-Extractor/issues/459) | Add support for Dreame vacuums with encrypted map | issue | needs a capture | A raw map from an encrypted Dreame model that fails on the fork. A model without a known IV now says so (see #450); one with a known IV that still fails is a different bug. | 16 |
 | [533](https://github.com/PiotrMachowski/Home-Assistant-custom-components-Xiaomi-Cloud-Map-Extractor/issues/533) | Xiaomi Vacuum E5 | issue | needs a capture | A debug log from the fork for xiaomi.vacuum.c108 (0.1.0 fixed the map key for short models). | 16 |
 | [602](https://github.com/PiotrMachowski/Home-Assistant-custom-components-Xiaomi-Cloud-Map-Extractor/issues/602) | Support for Mijia M40 (xiaomi.vacuum.d110ch) | issue | needs a capture | A debug log from the fork for xiaomi.vacuum.d110ch ("No supported devices found"). | 11 |
 | [403](https://github.com/PiotrMachowski/Home-Assistant-custom-components-Xiaomi-Cloud-Map-Extractor/issues/403) | Request support for Smartmi A1 Vortex | issue | needs a capture | A debug log from the fork: v3 Roidmi-family code already falls back to `get_interim_file_url_pro`, the fix found in the thread. | 9 |

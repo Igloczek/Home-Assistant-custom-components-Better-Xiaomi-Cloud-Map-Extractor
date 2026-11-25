@@ -8,6 +8,9 @@
   map works again.
 - `map_saving_disabled`: an Ijai vacuum reports map saving off in the Xiaomi Home app, FAILURE_THRESHOLD
   map updates in a row. Only the app can fix it, so the issue just says so; the next good map clears it.
+- `map_encrypted`: the cloud serves the map of this model encrypted with a scheme the integration does
+  not know (Dreame md1808, upstream #450). Nothing the user changes fixes it, so the issue names the
+  model and where support for it is tracked; the next good map clears it.
 - `vacuum_unreachable`: the vacuum has not answered on the local network for LAN_UNREACHABLE_UPDATES
   updates. Same fix as a refused token (IP address and token); it goes away once the vacuum answers,
   since cloud maps can keep working without it.
@@ -36,6 +39,7 @@ from .connector.utils.exceptions import (
     FailedConnectionException,
     FailedLoginException,
     InvalidDeviceTokenException,
+    EncryptedMapUnsupportedException,
     MapSavingDisabledException,
     SessionExpiredException,
 )
@@ -52,10 +56,13 @@ VACUUM_TOKEN = "vacuum_token"
 MAP_DOWNLOAD_FAILING = "map_download_failing"
 VACUUM_UNREACHABLE = "vacuum_unreachable"
 MAP_SAVING_DISABLED = "map_saving_disabled"
-MAP_FAILURES = (DEVICE_NOT_FOUND, VACUUM_TOKEN, MAP_DOWNLOAD_FAILING, MAP_SAVING_DISABLED)
+MAP_ENCRYPTED = "map_encrypted"
+MAP_FAILURES = (DEVICE_NOT_FOUND, VACUUM_TOKEN, MAP_DOWNLOAD_FAILING, MAP_SAVING_DISABLED, MAP_ENCRYPTED)
 PERSISTENT_FAILURES = (*MAP_FAILURES, VACUUM_UNREACHABLE)
 # Fixed outside Home Assistant: the issue explains, it has no fix flow.
-UNFIXABLE_FAILURES = (MAP_SAVING_DISABLED,)
+UNFIXABLE_FAILURES = (MAP_SAVING_DISABLED, MAP_ENCRYPTED)
+# Where support for a model is tracked, for the failures only a new release can fix.
+ISSUES_URL = "https://github.com/Igloczek/better-xiaomi-cloud-map-extractor/issues"
 # Fixed with the vacuum's own IP address and token, which can be typed in without the cloud.
 LAN_FAILURES = (VACUUM_TOKEN, VACUUM_UNREACHABLE)
 # Map updates in a row that fail the same way before it is worth asking the user.
@@ -86,6 +93,8 @@ def persistent_failure(outcome: Exception | Status) -> str | None:
         return MAP_DOWNLOAD_FAILING
     if isinstance(outcome, MapSavingDisabledException) or outcome is Status.MAP_SAVING_DISABLED:
         return MAP_SAVING_DISABLED
+    if isinstance(outcome, EncryptedMapUnsupportedException) or outcome is Status.MAP_ENCRYPTED:
+        return MAP_ENCRYPTED
     return None
 
 
@@ -136,6 +145,8 @@ def _async_raise(hass: HomeAssistant, entry: ConfigEntry, failure: str, count: i
             "name": entry.title,
             "server": str(entry.data.get(CONF_SERVER)),
             "host": str(entry.data.get(CONF_HOST)),
+            "model": str(entry.data.get(CONF_MODEL)),
+            "issues_url": ISSUES_URL,
         },
         data={"entry_id": entry.entry_id, "failure": failure},
     )

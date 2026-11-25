@@ -1,5 +1,8 @@
 import asyncio
+import base64
+import binascii
 import logging
+import zlib
 from typing import Self, Any
 
 from miio import DreameVacuum, DeviceException
@@ -11,6 +14,7 @@ from .base.model import VacuumConfig, VacuumApi
 from .base.cloud_run_state import DREAME_RUN_STATES, CloudRunState
 from .base.vacuum_v2 import BaseXiaomiCloudVacuumV2
 from ..utils.dict_operations import path_extractor
+from ..utils.exceptions import EncryptedMapUnsupportedException, FailedMapParseException
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -26,6 +30,23 @@ class _RedactMapKey(logging.Filter):
 
 
 logging.getLogger(DreameMapDataParser.__module__).addFilter(_RedactMapKey())
+
+# A zlib stream starts with this CMF byte (deflate, 32 KiB window), whatever the compression level.
+_ZLIB_CMF = 0x78
+_AES_BLOCK = 16
+
+
+def _looks_encrypted(raw_map: bytes) -> bool:
+    """Whether a map the parser could not inflate is an AES ciphertext: whole AES blocks, not zlib.
+
+    Upstream #450: dreame.vacuum.md1808 serves standard base64 of an AES-CBC ciphertext like the
+    models in `DreameMapDataParser.IVs`, but its IV is not published, so it reached zlib as is.
+    """
+    try:
+        decoded = base64.b64decode(raw_map.decode().replace("_", "/").replace("-", "+"), validate=False)
+    except (ValueError, UnicodeDecodeError):
+        return False
+    return len(decoded) >= _AES_BLOCK and len(decoded) % _AES_BLOCK == 0 and decoded[0] != _ZLIB_CMF
 
 
 class DreameCloudVacuum(BaseXiaomiCloudVacuumV2):
@@ -67,8 +88,22 @@ class DreameCloudVacuum(BaseXiaomiCloudVacuumV2):
         return self._dreame_map_data_parser
 
     def decode_and_parse(self: Self, raw_map: bytes) -> MapData:
-        decoded_map = self.map_data_parser.unpack_map(raw_map, enckey=self._enc_key)
-        return self.map_data_parser.parse(decoded_map)
+        # vacuum-map-parser-dreame raises whatever its decoding hits (zlib, base64, JSON, an
+        # unsupported frame); each is a map that could not be read, never an unknown error.
+        try:
+            decoded_map = self.map_data_parser.unpack_map(raw_map, enckey=self._enc_key)
+        except (zlib.error, binascii.Error, ValueError) as err:
+            if self.model not in DreameMapDataParser.IVs and _looks_encrypted(raw_map):
+                failure = EncryptedMapUnsupportedException(self.model)
+                _LOGGER.debug("%s", failure)  # the update failure and Repairs say it
+                raise failure from err
+            _LOGGER.debug("Failed to unpack the map: %r", err)
+            raise FailedMapParseException() from err
+        try:
+            return self.map_data_parser.parse(decoded_map)
+        except (NotImplementedError, ValueError, IndexError) as err:
+            _LOGGER.debug("Failed to parse the map: %r", err)
+            raise FailedMapParseException() from err
 
     async def get_map_name(self: Self) -> str | None:
         if self.model in DreameMapDataParser.IVs:

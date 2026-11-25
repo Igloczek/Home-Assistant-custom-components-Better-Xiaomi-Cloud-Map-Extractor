@@ -877,6 +877,10 @@
         }
       }
     },
+    "map_encrypted": {
+      "title": "The map of {name} can't be decrypted yet",
+      "description": "Xiaomi Cloud sends the map of {name} ({model}) encrypted, and this integration doesn't know yet how to decrypt maps of this model, so Home Assistant can't show it. Nothing in Home Assistant or the Xiaomi Home app changes this, and your configuration is fine.\n\nSupport for the model needs an update of the integration. To help, open [the integration's issue tracker]({issues_url}) and look for {model}, or open an issue with the model name. This issue goes away by itself with the first map that can be read."
+    },
     "map_saving_disabled": {
       "title": "Map saving is turned off on {name}",
       "description": "{name} reports that map saving is turned off, so Xiaomi Cloud has no map for Home Assistant to download.\n\nTurn on map saving in the Xiaomi Home app: open {name} there and switch on map saving in its settings. This issue goes away by itself with the next map."
@@ -909,6 +913,9 @@
     },
     "map_parse_failed": {
       "message": "The downloaded map could not be read. It is retried on the next update."
+    },
+    "map_encrypted": {
+      "message": "Xiaomi Cloud sends this vacuum's map encrypted, and this integration can't decrypt maps of this model yet. Nothing in your configuration causes it; Settings → Repairs says where support for the model is tracked."
     },
     "map_saving_disabled": {
       "message": "Map saving is turned off on the vacuum, so Xiaomi Cloud has no map to download. Turn on map saving in the Xiaomi Home app, in the vacuum's settings; the map comes back on the next update."

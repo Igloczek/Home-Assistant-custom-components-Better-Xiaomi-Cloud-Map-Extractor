@@ -31,6 +31,7 @@ from custom_components.better_xiaomi_cloud_map_extractor.connector.utils.excepti
     DeviceNotFoundException,
     FailedConnectionException,
     InvalidDeviceTokenException,
+    EncryptedMapUnsupportedException,
     MapSavingDisabledException,
 )
 from custom_components.better_xiaomi_cloud_map_extractor.const import DOMAIN
@@ -205,6 +206,40 @@ async def test_map_saving_off_at_setup_says_what_to_do(
 
     assert entry.state is ConfigEntryState.SETUP_RETRY
     assert entry.error_reason_translation_key == "map_saving_disabled"
+
+
+MAP_ENCRYPTED = {
+    "last map kept": Status.MAP_ENCRYPTED,
+    "no map to keep": EncryptedMapUnsupportedException("dreame.vacuum.md1808"),
+}
+
+
+@pytest.mark.parametrize("failure", MAP_ENCRYPTED.values(), ids=MAP_ENCRYPTED.keys())
+async def test_encrypted_map_raises_one_issue_until_the_next_good_map(
+    hass: HomeAssistant, cloud: FakeXiaomiCloud, map_connector: MagicMock, failure
+) -> None:
+    """A Dreame model whose map comes encrypted with an unknown IV (upstream #450): one issue that says
+    so and names the model. Nothing in Home Assistant fixes it, so the issue has no fix flow."""
+    entry = await _entry(hass, cloud, map_connector, model="dreame.vacuum.md1808")
+
+    _fails(map_connector, failure)
+    await _updates(entry, FAILURE_THRESHOLD - 1)
+    assert not _issues(hass)
+
+    await _updates(entry, FAILURE_THRESHOLD + 1)
+    assert list(_issues(hass)) == ["map_encrypted"]
+    issue = _issues(hass)["map_encrypted"]
+    assert not issue.is_fixable
+    assert issue.translation_placeholders["model"] == "dreame.vacuum.md1808"
+    assert issue.translation_placeholders["issues_url"].startswith(
+        "https://github.com/Igloczek/better-xiaomi-cloud-map-extractor/")
+    texts = TRANSLATIONS["issues"]["map_encrypted"]
+    assert "{model}" in texts["description"] and "{issues_url}" in texts["description"]
+    assert not _reauth_flows(hass)
+
+    _fails(map_connector, Status.OK)
+    await _updates(entry, 1)
+    assert not _issues(hass)
 
 
 async def test_failures_must_be_consecutive(
