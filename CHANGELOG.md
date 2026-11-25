@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 1.0.2 - 2026-11-25
+
 ### Fixed
 
 - Xiaomi vacuums show the robot and its path while cleaning. The cloud map has neither, so they
