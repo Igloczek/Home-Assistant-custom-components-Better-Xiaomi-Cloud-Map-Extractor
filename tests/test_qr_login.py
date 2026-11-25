@@ -61,7 +61,7 @@ def cloud() -> Generator[FakeXiaomiCloud]:
     cloud.qr_login("qr-service-token")
     cloud.gates[QR_LONG_POLL] = asyncio.Event()
     with patch(
-        "custom_components.better_xiaomi_cloud_map_extractor.config_flow.async_create_clientsession",
+        "custom_components.better_xiaomi_cloud_map_extractor.flow.login.async_create_clientsession",
         lambda hass: cloud.session_creator(),
     ):
         yield cloud
@@ -70,7 +70,7 @@ def cloud() -> Generator[FakeXiaomiCloud]:
 @pytest.fixture
 def saved_sessions() -> Generator[AsyncMock]:
     with patch(
-        "custom_components.better_xiaomi_cloud_map_extractor.config_flow.save_connector_config",
+        "custom_components.better_xiaomi_cloud_map_extractor.flow.vacuum.save_connector_config",
         new=AsyncMock(),
     ) as save:
         yield save

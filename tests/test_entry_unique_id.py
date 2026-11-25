@@ -18,7 +18,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.setup import async_setup_component
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.better_xiaomi_cloud_map_extractor import config_flow
+from custom_components.better_xiaomi_cloud_map_extractor.flow import original as original_flow
 from custom_components.better_xiaomi_cloud_map_extractor.const import DOMAIN
 
 from .const import HOST, MAC, PASSWORD, TOKEN, USERNAME
@@ -59,7 +59,7 @@ async def test_v2_yaml_import_gets_the_mac(
     """`camera: platform: better_xiaomi_cloud_map_extractor` next to the original's YAML-made entry."""
     add_original(hass, hass_storage, YAML_UPPER_MAC)
     monkeypatch.setattr(
-        config_flow, "create_config_entry_data_from_yaml", AsyncMock(return_value=(YAML_UPPER_MAC.data, OPTIONS))
+        original_flow, "create_config_entry_data_from_yaml", AsyncMock(return_value=(YAML_UPPER_MAC.data, OPTIONS))
     )
     yaml = {"platform": DOMAIN, "host": HOST, "token": TOKEN, "username": USERNAME, "password": PASSWORD}
 

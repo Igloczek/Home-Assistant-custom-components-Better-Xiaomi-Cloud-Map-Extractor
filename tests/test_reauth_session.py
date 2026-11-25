@@ -136,7 +136,7 @@ async def test_reauth_after_captcha_offers_login_with_saved_credentials(
     assert result["type"] is FlowResultType.MENU
     assert result["menu_options"][0] == "auth_saved_credentials"
 
-    with patch(f"{PACKAGE}.config_flow.XiaomiCloudConnector", autospec=True) as connector_cls:
+    with patch(f"{PACKAGE}.flow.login.XiaomiCloudConnector", autospec=True) as connector_cls:
         connector_cls.return_value.login_with_credentials = AsyncMock(
             side_effect=CaptchaRequiredException("https://account.xiaomi.com/pass/getCode", CAPTCHA_BYTES)
         )
@@ -169,7 +169,7 @@ async def test_two_factor_step_shows_the_link_and_can_retry_after_browser_verifi
 ) -> None:
     entry = make_entry()
     entry.add_to_hass(hass)
-    with patch(f"{PACKAGE}.config_flow.XiaomiCloudConnector", autospec=True) as connector_cls:
+    with patch(f"{PACKAGE}.flow.login.XiaomiCloudConnector", autospec=True) as connector_cls:
         connector = connector_cls.return_value
         connector.login_with_credentials = AsyncMock(
             side_effect=[
