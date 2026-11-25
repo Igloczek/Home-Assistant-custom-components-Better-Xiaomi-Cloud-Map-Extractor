@@ -14,8 +14,9 @@ with a test that fails first (see [AGENTS.md](AGENTS.md)).
 
 ## In progress
 
-- **Xiaomi models: live data and map index** (backlog): upstream PRs #781 and a generalised #748.
-  Closes #720, advances #563, #657, #702, #739.
+- **Xiaomi models: live data and map index** (backlog): upstream PR #781 and a generalised #748, in
+  a pre-release until owners of the S20+ (b108gl), an ov21gl and an S40 (ov81gl) confirm the robot,
+  path, rooms and forbidden areas. Closes #720, advances #563, #657, #702, #739.
 - **Viomi: follow cleaning start sooner**: run state through the cloud, waiting for a check on a
   Viomi V8 (the cloud's `get_prop` answer is modelled, not captured).
 
@@ -84,7 +85,7 @@ the triage table, the fixed issues, the module map and the test coverage.
 
 Multi-floor maps (#67, #350), rotation by any angle and trim by coordinates (#137, #377), background
 image (#39), carpets and room order (#185), cleaning history map (#633), cloud-only mode without a
-local host (#381), RGBA room colours (#652), S40 walls and no-go zones (#739), a notification when
+local host (#381), RGBA room colours (#652), a notification when
 re-authentication is needed (#338, #440).
 
 ## Not planned
@@ -96,3 +97,4 @@ re-authentication is needed (#338, #440).
 | Roborock-app-only vacuums (#100, #156, #388, #461, #528) | Those devices are not in the Xiaomi cloud. |
 | PR #770 (IJAI/Xiaomi retrieval rewrite) | Changes the encrypted request format for every vendor; the targeted Ijai PRs cover the same bugs. |
 | PRs #749, #767, #527, #289 | Wrong base, junk, or superseded by the v3 code. |
+| PR #750 (S20+ live map) | Does what the imported #781 does, in 976 lines. |
