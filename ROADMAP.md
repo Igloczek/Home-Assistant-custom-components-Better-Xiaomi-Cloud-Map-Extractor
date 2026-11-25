@@ -51,9 +51,9 @@ numbers refer to the upstream repository; each item names the priority it serves
 3. **Ijai: say when the map is turned off** (P2, follow-up of #759). A map disabled in the Xiaomi
    Home app fails to decrypt ("Padding is incorrect"); the update failure and repair should say to
    turn the map on in Xiaomi Home.
-4. **Drop-in follow-ups** (P3): verify the import on a real Home Assistant with the original
-   installed and then removed (the pytest suite covers the registry moves); decide whether to raise a
-   repair issue that points original users at the import once this integration is running.
+4. **Drop-in follow-up** (P3): decide whether to raise a repair issue that points users of the
+   original at the import once this integration is running. (The import itself was verified end to
+   end on a real Home Assistant, with the original installed and then removed, on 2026-11-24.)
 5. **Jonr P20** (P4, #621; 37 users): `xtl.vacuum.xm2216`, from a fork that three owners confirm;
    needs its map as a fixture and an owner for the pre-release.
 6. **Roidmi sdj60** (P4, #572, PR #768): port to `vacuum_roidmi.py` (the `_pro` map URL and the byte
