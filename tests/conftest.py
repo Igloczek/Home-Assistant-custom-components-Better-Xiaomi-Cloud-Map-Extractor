@@ -13,6 +13,7 @@ from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+import voluptuous as vol
 from homeassistant.data_entry_flow import FlowManager, FlowResultType
 from homeassistant import block_async_io
 
@@ -66,6 +67,10 @@ def assert_renders(texts: dict, result: dict) -> None:
             assert error in texts["error"], f"error {error!r} of step {step_id!r} is not translated"
         for option in result.get("menu_options") or []:
             assert option in step.get("menu_options", {}), f"menu option {option!r} is not translated"
+        # A form field without a label shows its raw key.
+        fields = result.get("data_schema") if kind is FlowResultType.FORM else None
+        for field in (fields or vol.Schema({})).schema:
+            assert str(field) in step.get("data", {}), f"field {str(field)!r} of step {step_id!r} has no label"
     else:
         return
     missing = set().union(*(_placeholders(text) for text in used)) - provided

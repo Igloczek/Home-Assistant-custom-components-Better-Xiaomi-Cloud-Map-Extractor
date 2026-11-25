@@ -36,6 +36,9 @@ CONF_IMAGE_CONFIG_TRIM_LEFT: Final = "trim_left"
 CONF_IMAGE_CONFIG_TRIM_RIGHT: Final = "trim_right"
 CONF_IMAGE_CONFIG_TRIM_TOP: Final = "trim_top"
 CONF_IMAGE_CONFIG_TRIM_BOTTOM: Final = "trim_bottom"
+# Fork-only, Ijai maps: crop to the explored area and zoom (upstream PR #794). Entries written
+# before it lack the key, which means off.
+CONF_IMAGE_CONFIG_FIT_TO_EXPLORED: Final = "fit_to_explored"
 
 CONF_COLORS: Final = "colors"
 

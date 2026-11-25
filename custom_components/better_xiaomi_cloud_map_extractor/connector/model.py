@@ -48,6 +48,7 @@ class XiaomiCloudMapExtractorConnectorConfiguration:
     drawables: list[Drawable]
     sizes: Sizes
     texts: list[Text]
+    fit_to_explored: bool = False
 
 
 @dataclass

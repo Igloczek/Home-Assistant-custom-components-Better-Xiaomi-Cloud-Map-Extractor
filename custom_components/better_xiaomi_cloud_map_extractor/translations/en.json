@@ -136,7 +136,11 @@
           "trim_left": "Trim - left",
           "trim_right": "Trim - right",
           "trim_top": "Trim - top",
-          "trim_bottom": "Trim - bottom"
+          "trim_bottom": "Trim - bottom",
+          "fit_to_explored": "Fit to the explored area"
+        },
+        "data_description": {
+          "fit_to_explored": "Crop the map to the part the vacuum has explored and enlarge it, with the icons and room names. The trims and scale above still apply when they cut more or enlarge more."
         }
       },
       "colors": {

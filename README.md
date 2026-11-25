@@ -86,7 +86,9 @@ Home Assistant asks you to re-authenticate. The v2 documentation stays on the
 You get a **Live map** image entity. Further entities (a camera, the robot and charger position,
 the room the robot is in, no-go and no-mop areas, a force-update button and an auto-update switch)
 are created disabled; enable the ones you need. Colours, drawn elements, sizes, rotation and trim are
-in the integration's **Configure** options.
+in the integration's **Configure** options. For Ijai vacuums (and the Xiaomi models on the Ijai map
+format), **Image dimensions → Fit to the explored area** crops the map to the part the vacuum has
+explored and enlarges it; it is off by default.
 
 ## Supported devices
 

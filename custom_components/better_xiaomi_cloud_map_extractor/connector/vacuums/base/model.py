@@ -26,6 +26,8 @@ class VacuumConfig:
     image_config: ImageConfig
     sizes: Sizes
     texts: list[Text]
+    # Crop the map to the explored area and zoom it (Ijai maps only; options image_config).
+    fit_to_explored: bool = False
 
 
 class VacuumApi(StrEnum):

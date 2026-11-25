@@ -14,9 +14,12 @@ from unittest.mock import AsyncMock, MagicMock, call, patch
 
 import pytest
 from miio.exceptions import DeviceException
-from vacuum_map_parser_base.config.color import ColorsPalette
-from vacuum_map_parser_base.config.image_config import ImageConfig
+from PIL import Image, ImageChops
+from vacuum_map_parser_base.config.color import ColorsPalette, SupportedColor
+from vacuum_map_parser_base.config.drawable import Drawable
+from vacuum_map_parser_base.config.image_config import ImageConfig, TrimConfig
 from vacuum_map_parser_base.config.size import Sizes
+from vacuum_map_parser_base.map_data import Point
 
 from custom_components.better_xiaomi_cloud_map_extractor.connector import XiaomiCloudMapExtractorConnector
 from custom_components.better_xiaomi_cloud_map_extractor.connector.model import (
@@ -40,12 +43,14 @@ from custom_components.better_xiaomi_cloud_map_extractor.sensor import SENSOR_TY
 from .const import TOKEN
 from .log_secrets import assert_no_secrets
 from .ijai_map import (
+    CANVAS,
     DEVICE_ID,
     LOGGED_IN_ID,
     MAC,
     OWNER_ID,
     ROOM,
     WIFI_SN,
+    build_island_map,
     build_map,
     encrypt_map,
     fixture,
@@ -113,6 +118,7 @@ def ijai() -> Callable[..., tuple[IjaiCloudVacuum, FakeCloud]]:
         urls: dict[str, Any] | None = None,
         cloud_properties: Any = None,
         logged_in_id: str = OWNER_ID,
+        **render: Any,
     ) -> tuple[IjaiCloudVacuum, FakeCloud]:
         cloud = FakeCloud(
             encrypt_map(model) if raw_map is None else raw_map,
@@ -144,7 +150,8 @@ def ijai() -> Callable[..., tuple[IjaiCloudVacuum, FakeCloud]]:
         )
         config = VacuumConfig(
             cloud.connector, device_info, "de", DEVICE_ID, "192.0.2.10", TOKEN, model,
-            ColorsPalette(), [], ImageConfig(), Sizes({}), [],
+            render.pop("palette", ColorsPalette()), render.pop("drawables", []),
+            render.pop("image_config", ImageConfig()), render.pop("sizes", Sizes({})), [], **render,
         )
         return IjaiCloudVacuum(config), cloud
 
@@ -644,3 +651,125 @@ async def test_cleaned_rooms_sensor_attributes(ijai) -> None:
     description = next(sensor for sensor in SENSOR_TYPES if sensor.key == "cleaned_rooms_ids")
 
     assert description.attributes_fn(map_data) == {"rooms_ids": [ROOM + 1]}
+
+
+# Fit to the explored area (upstream PR #794) ------------------------------------------------
+#
+# Ijai vacuums upload a fixed canvas (800x800) however little of it is explored, so the floor plan
+# is a small island in a large background. With "fit to the explored area" on, the map is cropped
+# to the explored pixels plus a margin and zoomed to about 960 px on its longer edge, and the icons
+# and room names zoom with it. Off (the default, and every entry written before the option) the
+# image is exactly what it was. The maps go through the real parser and renderer.
+
+CHARGER = (0, 255, 0, 255)
+ROOM_NAME = (255, 0, 255)
+PALETTE = ColorsPalette(
+    {
+        SupportedColor.CHARGER: CHARGER,
+        SupportedColor.CHARGER_OUTLINE: CHARGER,
+        SupportedColor.ROOM_NAMES: ROOM_NAME,
+    },
+    {str(ROOM + 1): (128, 128, 128)},
+)
+DRAWN = [Drawable.CHARGER, Drawable.ROOM_NAMES]
+# ISLAND plus the 15-pixel margin: 70 x 50 source pixels, zoomed to 960 px on the longer edge.
+FIT_SCALE = 960 / 70
+
+
+def _box(image: Image.Image, color: tuple[int, ...]) -> tuple[int, int, int, int]:
+    """Bounding box of the pixels whose strongest channels are those of `color` (text is antialiased)."""
+    bands = image.convert("RGBA").split()[:3]
+    strong = [bands[i] for i in range(3) if color[i] == 255]
+    weak = [bands[i] for i in range(3) if color[i] == 0]
+    mask = Image.new("L", image.size, 255)
+    for high in strong:
+        for low in weak:
+            mask = ImageChops.multiply(mask, ImageChops.subtract(high, low).point(lambda v: 255 if v > 60 else 0))
+    box = mask.getbbox()
+    assert box is not None, f"nothing drawn in {color}"
+    return box
+
+
+async def _render(ijai, robot_map: bytes | None = None, **render: Any):
+    model = "ijai.vacuum.v3"
+    render = {"palette": PALETTE, "drawables": DRAWN, **render}
+    vacuum, _ = ijai(model, encrypt_map(model, robot_map=build_island_map() if robot_map is None else robot_map), **render)
+    map_data, _ = await vacuum.get_map()
+    return map_data
+
+
+async def test_fit_is_off_by_default(ijai) -> None:
+    """Without the option the whole canvas is drawn, as on v3.0.0-alpha-24."""
+    map_data = await _render(ijai)
+
+    assert map_data.image.data.size == (CANVAS, CANVAS)
+
+
+async def test_fit_crops_to_the_explored_area_and_zooms_it(ijai) -> None:
+    map_data = await _render(ijai, fit_to_explored=True)
+
+    assert map_data.image.data.size == (int(70 * FIT_SCALE), int(50 * FIT_SCALE))
+    assert map_data.rooms[ROOM + 1].name == "Kitchen"
+
+
+async def test_fit_keeps_coordinates_on_the_drawn_map(ijai) -> None:
+    """A map point lands on the same spot of the floor plan: shifted by the crop, times the zoom."""
+    full = await _render(ijai)
+    fitted = await _render(ijai, fit_to_explored=True)
+    room = fitted.rooms[ROOM + 1]
+    corner = Point(room.x0, room.y0)
+
+    on_full = corner.to_img(full.image.dimensions)
+    on_fitted = corner.to_img(fitted.image.dimensions)
+    # The crop removes 45 columns on the left and 65 rows at the top (ISLAND minus the margin).
+    assert on_fitted.x == pytest.approx((on_full.x - 45) * FIT_SCALE)
+    assert on_fitted.y == pytest.approx((on_full.y - 65) * FIT_SCALE)
+
+
+async def test_fit_zooms_icons_and_room_names_with_the_map(ijai) -> None:
+    """The charger and the room name keep their size relative to the map, instead of shrinking."""
+    full = await _render(ijai)
+    fitted = await _render(ijai, fit_to_explored=True)
+
+    for color in (CHARGER, ROOM_NAME):
+        left, top, right, bottom = _box(full.image.data, color)
+        f_left, f_top, f_right, f_bottom = _box(fitted.image.data, color)
+        assert (f_right - f_left) / (right - left) == pytest.approx(FIT_SCALE, rel=0.2), color
+        assert (f_bottom - f_top) / (bottom - top) == pytest.approx(FIT_SCALE, rel=0.25), color
+
+
+async def test_fit_never_loosens_the_configured_trim_and_scale(ijai) -> None:
+    """A user trim that cuts more, or a larger scale, wins over the fit."""
+    configured = ImageConfig(scale=20, trim=TrimConfig(left=35, right=0, top=0, bottom=0))
+    map_data = await _render(ijai, fit_to_explored=True, image_config=configured)
+
+    # Left: the user's 35% (70 px) beats the fit's 45 px, leaving 45 x 50 pixels. Scale: 20 beats 960 / 50.
+    assert map_data.image.data.size == (45 * 20, 50 * 20)
+
+
+async def test_fit_icons_keep_the_configured_scale(ijai) -> None:
+    """Icons zoom by how much the fit enlarged the map beyond the configured scale, not by the scale itself."""
+    full = await _render(ijai, image_config=ImageConfig(scale=2))
+    fitted = await _render(ijai, fit_to_explored=True, image_config=ImageConfig(scale=2))
+    left, _, right, _ = _box(full.image.data, CHARGER)
+    f_left, _, f_right, _ = _box(fitted.image.data, CHARGER)
+
+    assert (f_right - f_left) / (right - left) == pytest.approx(FIT_SCALE / 2, rel=0.2)
+
+
+@pytest.mark.parametrize(
+    "island",
+    [None, (0, 0, CANVAS - 1, CANVAS - 1), (0, 150, 30, CANVAS - 1)],
+    ids=["nothing explored", "whole canvas", "corner"],
+)
+async def test_fit_edge_cases(ijai, island) -> None:
+    """Nothing explored draws the full canvas; an island at the border is not trimmed past it."""
+    map_data = await _render(ijai, build_island_map(island), fit_to_explored=True)
+    if island is None:
+        assert map_data.image.data.size == (CANVAS, CANVAS)
+        return
+    left, bottom, right, top = island
+    width = min(CANVAS - 1, right + 15) - max(0, left - 15) + 1
+    height = min(CANVAS - 1, top + 15) - max(0, bottom - 15) + 1
+    scale = max(1, 960 / max(width, height))
+    assert map_data.image.data.size == (int(width * scale), int(height * scale))

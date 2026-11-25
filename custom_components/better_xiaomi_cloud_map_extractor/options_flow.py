@@ -2,7 +2,9 @@ from typing import Self, Any
 
 import voluptuous as vol
 from homeassistant.config_entries import OptionsFlow, ConfigFlowResult
+from homeassistant.const import CONF_MODEL
 from homeassistant.helpers.selector import (
+    BooleanSelector,
     ColorRGBSelector,
     NumberSelector,
     NumberSelectorConfig,
@@ -22,12 +24,15 @@ from .const import (
     CONF_IMAGE_CONFIG_TRIM_RIGHT,
     CONF_IMAGE_CONFIG_TRIM_TOP,
     CONF_IMAGE_CONFIG_TRIM_BOTTOM,
+    CONF_IMAGE_CONFIG_FIT_TO_EXPLORED,
     CONF_COLORS,
     CONF_IMAGE_CONFIG,
     CONF_SIZES,
     CONF_DRAWABLES,
-    CONF_ROOM_COLORS
+    CONF_ROOM_COLORS,
+    CONF_USED_MAP_API,
 )
+from .connector.vacuums.base.model import VacuumApi
 from .types import XiaomiCloudMapExtractorConfigEntry
 
 
@@ -69,7 +74,10 @@ class XiaomiCloudMapExtractorOptionsFlowHandler(OptionsFlow):
                 errors[CONF_IMAGE_CONFIG_TRIM_TOP] = "top_and_bottom_sum_over_100"
                 errors[CONF_IMAGE_CONFIG_TRIM_BOTTOM] = "top_and_bottom_sum_over_100"
             if len(errors) == 0:
-                self._changed_options[CONF_IMAGE_CONFIG] = user_input
+                # Keep the keys this form does not show (fit_to_explored for other vendors).
+                self._changed_options[CONF_IMAGE_CONFIG] = {
+                    **self.config_entry.options[CONF_IMAGE_CONFIG], **user_input
+                }
                 return await self._update_entry()
 
         schema = vol.Schema({
@@ -86,10 +94,18 @@ class XiaomiCloudMapExtractorOptionsFlowHandler(OptionsFlow):
             vol.Required(CONF_IMAGE_CONFIG_TRIM_BOTTOM): NumberSelector(
                 config=NumberSelectorConfig(min=0, max=100, step=0.1, mode=NumberSelectorMode.BOX))
         })
+        if self._is_ijai():
+            schema = schema.extend({
+                vol.Required(CONF_IMAGE_CONFIG_FIT_TO_EXPLORED, default=False): BooleanSelector(),
+            })
         data_schema = self.add_suggested_values_to_schema(
             schema, {**self.config_entry.options[CONF_IMAGE_CONFIG], **(user_input or {})}
         )
         return self.async_show_form(step_id="image_config", data_schema=data_schema, errors=errors, last_step=True)
+
+    def _is_ijai(self: Self) -> bool:
+        data = self.config_entry.data
+        return VacuumApi.configured(data.get(CONF_USED_MAP_API), data.get(CONF_MODEL) or "") == VacuumApi.IJAI
 
     async def async_step_colors(self: Self, user_input=None) -> ConfigFlowResult:
         if user_input is not None:
