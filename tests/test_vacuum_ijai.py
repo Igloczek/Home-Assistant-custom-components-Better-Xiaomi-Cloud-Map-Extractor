@@ -32,6 +32,7 @@ from custom_components.better_xiaomi_cloud_map_extractor.connector.utils.excepti
     MapSavingDisabledException,
     SessionExpiredException,
 )
+from custom_components.better_xiaomi_cloud_map_extractor.connector.vacuums import vacuum_ijai
 from custom_components.better_xiaomi_cloud_map_extractor.connector.vacuums.base.model import VacuumConfig
 from custom_components.better_xiaomi_cloud_map_extractor.connector.vacuums.vacuum_ijai import IjaiCloudVacuum
 from custom_components.better_xiaomi_cloud_map_extractor.connector.xiaomi_cloud.connector import (
@@ -259,6 +260,61 @@ def test_key_derivation_matches_the_parser(model: str) -> None:
     assert map_key_from_integration(WIFI_SN, OWNER_ID, DEVICE_ID, model, MAC, is_EncryptKeyTypeHex_model(model)) == (
         gen_md5_key(WIFI_SN, OWNER_ID, DEVICE_ID, model, MAC)
     )
+
+
+@pytest.mark.parametrize("model", ["ijai.vacuum.v3", "ijai.vacuum.v10", "xiaomi.vacuum.d106gl"])
+async def test_side_by_side_with_parser_0_1_0_decrypts_maps(
+    ijai, monkeypatch: pytest.MonkeyPatch, model: str
+) -> None:
+    """Side-by-side install with the original integration can keep vacuum-map-parser-ijai 0.1.0 loaded.
+
+    In 0.1.0, aes_decrypt takes 2 positional arguments and hardcodes hex keys (issue #9).
+    Map decryption must work for both hex-key and short-key models without calling it.
+    """
+    from Crypto.Cipher import AES
+    from Crypto.Util.Padding import unpad
+    from vacuum_map_parser_ijai import aes_decryptor
+
+    def aes_decrypt_0_1_0(data: bytes, key: str) -> bytes:
+        cipher = AES.new(bytes.fromhex(key), AES.MODE_ECB)
+        return bytes.fromhex(unpad(cipher.decrypt(data), AES.block_size, "pkcs7").decode("utf-8"))
+
+    monkeypatch.setattr(aes_decryptor, "aes_decrypt", aes_decrypt_0_1_0)
+    if hasattr(vacuum_ijai, "aes_decrypt"):
+        monkeypatch.setattr(vacuum_ijai, "aes_decrypt", aes_decrypt_0_1_0)
+
+    vacuum, _ = ijai(model)
+
+    map_data, _ = await vacuum.get_map()
+
+    assert map_data.image is not None
+
+
+@pytest.mark.parametrize(
+    ("model", "hex_key"),
+    [("ijai.vacuum.v3", True), ("ijai.vacuum.v10", False), ("xiaomi.vacuum.d106gl", False)],
+)
+def test_aes_helpers_match_parser_0_1_1(model: str, hex_key: bool) -> None:
+    """Local AES-ECB helpers must match vacuum-map-parser-ijai 0.1.1 for both key types."""
+    import base64
+    import zlib
+    from vacuum_map_parser_ijai.aes_decryptor import (
+        aes_decrypt as parser_aes_decrypt,
+        aes_encrypt as parser_aes_encrypt,
+    )
+
+    key = vacuum_ijai.map_key(WIFI_SN, OWNER_ID, DEVICE_ID, model, MAC, hex_key)
+    raw_map = encrypt_map(model, hex_key=hex_key)
+
+    expected_compressed = parser_aes_decrypt(raw_map, key, hex_key)
+    assert vacuum_ijai._aes_decrypt(raw_map, key, hex_key) == expected_compressed
+    assert vacuum_ijai.unpack_map(raw_map, key, hex_key) == zlib.decompress(expected_compressed)
+    assert vacuum_ijai.unpack_map(base64.b64encode(raw_map), key, hex_key) == zlib.decompress(expected_compressed)
+
+    sample_plain = "+".join([WIFI_SN, OWNER_ID, DEVICE_ID])
+    model_suffix = model.split(".")[-1][-4:].rjust(4, "0")
+    sample_key = MAC.lower().replace(":", "") + model_suffix
+    assert vacuum_ijai._aes_encrypt(sample_plain, sample_key) == parser_aes_encrypt(sample_plain, sample_key)
 
 
 # Map download --------------------------------------------------------------------------------
