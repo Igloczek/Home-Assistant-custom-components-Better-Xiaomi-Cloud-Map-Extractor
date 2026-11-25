@@ -29,9 +29,13 @@ The fork's domain is `better_xiaomi_cloud_map_extractor`, so it installs next to
 ## Project map
 
 - Home Assistant custom integration in `custom_components/better_xiaomi_cloud_map_extractor/`.
-- Setup and config: `__init__.py` (entry → `XiaomiCloudMapExtractorConnectorConfiguration`), `config_flow.py` (cloud login by credentials or QR, captcha, two-factor, vacuum selection, reauth, YAML import), `options_flow.py`, `legacy.py` (v2 YAML schema and import).
+- Setup and config: `__init__.py` (entry → `XiaomiCloudMapExtractorConnectorConfiguration`), `options_flow.py`.
+- Config flow: `config_flow.py` registers the one handler, composed of the step modules in `flow/`: `login.py` (menu, credentials, captcha, two-factor, QR), `reauth.py`, `original.py` (import from the original integration and from YAML), `vacuum.py` (device list, vacuum selection, `confirm_data`, entry creation), `errors.py` (form error for a failure), `base.py` (state the steps share). Moved code keeps logging under the `config_flow` logger.
+- v2 YAML: `legacy_schema.py` (keys and schema), `legacy.py` (deprecation issue and conversion into an entry).
+- Repairs: `issues.py` counts update outcomes and raises or clears issues (logs under `repairs`); `repairs.py` holds their fix flows.
+- Map update: `connector/__init__.py` (`XiaomiCloudMapExtractorConnector`: when to download, map status), `connector/cloud_session.py` (keeps the cloud session working: passToken renewal, throttled password login, storing new sessions), `connector/platforms.py` (map format → vendor class).
 - Runtime: `coordinator.py` maps connector exceptions to `ConfigEntryAuthFailed` (reauth) or `UpdateFailed` (retry); entities in `image.py`, `camera.py`, `sensor.py`, `binary_sensor.py`, `button.py`, `switch.py`.
-- Cloud access: `connector/xiaomi_cloud/connector.py` (login, sessions, device discovery, encrypted API calls); the session is persisted per MAC by `store.py`.
+- Cloud access: `connector/xiaomi_cloud/connector.py` (`XiaomiCloudConnector`, the one object callers use, `to_config`/`from_config`) composed of `session.py` (session data, stored config, `_login_attempt`), `login_credentials.py` (password login, captcha), `login_two_factor.py` (identity verification), `login_qr.py`, `renewal.py` (passToken), `devices.py` (homes and devices per region), `api.py` (RC4 encrypted calls, map download) and `network.py` (outage versus refusal). All log under the `connector.xiaomi_cloud.connector` logger. The session is persisted per MAC by `store.py`.
 - Vendors: `connector/vacuums/vacuum_*.py` download the map; parsing and drawing live in the external `vacuum-map-parser-*` packages pinned in `manifest.json`.
 
 ## Local checks

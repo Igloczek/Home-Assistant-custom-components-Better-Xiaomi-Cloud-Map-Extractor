@@ -21,7 +21,7 @@ from homeassistant.setup import async_setup_component
 from homeassistant.helpers import issue_registry as ir
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.better_xiaomi_cloud_map_extractor import config_flow
+from custom_components.better_xiaomi_cloud_map_extractor.flow import original as original_flow
 from custom_components.better_xiaomi_cloud_map_extractor.const import DOMAIN, ORIGINAL_DOMAIN
 
 from .const import ENTRY_DATA, HOST, MAC, PASSWORD, TOKEN, USERNAME
@@ -354,7 +354,7 @@ async def test_v2_yaml_with_the_new_platform_name_is_imported(
 ) -> None:
     """`camera: platform: better_xiaomi_cloud_map_extractor` replaces the original's v2 YAML."""
     monkeypatch.setattr(
-        config_flow, "create_config_entry_data_from_yaml", AsyncMock(return_value=(ENTRY_DATA, OPTIONS))
+        original_flow, "create_config_entry_data_from_yaml", AsyncMock(return_value=(ENTRY_DATA, OPTIONS))
     )
     yaml = {"platform": DOMAIN, "host": HOST, "token": TOKEN, "username": USERNAME, "password": PASSWORD}
 
@@ -363,7 +363,7 @@ async def test_v2_yaml_with_the_new_platform_name_is_imported(
 
     [entry] = hass.config_entries.async_entries(DOMAIN)
     assert dict(entry.data) == ENTRY_DATA
-    config_flow.create_config_entry_data_from_yaml.assert_awaited_once()
+    original_flow.create_config_entry_data_from_yaml.assert_awaited_once()
 
 
 async def test_v2_yaml_with_the_new_platform_name_takes_over_the_originals_yaml_entry(
@@ -372,7 +372,7 @@ async def test_v2_yaml_with_the_new_platform_name_takes_over_the_originals_yaml_
     """The user renamed the YAML platform instead of using the import: one entry, same entity ids."""
     original = add_original(hass, hass_storage, YAML)
     monkeypatch.setattr(
-        config_flow, "create_config_entry_data_from_yaml", AsyncMock(return_value=(YAML.data, OPTIONS))
+        original_flow, "create_config_entry_data_from_yaml", AsyncMock(return_value=(YAML.data, OPTIONS))
     )
     yaml = {"platform": DOMAIN, "host": HOST, "token": TOKEN, "username": USERNAME, "password": PASSWORD}
 
@@ -397,7 +397,7 @@ async def test_v2_yaml_for_an_imported_vacuum_does_not_create_a_second_entry(
     await _import_from_menu(hass, original)
     await hass.async_block_till_done()
     monkeypatch.setattr(
-        config_flow, "create_config_entry_data_from_yaml", AsyncMock(return_value=(YAML.data, OPTIONS))
+        original_flow, "create_config_entry_data_from_yaml", AsyncMock(return_value=(YAML.data, OPTIONS))
     )
     yaml = {"platform": DOMAIN, "host": HOST, "token": TOKEN, "username": USERNAME, "password": PASSWORD}
 
@@ -405,7 +405,7 @@ async def test_v2_yaml_for_an_imported_vacuum_does_not_create_a_second_entry(
     await hass.async_block_till_done()
 
     assert len(hass.config_entries.async_entries(DOMAIN)) == 1
-    config_flow.create_config_entry_data_from_yaml.assert_not_awaited()
+    original_flow.create_config_entry_data_from_yaml.assert_not_awaited()
 
 
 async def test_originals_imported_from_yaml_are_told_apart_by_host(

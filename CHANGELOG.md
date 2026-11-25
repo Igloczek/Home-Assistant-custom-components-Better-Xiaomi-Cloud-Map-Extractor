@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Internal: split the cloud connector, config flow, repairs, v2 YAML import and map update into focused modules; no behaviour change.
+
 ## 0.1.4 - 2026-11-25
 
 ### Added

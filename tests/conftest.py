@@ -162,7 +162,7 @@ def make_device(**overrides) -> XiaomiCloudDeviceInfo:
 def cloud_connector() -> Generator[MagicMock]:
     """The cloud connector the config flow creates, logged in with one vacuum."""
     with patch(
-        "custom_components.better_xiaomi_cloud_map_extractor.config_flow.XiaomiCloudConnector",
+        "custom_components.better_xiaomi_cloud_map_extractor.flow.login.XiaomiCloudConnector",
         autospec=True,
     ) as connector_class:
         connector = connector_class.return_value
@@ -176,7 +176,7 @@ def cloud_connector() -> Generator[MagicMock]:
 def no_store() -> Generator[AsyncMock]:
     """Skip persisting the cloud session; the flow tests do not read it back."""
     with patch(
-        "custom_components.better_xiaomi_cloud_map_extractor.config_flow.save_connector_config",
+        "custom_components.better_xiaomi_cloud_map_extractor.flow.vacuum.save_connector_config",
         new=AsyncMock(),
     ) as save:
         yield save

@@ -187,7 +187,7 @@ async def test_roborock_validation_library_error(hass: HomeAssistant, cloud_conn
     from unittest.mock import patch
 
     with patch(
-        "custom_components.better_xiaomi_cloud_map_extractor.config_flow.RoborockVacuum.status",
+        "custom_components.better_xiaomi_cloud_map_extractor.flow.vacuum.RoborockVacuum.status",
         side_effect=DeviceException("timeout"),
     ):
         result = await hass.config_entries.flow.async_configure(

@@ -172,10 +172,10 @@ async def test_qr_login_flow(hass, debug_log, approved: bool) -> None:
                  lambda r: FakeResponse(status=200, body=f'{{"code": 70016, "desc": "refused {r.url}"}}'))
     with (
         patch(
-            "custom_components.better_xiaomi_cloud_map_extractor.config_flow.async_create_clientsession",
+            "custom_components.better_xiaomi_cloud_map_extractor.flow.login.async_create_clientsession",
             lambda hass: cloud.session_creator(),
         ),
-        patch("custom_components.better_xiaomi_cloud_map_extractor.config_flow.save_connector_config"),
+        patch("custom_components.better_xiaomi_cloud_map_extractor.flow.vacuum.save_connector_config"),
     ):
         result = await hass.config_entries.flow.async_init(DOMAIN, context={"source": SOURCE_USER})
         result = await hass.config_entries.flow.async_configure(result["flow_id"], {"next_step_id": "auth_qr"})
