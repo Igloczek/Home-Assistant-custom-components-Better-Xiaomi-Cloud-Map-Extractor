@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.1.6 - 2026-11-25
+
 ### Changed
 
 - The Repairs issue about the original's leftover YAML removes the block in one click: a backup copy of the file is saved next to it, only that block goes, and nothing needs a restart. When the file can't be changed safely, it says what to delete, as before. The issue title no longer repeats the integration name.
