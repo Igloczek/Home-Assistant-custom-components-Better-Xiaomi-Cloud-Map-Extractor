@@ -37,6 +37,9 @@ maintainer.
   with a beta, provide requested data, or ask for a concrete non-breaking follow-up on a closed
   issue, route the summary (in your own words) to the existing `Build #<number>` thread or to
   `Chief of staff` so it is acted on without involving the maintainer.
+- **Always mark agent comments:** every GitHub comment posted autonomously by any agent (triage,
+  build, or `Chief of staff`) must start with `<!-- triage-agent -->` followed by
+  `> 🤖 **AI agent reply.** ...` so it is never mistaken for the maintainer.
 - **Always settle finished threads:** escalate to the maintainer only when a change is breaking,
   drastically changes UX for everyone, or risks degrading overall quality/experience (~1%).
   Otherwise, both triage and build threads settle themselves (`t3_thread_organize` with

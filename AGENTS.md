@@ -97,6 +97,15 @@ Agents drive this project end to end: they investigate, reproduce, decide option
    - **drastically changes UX** (a major config-flow/visual overhaul or changing how the integration works for everyone), or
    - **risks degrading overall experience or quality** (high maintenance burden, risky parser dependency upgrades with breaking signatures, or changing the fork's compatibility promise or scope).
 
+**GitHub comment disclosure.** Any comment posted autonomously on GitHub by any agent (triage, build, `Chief of staff`, pre-release instructions, or release notices — anything posted via the maintainer's account) must always start with:
+
+```markdown
+<!-- triage-agent -->
+> 🤖 **AI agent reply.** This is automated delivery, not the maintainer. They may check this issue later.
+```
+
+(Triage runs may say `automated triage` instead of `automated delivery`.) Never post an unmarked GitHub comment as an agent: both users and future triage runs must always be able to tell an agent message apart from the maintainer.
+
 **What an escalation hand-off contains.** Keep it in the chat with the maintainer, never on GitHub: do not post hand-offs, screenshots or summaries as pull request or issue comments, and keep pull request descriptions short. GitHub comments are only for external contributors (the pre-release flow). Present it with the chat's visualization tools: the problem and the change in a short paragraph written for a user; what it looks like (config flow screens, rendered map) before and after when visual; the risk or trade-off that triggered escalation, alternatives and recommendation; what is proven and what is not. End with one question the maintainer can answer yes or no, or by picking an option.
 
 **Releases are batched.** Merging does not mean releasing. Before cutting a release, `Chief of staff` checks other running agent threads, open pull requests close to merging, and what `master` gained since the last tag (`git log <last tag>..origin/master`). Cut a release autonomously when a batch is ready, not after every merge. Release on its own only for urgent breakage: setup that fails for users, lost configuration, or leaked credentials. Only changes escalated under bucket 3 wait for maintainer approval before merging and releasing.
