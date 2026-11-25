@@ -507,8 +507,14 @@ class XiaomiCloudMapExtractorFlowHandler(ConfigFlow, domain=DOMAIN):
                         None,
                     )
                 self._connector.server = self._cloud_vacuum.server
-                await save_connector_config(self.hass, self._cloud_vacuum.mac, self._connector.to_config())
-                if existing_entry:
+                try:
+                    await save_connector_config(self.hass, self._cloud_vacuum.mac, self._connector.to_config())
+                except Exception:  # noqa: BLE001 - without the session the entry could not log in
+                    _LOGGER.exception("Could not save the Xiaomi Cloud session")
+                    errors["base"] = "session_not_saved"
+                if errors:
+                    pass
+                elif existing_entry:
                     data = existing_entry.data.copy()
                     data[CONF_HOST] = host
                     data[CONF_TOKEN] = token
@@ -559,7 +565,8 @@ class XiaomiCloudMapExtractorFlowHandler(ConfigFlow, domain=DOMAIN):
                             CONF_TEXTS: [],
                         },
                     )
-                return result_entry
+                if not errors:
+                    return result_entry
 
         detected_api = VacuumApi.detect(self._cloud_vacuum.model)
         api_options: list[SelectOptionDict] = [

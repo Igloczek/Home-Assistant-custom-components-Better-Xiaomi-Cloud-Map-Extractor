@@ -12,12 +12,10 @@ from pytest_homeassistant_custom_component.common import MockConfigEntry
 from custom_components.better_xiaomi_cloud_map_extractor.config_flow import XiaomiCloudMapExtractorFlowHandler
 from custom_components.better_xiaomi_cloud_map_extractor.connector.utils.exceptions import (
     CaptchaRequiredException,
-    DeviceNotFoundException,
     FailedLoginException,
     FailedMapDownloadException,
     FailedMapParseException,
     InvalidCredentialsException,
-    InvalidDeviceTokenException,
     TwoFactorAuthRequiredException,
 )
 from custom_components.better_xiaomi_cloud_map_extractor.const import DOMAIN
@@ -64,10 +62,10 @@ async def test_setup_and_unload(hass: HomeAssistant, map_connector: MagicMock) -
     [
         FailedLoginException(),
         InvalidCredentialsException(),
-        InvalidDeviceTokenException(),
         TwoFactorAuthRequiredException("https://2fa", {}, "context"),
         CaptchaRequiredException("https://captcha", b"png"),
-        DeviceNotFoundException(),
+        # A missing vacuum or a refused vacuum token is not a login problem: they become a Repairs
+        # issue after a few updates (tests/test_persistent_failure_repairs.py).
     ],
     ids=lambda error: type(error).__name__,
 )

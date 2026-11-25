@@ -61,7 +61,7 @@ from .migration import (
     async_original_changed,
     importable_original_entries,
 )
-from .repairs import wrong_map_format_issue_id
+from .repairs import issue_ids
 from .store import restore_connector_config, save_connector_config
 from .types import XiaomiCloudMapExtractorConfigEntry, XiaomiCloudMapExtractorRuntimeData
 
@@ -124,7 +124,8 @@ async def async_unload_entry(hass: HomeAssistant, entry: XiaomiCloudMapExtractor
 
 
 async def async_remove_entry(hass: HomeAssistant, entry: XiaomiCloudMapExtractorConfigEntry) -> None:
-    ir.async_delete_issue(hass, DOMAIN, wrong_map_format_issue_id(entry.entry_id))
+    for issue_id in issue_ids(entry.entry_id):
+        ir.async_delete_issue(hass, DOMAIN, issue_id)
 
 
 async def async_reload_entry(hass: HomeAssistant, entry: XiaomiCloudMapExtractorConfigEntry) -> None:
