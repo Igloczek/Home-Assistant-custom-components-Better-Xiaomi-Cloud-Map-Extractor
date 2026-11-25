@@ -55,8 +55,6 @@ numbers refer to the upstream repository; each item names the priority it serves
    needs its map as a fixture and an owner for the pre-release.
 5. **Roidmi sdj60** (P4, #572, PR #768): port to `vacuum_roidmi.py` (the `_pro` map URL and the byte
    split).
-6. **Small import** (P4, PR #591) if `scripts/` keeps shipping.
-7. **Ijai rendering** (P4, PR #794): fit to the explored area, without the bundled font if possible.
 
 ## 1.0.0 criteria
 
@@ -79,6 +77,13 @@ the [triage table](TRIAGE.md), the fixed issues, the module map and the test cov
   not a captured answer. Replace the fixture with a scrubbed `get_properties` answer from an owner,
   and record what the cloud's map endpoints return in that state.
 
+- **Room names outside ASCII.** Every vendor draws room names with Pillow's default font (Aileron),
+  which has no glyphs beyond ASCII, so "Salon" renders but "Oturma odası" or "Łazienka" show boxes
+  where the letters are (seen while porting upstream PR #794, which bundles DejaVu Sans, about
+  760 KB). Options: a system font when Home Assistant's image has one, otherwise a bundled subset
+  of DejaVu; test with a room name per script through the real parser.
+- **Ijai fit on by default for new setups.** "Fit to the explored area" is off for everyone (fork
+  PR for upstream #794). New Ijai setups could start with it on; the maintainer's call.
 - **Waiting for a capture**: 20 upstream items need a raw map, a debug log or a tester before they
   can be fixed with a test; [TRIAGE.md](TRIAGE.md) says what each needs. The biggest groups: Dreame
   encrypted maps ("incorrect header check", #459 with #571, #607, #608; md1808 #450 with #757, #772,
@@ -117,3 +122,4 @@ that already work on v3) are listed with their reason in [TRIAGE.md](TRIAGE.md).
 | python-miio "unsupported model" warning (#490, #474) | Harmless; the map works. |
 | 3D map (#574) | The app draws it; the cloud has no 3D map. |
 | Deleting maps (#734) | Writes to the vacuum; this integration only reads. |
+| `scripts/map_processor.py` README fix (PR #591) | The script has not run since v3 (it imports modules removed in 2023) and was never in the release zip; the fork removed `scripts/`. |

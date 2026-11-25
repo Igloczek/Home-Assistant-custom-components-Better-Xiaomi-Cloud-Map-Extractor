@@ -4,6 +4,14 @@
 
 ### Added
 
+- Ijai vacuums (and the Xiaomi models on the Ijai map format) can fit the map to the part the vacuum
+  has explored: turn on **Configure → Image dimensions → Fit to the explored area**. The vacuum
+  uploads a fixed 800×800 canvas however little of it is explored, so the floor plan used to be a
+  small island in a large background. With the option on, the map is cropped to the explored area
+  and enlarged to about 960 px, with the vacuum, charger, paths and room names enlarged with it. Your
+  trim and scale still apply when they cut or enlarge more. It is off by default, so existing maps
+  look the same until you turn it on. Based on upstream PR #794 by Korkuttum, without its bundled
+  font and transparent background.
 - Failures that keep happening show up under Settings → Repairs with a one-click fix, and go away by
   themselves once the problem is gone:
   - the vacuum is not in the configured Xiaomi region: the fix finds the region (and IP address and
@@ -21,6 +29,12 @@
   generic map failure (upstream #759). The update message and a Repairs issue say to turn on map
   saving in the Xiaomi Home app; the last map stays on screen meanwhile, and the issue goes away
   with the next map.
+
+### Removed
+
+- `scripts/map_processor.py`, the offline map renderer, which has not worked since the v3 rewrite and
+  was never part of the installed integration. (Upstream PR #591, a fix to its README, is therefore
+  not imported.)
 
 ### Fixed
 

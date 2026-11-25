@@ -50,6 +50,7 @@ from .const import (
     CONF_IMAGE_CONFIG_TRIM_RIGHT,
     CONF_IMAGE_CONFIG_TRIM_TOP,
     CONF_IMAGE_CONFIG_TRIM_BOTTOM,
+    CONF_IMAGE_CONFIG_FIT_TO_EXPLORED,
     CONF_ROOM_COLORS,
     DOMAIN,
 )
@@ -156,6 +157,7 @@ def to_configuration(entry: XiaomiCloudMapExtractorConfigEntry) -> XiaomiCloudMa
     trim_top = entry.options[CONF_IMAGE_CONFIG][CONF_IMAGE_CONFIG_TRIM_TOP]
     trim_bottom = entry.options[CONF_IMAGE_CONFIG][CONF_IMAGE_CONFIG_TRIM_BOTTOM]
     image_config = ImageConfig(scale, rotate, TrimConfig(trim_left, trim_right, trim_top, trim_bottom))
+    fit_to_explored = entry.options[CONF_IMAGE_CONFIG].get(CONF_IMAGE_CONFIG_FIT_TO_EXPLORED, False)
 
     colors = ColorsPalette({SupportedColor(k): tuple(v) for k, v in entry.options[CONF_COLORS].items()},
                            {k: tuple(v) for k, v in entry.options[CONF_ROOM_COLORS].items()})
@@ -179,5 +181,6 @@ def to_configuration(entry: XiaomiCloudMapExtractorConfigEntry) -> XiaomiCloudMa
         drawables,
         sizes,
         texts,
+        fit_to_explored,
     )
     return config

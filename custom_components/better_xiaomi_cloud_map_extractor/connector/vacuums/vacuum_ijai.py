@@ -17,6 +17,7 @@ from vacuum_map_parser_ijai.aes_decryptor import aes_decrypt, aes_encrypt
 from vacuum_map_parser_ijai.RobotMap_pb2 import RobotMap
 
 from .base.vacuum_v2 import BaseXiaomiCloudVacuumV2
+from .ijai_render import fitted_parser
 from .base.model import VacuumConfig, VacuumApi
 from ..utils.dict_operations import path_extractor
 from ..utils.exceptions import (
@@ -77,13 +78,15 @@ class IjaiCloudVacuum(BaseXiaomiCloudVacuumV2):
         # Only raw properties are read, so no MIoT mapping (upstream #791: a warning at every start).
         self._miot_device = MiotDevice(self._host, self._token, timeout=2, mapping={})
 
-        self._ijai_map_data_parser = IjaiMapDataParser(
+        self._render_config = (
             vacuum_config.palette,
             vacuum_config.sizes,
             vacuum_config.drawables,
             vacuum_config.image_config,
-            vacuum_config.texts
+            vacuum_config.texts,
         )
+        self._ijai_map_data_parser = IjaiMapDataParser(*self._render_config)
+        self._fit_to_explored = vacuum_config.fit_to_explored
 
         self._status_mapping = get_status_mapping(self.model)
         self._off_counter = 0
@@ -309,11 +312,20 @@ class IjaiCloudVacuum(BaseXiaomiCloudVacuumV2):
                               "home" if owner_id == str(self._user_id) else "logged-in", device_id,
                               "digest" if hex_key else "short")
                 self._map_key_ids = (owner_id, device_id, hex_key)
-            return self.map_data_parser.parse(_with_current_map_info(decoded_map))
+            decoded_map = _with_current_map_info(decoded_map)
+            return self._parser_for(decoded_map).parse(decoded_map)
 
         # Keep the last map instead of making the entities unavailable.
         _LOGGER.warning("Failed to decrypt the %s map with any known key: %r", self.model, last_error)
         raise FailedMapParseException() from last_error
+
+    def _parser_for(self, decoded_map: bytes) -> IjaiMapDataParser:
+        if self._fit_to_explored:
+            # The crop and zoom depend on what each map has explored (upstream PR #794).
+            fitted = fitted_parser(decoded_map, *self._render_config)
+            if fitted is not None:
+                return fitted
+        return self.map_data_parser
 
     def additional_data(self: Self) -> dict[str, Any]:
         super_data = super().additional_data()

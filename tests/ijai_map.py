@@ -65,6 +65,42 @@ def build_map(map_id: int = 1, listed_maps: list[int] | None = None) -> bytes:
     return robot_map.SerializeToString()
 
 
+# A large canvas with a small explored island, as Ijai vacuums upload it: the canvas (800x800 on
+# real vacuums) does not shrink to what was explored. 20 pixels per metre, origin at the corner.
+CANVAS = 200
+ISLAND = (60, 100, 99, 119)  # left, bottom row, right, top row of the explored pixels, inclusive
+OUTSIDE = 0x00
+WALL = 0xFF
+
+
+def island_pixel_to_map(x: float, y: float) -> tuple[float, float]:
+    return x / 20, y / 20
+
+
+def build_island_map(island: tuple[int, int, int, int] | None = ISLAND) -> bytes:
+    """A CANVAS x CANVAS map, unexplored except a walled room "Kitchen" with the charger in it."""
+    robot_map = RobotMap()
+    robot_map.mapType = 1
+    head = robot_map.mapHead
+    head.mapHeadId = 1
+    head.sizeX = head.sizeY = CANVAS
+    head.minX, head.minY, head.maxX, head.maxY = 0.0, 0.0, CANVAS / 20, CANVAS / 20
+    head.resolution = 0.05
+    pixels = bytearray([OUTSIDE] * CANVAS * CANVAS)
+    if island is not None:
+        left, bottom, right, top = island
+        for y in range(bottom, top + 1):
+            for x in range(left, right + 1):
+                edge = x in (left, right) or y in (bottom, top)
+                pixels[y * CANVAS + x] = WALL if edge else ROOM + 1
+    robot_map.mapData.mapData = bytes(pixels)
+    robot_map.mapInfo.add(mapHeadId=1, mapName="Floor 1")
+    room = robot_map.roomDataInfo.add(roomId=ROOM + 1, roomName="Kitchen")
+    room.roomNamePost.x, room.roomNamePost.y = island_pixel_to_map(70, 110)
+    robot_map.chargeStation.x, robot_map.chargeStation.y = island_pixel_to_map(92, 110)
+    return robot_map.SerializeToString()
+
+
 def map_key(
     model: str, wifi_sn: str, owner_id: str, device_id: str, mac: str = MAC, *, hex_key: bool | None = None
 ) -> bytes:

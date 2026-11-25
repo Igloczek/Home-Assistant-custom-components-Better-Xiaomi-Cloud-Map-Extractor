@@ -33,7 +33,6 @@ The fork's domain is `better_xiaomi_cloud_map_extractor`, so it installs next to
 - Runtime: `coordinator.py` maps connector exceptions to `ConfigEntryAuthFailed` (reauth) or `UpdateFailed` (retry); entities in `image.py`, `camera.py`, `sensor.py`, `binary_sensor.py`, `button.py`, `switch.py`.
 - Cloud access: `connector/xiaomi_cloud/connector.py` (login, sessions, device discovery, encrypted API calls); the session is persisted per MAC by `store.py`.
 - Vendors: `connector/vacuums/vacuum_*.py` download the map; parsing and drawing live in the external `vacuum-map-parser-*` packages pinned in `manifest.json`.
-- `scripts/map_processor.py` is a standalone offline map renderer.
 
 ## Local checks
 
