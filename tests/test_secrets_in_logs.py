@@ -6,16 +6,25 @@ is searched for each secret the fake handed out.
 
 from __future__ import annotations
 
+import base64
 import dataclasses
 import datetime
 import hashlib
+import json
 import logging
+import re
+import struct
+import traceback
+import zlib
 from unittest.mock import patch
 
 import pytest
+from Crypto.Cipher import AES
+from Crypto.Util.Padding import pad
 from homeassistant.config_entries import SOURCE_USER
 from homeassistant.data_entry_flow import FlowResultType
 from miio.exceptions import DeviceException
+from vacuum_map_parser_dreame.map_data_parser import DreameMapDataParser
 
 from custom_components.better_xiaomi_cloud_map_extractor.connector import XiaomiCloudMapExtractorConnector
 from custom_components.better_xiaomi_cloud_map_extractor.connector.utils.exceptions import (
@@ -25,26 +34,19 @@ from custom_components.better_xiaomi_cloud_map_extractor.connector.utils.excepti
     TwoFactorAuthRequiredException,
 )
 from custom_components.better_xiaomi_cloud_map_extractor.connector.vacuums.base.model import VacuumApi
+from custom_components.better_xiaomi_cloud_map_extractor.connector.vacuums.vacuum_dreame import DreameCloudVacuum
 from custom_components.better_xiaomi_cloud_map_extractor.connector.xiaomi_cloud.connector import XiaomiCloudConnector
 from custom_components.better_xiaomi_cloud_map_extractor.const import DOMAIN
 
-from .fake_xiaomi import (
-    ACCOUNT,
-    NEW_SSECURITY,
-    PASS_TOKEN,
-    SSECURITY,
-    USER_ID,
-    VERIFY_CONTEXT,
-    FakeResponse,
-    FakeXiaomiCloud,
-)
+from . import log_secrets
+from .fake_xiaomi import ACCOUNT, API, STS, USER_ID, FakeResponse, FakeXiaomiCloud, connection_timeout
 from .ijai_map import MAC as IJAI_MAC
 from .ijai_map import WIFI_SN, encrypt_map, map_key
+from .log_secrets import MAP_URL_SIGNATURE, PASSWORD
 from .test_cloud_session import stored_config
 from .test_session_lifecycle import (  # noqa: F401
     DEVICE_ID,
     MAP_URL,
-    MAP_URL_SIGNATURE,
     SessionSaver,
     make_connector,
     map_configuration,
@@ -53,23 +55,8 @@ from .test_session_lifecycle import (  # noqa: F401
     vacuum_cloud,
 )
 
-PASSWORD = "secret"
-SECRETS = {
-    "password": PASSWORD,
-    "password hash": hashlib.md5(PASSWORD.encode()).hexdigest().upper(),
-    "passToken": PASS_TOKEN,
-    "ssecurity": SSECURITY,
-    "renewed ssecurity": NEW_SSECURITY,
-    "psecurity": "psecurity-value",
-    "serviceToken": "-service-token",  # every token the fake issues ends like this
-    "STS clientSign": "client-sign-value",
-    "verification context": VERIFY_CONTEXT,
-    "verification ticket": "end-ticket",
-    "QR long-poll ticket": "qr-poll-ticket",
-    "QR login ticket": "qr-login-ticket",
-    "signed map URL": MAP_URL_SIGNATURE,
-    "captcha image": "JFIF",
-}
+# The real parser, not the stub `no_map_parsing` puts in for the Viomi tests.
+DREAME_DECODE_AND_PARSE = DreameCloudVacuum.decode_and_parse
 IJAI_MODEL = "ijai.vacuum.v3"
 IJAI_DEVICE_TOKEN = "f00dfeed" * 4
 IJAI_SECRETS = {
@@ -85,11 +72,7 @@ def debug_log(caplog: pytest.LogCaptureFixture) -> pytest.LogCaptureFixture:
 
 
 def assert_no_secrets(caplog: pytest.LogCaptureFixture) -> None:
-    records = caplog.records
-    assert records, "the scenario logged nothing, so it proves nothing"
-    log = "\n".join(f"{record.getMessage()} {record.exc_text or ''}" for record in records)
-    leaked = {name for name, secret in {**SECRETS, **IJAI_SECRETS}.items() if secret in log}
-    assert not leaked, f"secrets in the debug log: {sorted(leaked)}"
+    log_secrets.assert_no_secrets(caplog, IJAI_SECRETS)
 
 
 async def test_password_login_and_captcha(debug_log) -> None:
@@ -273,3 +256,87 @@ async def test_ijai_map_download(debug_log, vacuum_on_lan: bool) -> None:
     assert data.map_data is not None and data.map_data.rooms
     assert bool(cloud.calls(f"https://de.api.io.mi.com/app/v2/home/rpc/{DEVICE_ID}")) is not vacuum_on_lan
     assert_no_secrets(debug_log)
+
+
+# aiohttp quotes the whole request URL in its errors, and the encrypted API and STS calls carry the
+# session's secrets in the query string. The message reaches the UI ("Failed to update") and the log.
+
+
+def assert_clean_exception(err: BaseException, caplog: pytest.LogCaptureFixture) -> None:
+    """Neither the message nor a logged traceback of `err` carries a secret or a URL's query string."""
+    logging.getLogger(__name__).error("Update failed", exc_info=err)
+    assert not re.search(r"https?://\S+\?(?!<redacted>)", str(err)), str(err)
+    log_secrets.assert_no_secrets(caplog, IJAI_SECRETS, str(err), "".join(traceback.format_exception(err)))
+
+
+async def test_api_timeout_message(debug_log) -> None:
+    cloud = vacuum_cloud()
+    cloud.valid_service_tokens.add("stored-service-token")
+    cloud.on("POST", f"{API}/v2/homeroom/gethome", connection_timeout)
+    connector = make_connector(cloud, stored_session(expires_in=datetime.timedelta(days=20)), SessionSaver())
+
+    with pytest.raises(FailedConnectionException) as err:
+        await connector.get_data()
+
+    assert "de.api.io.mi.com/app/v2/homeroom/gethome" in str(err.value), "the message still says what failed"
+    assert_clean_exception(err.value, debug_log)
+
+
+async def test_qr_login_sts_timeout_message(debug_log) -> None:
+    """The STS link of a finished login carries `clientSign`."""
+    cloud = FakeXiaomiCloud()
+    cloud.qr_login("qr-service-token")
+    cloud.on("GET", STS, connection_timeout)
+    connector = XiaomiCloudConnector(cloud.session_creator, server="de")
+    await connector.login_with_qr_get_code()
+
+    with pytest.raises(FailedConnectionException) as err:
+        await connector.login_with_qr_wait_for_completion()
+
+    assert_clean_exception(err.value, debug_log)
+
+
+DREAME_MODEL = "dreame.vacuum.r2209"  # encrypted maps: the key comes with the map name
+DREAME_MAP_KEY = "made-up-dreame-map-key"
+
+
+def encrypt_dreame_map(model: str, key: str) -> bytes:
+    """A 1x1 I-frame, encrypted the way the encrypted Dreame models upload it."""
+    header = struct.pack("<hhB3h3h5h", 0, 0, 73, 0, 0, 0, 0, 0, 0, 50, 1, 1, 0, 0)
+    frame = header + b"\x00" + json.dumps({}).encode()
+    aes_key = hashlib.sha256(key.encode()).hexdigest()[:32].encode()
+    iv = DreameMapDataParser.IVs[model].encode()
+    return base64.b64encode(AES.new(aes_key, AES.MODE_CBC, iv=iv).encrypt(pad(zlib.compress(frame), 16)))
+
+
+async def test_dreame_encrypted_map_download(debug_log) -> None:
+    """The map key arrives with the map name and goes to the parser: neither may log it."""
+    cloud = vacuum_cloud()
+    cloud.valid_service_tokens.add("stored-service-token")
+    cloud.encrypted_api(
+        "/v2/home/home_device_list",
+        {"result": {"device_info": [{
+            "did": DEVICE_ID, "name": "Dreame", "model": DREAME_MODEL, "token": "0" * 32,
+            "localip": "192.0.2.10", "mac": "AA:BB:CC:DD:EE:01",
+        }]}},
+    )
+    cloud.encrypted_api(f"/v2/home/rpc/{DEVICE_ID}", {"result": {"out": [
+        {"piid": 1, "value": 0},
+        {"piid": 3, "value": f"{USER_ID}/{DEVICE_ID}/dreame-map-0,{DREAME_MAP_KEY}"},
+    ]}})
+    cloud.encrypted_api(
+        "/v2/home/get_interim_file_url", {"result": {"url": f"{MAP_URL}?Expires=1&Signature={MAP_URL_SIGNATURE}"}}
+    )
+    cloud.on("GET", MAP_URL, lambda r: FakeResponse(body=encrypt_dreame_map(DREAME_MODEL, DREAME_MAP_KEY)))
+    config = dataclasses.replace(
+        map_configuration(), used_api=VacuumApi.DREAME, model=DREAME_MODEL, host="192.0.2.10",
+    )
+    connector = XiaomiCloudMapExtractorConnector(
+        cloud.session_creator, config, stored_session(expires_in=datetime.timedelta(days=20)), SessionSaver()
+    )
+
+    with patch.object(DreameCloudVacuum, "decode_and_parse", DREAME_DECODE_AND_PARSE):
+        data = await connector.get_data()
+
+    assert data.map_data is not None and data.map_data.map_name == "dreame-map-0"
+    log_secrets.assert_no_secrets(debug_log, {"map key": DREAME_MAP_KEY})

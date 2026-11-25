@@ -16,7 +16,7 @@ with a test that fails first (see [AGENTS.md](AGENTS.md)).
 
 - **Xiaomi models: live data and map index** (backlog): upstream PRs #781 and a generalised #748.
   Closes #720, advances #563, #657, #702, #739.
-- **Secrets in vendor logs** and **Viomi: follow cleaning start sooner** (items 1 and 2 below).
+- **Viomi: follow cleaning start sooner** (item 1 below).
 
 Still open from the cloud login work: PR #793 (cloud region selection), #700, #712 and the
 `verifyEmail` finish location in #780. Unverified: an unencrypted API answer with code 2 or 3, or the
@@ -33,10 +33,7 @@ issues + comments + 👍; the backlog on 2026-11-24 was 141 open issues and 27 o
 counting only what still happens on v3.0.0-alpha-24. Issue and PR numbers refer to the upstream
 repository; each item names the priority it serves.
 
-1. **Secrets in vendor logs** (reliability: a leaked session is a broken session). Diagnostics no
-   longer export the map key or URL, and the cloud connector and Ijai logs are scanned by
-   `tests/test_secrets_in_logs.py`; extend the scan to every other vendor's map download.
-2. **Viomi: follow cleaning start sooner.** Viomi cannot report its status, so a docked Viomi is
+1. **Viomi: follow cleaning start sooner.** Viomi cannot report its status, so a docked Viomi is
    checked once a minute and the map may start following a clean up to a minute late; read the
    Viomi run state over the local network to switch back to 10-second updates at once.
 

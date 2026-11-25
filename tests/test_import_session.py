@@ -23,7 +23,7 @@ def original_store(hass_storage: dict[str, Any], *, expiration: str, pass_token:
     """The original's `.storage/xiaomi_cloud_map_extractor_<mac>`; values are made up."""
     config = {
         "username": "user@example.com",
-        "password": "secret",
+        "password": "made-up-password",
         "server": "de",
         "user_id": USER_ID,
         "c_user_id": "cUser-abc",

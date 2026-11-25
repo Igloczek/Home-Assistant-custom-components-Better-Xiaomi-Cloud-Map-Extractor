@@ -14,6 +14,19 @@ from ..utils.dict_operations import path_extractor
 _LOGGER = logging.getLogger(__name__)
 
 
+class _RedactMapKey(logging.Filter):
+    """vacuum-map-parser-dreame logs the map decryption key at DEBUG ("Enc Key: %s"); users paste
+    debug logs into public issues, so the key is replaced before any handler sees it."""
+
+    def filter(self: Self, record: logging.LogRecord) -> bool:
+        if isinstance(record.msg, str) and record.msg.startswith("Enc Key"):
+            record.msg, record.args = "Enc Key: <redacted>", ()
+        return True
+
+
+logging.getLogger(DreameMapDataParser.__module__).addFilter(_RedactMapKey())
+
+
 class DreameCloudVacuum(BaseXiaomiCloudVacuumV2):
     _dreame_map_data_parser: DreameMapDataParser
     _robot_stamp: int

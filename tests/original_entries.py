@@ -44,7 +44,7 @@ OPTIONS = {
 SESSION = {
     "connector_config": {
         "username": "user@example.com",
-        "password": "secret",
+        "password": "made-up-password",
         "server": "de",
         "user_id": "2",
         "c_user_id": "c2",

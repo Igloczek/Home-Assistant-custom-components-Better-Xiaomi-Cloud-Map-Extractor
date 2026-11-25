@@ -18,7 +18,7 @@ from dataclasses import dataclass, field
 from http.cookies import SimpleCookie
 from typing import Any
 
-from aiohttp import CookieJar
+from aiohttp import ConnectionTimeoutError, CookieJar
 from multidict import CIMultiDict
 from yarl import URL
 
@@ -99,6 +99,12 @@ def bad_gateway(_request: "Request | None" = None) -> FakeResponse:
 def html_page(_request: "Request | None" = None) -> FakeResponse:
     """A 200 that is not what the API promised, e.g. a captive portal or a maintenance page."""
     return FakeResponse(status=200, body="<html><body>Service maintenance</body></html>")
+
+
+def connection_timeout(request: "Request") -> FakeResponse:
+    """What aiohttp raises when the host does not answer in time: its message quotes the full URL,
+    query string included (signatures, `clientSign`, the encrypted API parameters)."""
+    raise ConnectionTimeoutError(f"Connection timeout to host {request.url}")
 
 
 Handler = Callable[[Request], FakeResponse]

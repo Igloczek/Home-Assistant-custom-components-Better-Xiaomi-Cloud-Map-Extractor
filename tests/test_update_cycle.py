@@ -24,12 +24,16 @@ from homeassistant.const import EVENT_STATE_CHANGED
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers import issue_registry as ir
+from homeassistant.setup import async_setup_component
 from pytest_homeassistant_custom_component.common import MockConfigEntry, async_capture_events
+from pytest_homeassistant_custom_component.components.diagnostics import get_diagnostics_for_config_entry
+from pytest_homeassistant_custom_component.typing import ClientSessionGenerator
 
 from custom_components.better_xiaomi_cloud_map_extractor.config_flow import XiaomiCloudMapExtractorFlowHandler
 from custom_components.better_xiaomi_cloud_map_extractor.connector.vacuums.base.vacuum_base import (
     BaseXiaomiCloudVacuum,
 )
+from custom_components.better_xiaomi_cloud_map_extractor.connector.utils.backoff import Backoff
 from custom_components.better_xiaomi_cloud_map_extractor.connector.vacuums.vacuum_dreame import DreameCloudVacuum
 from custom_components.better_xiaomi_cloud_map_extractor.connector.vacuums.vacuum_roborock import (
     RoborockCloudVacuum,
@@ -44,12 +48,13 @@ from custom_components.better_xiaomi_cloud_map_extractor.const import (
 )
 from custom_components.better_xiaomi_cloud_map_extractor.repairs import LAN_UNREACHABLE_UPDATES
 
-from .const import ENTRY_DATA, MAC, TOKEN
+from .const import ENTRY_DATA, HOST, MAC, TOKEN
 from .fake_miio import FakeLanVacuum, lan_vacuum
-from .fake_xiaomi import USER_ID, FakeResponse, FakeXiaomiCloud
-from .ijai_map import DEVICE_ID, WIFI_SN, build_map, encrypt_map, fixture
+from .fake_xiaomi import API, USER_ID, FakeResponse, FakeXiaomiCloud, connection_timeout
+from .ijai_map import DEVICE_ID, WIFI_SN, build_map, encrypt_map, fixture, map_key
+from .log_secrets import MAP_URL_QUERY, assert_no_secrets, leaked
 from .test_session_lifecycle import stored_session
-from .test_vacuum_xiaomi import MAP_JSON, encrypt_xiaomi_map
+from .test_vacuum_xiaomi import MAP_JSON, app_key, encrypt_xiaomi_map
 
 MAP_URL = "https://maps.example.com/map/0"
 IMAGE = "image.living_room_vacuum_live_map"
@@ -70,6 +75,15 @@ class Vendor:
     cleaning: dict[tuple[int, int], object]
     # Builds the map the cloud serves; `version` makes a different map.
     raw_map: Callable[[int], bytes]
+
+    @property
+    def secrets(self) -> dict[str, str]:
+        """The map decryption key, for the vendors that have one: it must not be logged."""
+        if self.api == "XIAOMI":
+            return {"map key": app_key(self.model, DEVICE_ID).hex()}
+        if self.api == "IJAI":
+            return {"map key": map_key(self.model, WIFI_SN, USER_ID, DEVICE_ID, MAC).hex()}
+        return {}
 
     def __str__(self) -> str:
         return self.model
@@ -144,7 +158,7 @@ class VacuumHome:
                 }
             },
         )
-        url = {"result": {"url": f"{MAP_URL}?Expires=1"}}
+        url = {"result": {"url": f"{MAP_URL}?{MAP_URL_QUERY}"}}
         for endpoint in ("/v2/home/get_interim_file_url", "/v2/home/get_interim_file_url_pro", "/home/getmapfileurl"):
             self.cloud.encrypted_api(endpoint, url)
         self.cloud.encrypted_api(f"/v2/home/rpc/{DEVICE_ID}", fixture("cloud_responses.json")["get_properties_unknown"])
@@ -168,13 +182,19 @@ def _draw_map(self: BaseXiaomiCloudVacuum, raw_map: bytes):
 
 
 @pytest.fixture
-def setup_vacuum(hass: HomeAssistant) -> Iterator[Callable[[Vendor], "AsyncVacuum"]]:
-    homes: list[VacuumHome] = []
+def setup_vacuum(
+    hass: HomeAssistant, caplog: pytest.LogCaptureFixture
+) -> Iterator[Callable[[Vendor], "AsyncVacuum"]]:
+    """Every test here runs at DEBUG and ends with a scan: no secret in the log or a failure message."""
+    caplog.set_level(logging.DEBUG)
+    vacuums: list[AsyncVacuum] = []
 
     def make(vendor: Vendor) -> AsyncVacuum:
-        home = VacuumHome(vendor)
-        homes.append(home)
-        return AsyncVacuum(hass, home)
+        vacuum = AsyncVacuum(hass, VacuumHome(vendor))
+        vacuums.append(vacuum)
+        return vacuum
+
+    homes = _Homes(vacuums)
 
     with (
         patch(
@@ -193,12 +213,26 @@ def setup_vacuum(hass: HomeAssistant) -> Iterator[Callable[[Vendor], "AsyncVacuu
         yield make
         for active in patches:
             active.stop()
+    for vacuum in vacuums:
+        assert_no_secrets(caplog, vacuum.home.vendor.secrets, *vacuum.failure_messages)
+
+
+class _Homes:
+    """The cloud of the vacuum set up last, for the patched client session."""
+
+    def __init__(self, vacuums: list["AsyncVacuum"]) -> None:
+        self._vacuums = vacuums
+
+    def __getitem__(self, index: int) -> VacuumHome:
+        return self._vacuums[index].home
 
 
 class AsyncVacuum:
     def __init__(self, hass: HomeAssistant, home: VacuumHome) -> None:
         self.hass = hass
         self.home = home
+        # What Home Assistant showed for each failed update ("Failed to update", the entity's error).
+        self.failure_messages: list[str] = []
         flow = XiaomiCloudMapExtractorFlowHandler
         self.entry = MockConfigEntry(
             domain=DOMAIN,
@@ -228,14 +262,18 @@ class AsyncVacuum:
             await self.hass.async_block_till_done()
         assert self.entry.state is ConfigEntryState.LOADED
 
-    async def cycles(self, freezer: FrozenDateTimeFactory, count: int = 1) -> None:
+    async def cycles(self, freezer: FrozenDateTimeFactory, count: int = 1, *, failing: bool | None = False) -> None:
+        """`failing`: whether every update fails (True), succeeds (False), or either (None)."""
         coordinator = self.entry.runtime_data.coordinator
         with lan_vacuum(self.home.lan):
             for _ in range(count):
                 freezer.tick(DEFAULT_UPDATE_INTERVAL)
                 await coordinator.async_refresh()
                 await self.hass.async_block_till_done()
-                assert coordinator.last_update_success, coordinator.last_exception
+                if coordinator.last_exception is not None:
+                    self.failure_messages.append(str(coordinator.last_exception))
+                if failing is not None:
+                    assert coordinator.last_update_success is not failing, coordinator.last_exception
 
 
 def _ids(vendors: list[Vendor]) -> list[str]:
@@ -357,6 +395,78 @@ async def test_first_map_is_retried_while_docked(
     await vacuum.cycles(freezer, 1)
 
     assert vacuum.entry.runtime_data.coordinator.data.map_data is not None
+
+
+# --- secrets ---------------------------------------------------------------------------------------
+# Every test in this file ends with the secret scan of `setup_vacuum`; these drive the failure paths,
+# whose messages quote what the cloud or aiohttp said.
+
+MAP_URL_ENDPOINTS = ("/v2/home/get_interim_file_url", "/v2/home/get_interim_file_url_pro", "/home/getmapfileurl")
+
+
+def _api_times_out(home: VacuumHome) -> None:
+    for endpoint in MAP_URL_ENDPOINTS:
+        home.cloud.on("POST", f"{API}{endpoint}", connection_timeout)
+
+
+def _storage_echoes_the_signature(home: VacuumHome) -> None:
+    home.cloud.on("GET", MAP_URL, lambda r: FakeResponse(status=403, body=f"SignatureDoesNotMatch {r.url}"))
+
+
+def _storage_times_out(home: VacuumHome) -> None:
+    home.cloud.on("GET", MAP_URL, connection_timeout)
+
+
+def _vacuum_off_the_lan(home: VacuumHome) -> None:
+    home.lan.reachable = False
+
+
+FAILURES = {
+    "cloud API timeout": _api_times_out,
+    "map refused": _storage_echoes_the_signature,
+    "map download timeout": _storage_times_out,
+    "vacuum off the LAN": _vacuum_off_the_lan,
+}
+
+
+@pytest.mark.parametrize("failure", FAILURES)
+@pytest.mark.parametrize("vendor", VENDORS, ids=str)
+async def test_failed_updates_show_no_secrets(
+    hass: HomeAssistant, setup_vacuum, freezer: FrozenDateTimeFactory, vendor: Vendor, failure: str
+) -> None:
+    """A failed update's message reaches the UI and the log; neither may quote a secret (upstream #778)."""
+    vacuum = setup_vacuum(vendor)
+    await vacuum.setup()
+    FAILURES[failure](vacuum.home)
+    vacuum.home.start_cleaning()  # every cycle downloads
+    vacuum.home.map_version += 1
+
+    with patch.object(Backoff, "sleep", AsyncMock()):  # Roborock retries the map name off the LAN
+        await vacuum.cycles(freezer, 3, failing=None)
+        with lan_vacuum(vacuum.home.lan):
+            await vacuum.entry.runtime_data.coordinator.force_update_data()
+            await hass.async_block_till_done()
+
+    if failure == "cloud API timeout":
+        assert vacuum.failure_messages, "the timeout never reached the coordinator"
+
+
+@pytest.mark.parametrize("vendor", [*VENDORS, UNSUPPORTED], ids=_ids([*VENDORS, UNSUPPORTED]))
+async def test_diagnostics_show_no_secrets(
+    hass: HomeAssistant, hass_client: ClientSessionGenerator, setup_vacuum, freezer: FrozenDateTimeFactory,
+    vendor: Vendor,
+) -> None:
+    """The diagnostics download after real updates, with what each vendor really reports."""
+    assert await async_setup_component(hass, "diagnostics", {})
+    vacuum = setup_vacuum(vendor)
+    await vacuum.setup()
+    await vacuum.cycles(freezer, 2)
+
+    diagnostics = json.dumps(await get_diagnostics_for_config_entry(hass, hass_client, vacuum.entry))
+
+    found = leaked([diagnostics], {**vendor.secrets, "map URL": MAP_URL, "host": HOST, "mac": MAC})
+    assert found == set()
+    assert vacuum.entry.data["model"] in diagnostics, "diagnostics still say which vacuum it is"
 
 
 # --- the vacuum on the local network --------------------------------------------------------------

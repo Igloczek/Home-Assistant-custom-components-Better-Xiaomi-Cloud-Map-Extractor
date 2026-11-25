@@ -14,7 +14,7 @@ from homeassistant.const import (
 from custom_components.better_xiaomi_cloud_map_extractor.const import CONF_SERVER, CONF_USED_MAP_API
 
 USERNAME = "user@example.com"
-PASSWORD = "secret"
+PASSWORD = "made-up-password"
 TOKEN = "0123456789abcdef0123456789abcdef"
 HOST = "192.168.1.50"
 MAC = "aa:bb:cc:dd:ee:ff"

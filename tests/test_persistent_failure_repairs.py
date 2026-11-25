@@ -54,7 +54,7 @@ ENTRY = {
     "mac": MAC,
     "name": "Viomi V8",
     "username": "user@example.com",
-    "password": "secret",
+    "password": "made-up-password",
     "server": "us",
     "used_map_api": "VIOMI",
 }
