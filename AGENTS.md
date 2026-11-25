@@ -24,7 +24,7 @@ When two pieces of work compete, the one higher on this list goes first. [`ROADM
 
 ## Chief of staff
 
-A standing pinned thread titled `Chief of staff` owns day-to-day delivery for this repository, backed by a daily scheduled sweep (`Chief of staff (daily sweep)`). It reviews and merges open pull requests, decides on feature and follow-up proposals, launches and steers `Build #N` threads, follows up on pre-release beta feedback, revives any failed triage runs, cuts batched stable releases, keeps `ROADMAP.md` current, and settles completed threads.
+A standing pinned thread titled `Chief of staff` owns day-to-day delivery for this repository, backed by a daily scheduled sweep (`Chief of staff (daily sweep)`). It keeps `master` CI green (checking after every push and release and never treating a red check as harmless), reviews and merges open pull requests, decides on feature and follow-up proposals, launches and steers `Build #N` threads (without waiting idly on silent reporters when a problem can already be investigated or proven locally), ships confirmed fixes immediately instead of stalling for every other model, follows up on pre-release beta feedback, revives any failed triage runs, cuts batched stable releases with user-friendly notes, keeps `ROADMAP.md` current, closes fixed issues with clear explanations, and settles completed threads.
 
 - Triage and build threads hand ready pull requests, reporter beta confirmations and design calls to `Chief of staff` (`t3_thread_search` for `Chief of staff`), not to the maintainer.
 - `Chief of staff` only escalates to the maintainer for the ~1% calls under "Who decides what ships". Routine merges, opt-in options and releases do not ask for approval.
