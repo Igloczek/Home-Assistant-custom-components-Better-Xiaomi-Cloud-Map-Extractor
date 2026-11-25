@@ -14,6 +14,7 @@ from vacuum_map_parser_base.config.color import ColorsPalette, SupportedColor
 from vacuum_map_parser_base.config.image_config import ImageConfig, TrimConfig
 from vacuum_map_parser_base.config.size import Sizes
 
+from custom_components.better_xiaomi_cloud_map_extractor.connector.utils.exceptions import FailedMapParseException
 from custom_components.better_xiaomi_cloud_map_extractor.connector.platforms import AVAILABLE_VACUUM_PLATFORMS
 from custom_components.better_xiaomi_cloud_map_extractor.connector.vacuums.base.model import (
     VacuumApi,
@@ -194,7 +195,8 @@ async def test_a_corrupt_map_fails_to_parse() -> None:
     outer = json.loads(xtl_map())
     vacuum, _ = make_vacuum(json.dumps({**outer, "fields": ["eyJ3aWR0aCI6IDF9"]}).encode())
 
-    with pytest.raises((KeyError, ValueError)):
+    # A map the parser cannot read is a parse failure: the last map stays.
+    with pytest.raises(FailedMapParseException):
         await vacuum.get_map()
 
 

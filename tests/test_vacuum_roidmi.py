@@ -13,6 +13,7 @@ from vacuum_map_parser_base.config.color import ColorsPalette
 from vacuum_map_parser_base.config.image_config import ImageConfig
 from vacuum_map_parser_base.config.size import Sizes
 
+from custom_components.better_xiaomi_cloud_map_extractor.connector.utils.exceptions import FailedMapParseException
 from custom_components.better_xiaomi_cloud_map_extractor.connector.vacuums.base.model import (
     VacuumApi,
     VacuumConfig,
@@ -155,5 +156,6 @@ async def test_sdj60_map_shorter_than_its_bitmap_fails_to_parse() -> None:
     files = {PRO_URL: gzip.compress(b'\x00\x00{"width": 6, "height": 5}')}
     vacuum, _ = make_vacuum(SDJ60, files, BOTH_ENDPOINTS)
 
-    with pytest.raises(ValueError):
+    # A map the parser cannot read is a parse failure: the last map stays.
+    with pytest.raises(FailedMapParseException):
         await vacuum.get_map()
