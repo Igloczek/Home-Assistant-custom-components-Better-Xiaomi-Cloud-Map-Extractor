@@ -18,7 +18,8 @@ import hashlib
 import json
 import zlib
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, patch
+from collections.abc import Iterator
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from Crypto.Cipher import AES
@@ -37,6 +38,7 @@ from custom_components.better_xiaomi_cloud_map_extractor.connector.vacuums.vacuu
 )
 
 from .conftest import make_device
+from .fake_miio import FakeLanVacuum, lan_vacuum
 
 MAP_JSON = (Path(__file__).parent / "fixtures" / "xiaomi" / "map.json").read_text()
 DEVICE_ID = "123456789"
@@ -92,20 +94,17 @@ def make_vacuum(model: str, raw_map: bytes) -> tuple[XiaomiCloudVacuum, MagicMoc
 
 
 @pytest.fixture
-def miot_device():
-    """The vacuum on the LAN, reporting the live map object like MIoT property 10.1."""
-    with patch(
-        "custom_components.better_xiaomi_cloud_map_extractor.connector.vacuums.vacuum_xiaomi.MiotDevice"
-    ) as device_class:
-        device = device_class.return_value
-        device.get_property_by = MagicMock(
-            return_value=[{"value": json.dumps({"obj_name": f"{USER_ID}/{DEVICE_ID}/0"})}]
-        )
-        yield device
+def miot_device() -> Iterator[FakeLanVacuum]:
+    """The vacuum on the LAN, reporting the live map object in MIoT property 10/1."""
+    lan = FakeLanVacuum(
+        "xiaomi.vacuum.ov81gl", properties={(10, 1): json.dumps({"obj_name": f"{USER_ID}/{DEVICE_ID}/0"})}
+    )
+    with lan_vacuum(lan):
+        yield lan
 
 
 @pytest.mark.parametrize("model", MODELS)
-async def test_xiaomi_map_decrypts_for_every_model_length(model: str, miot_device: MagicMock) -> None:
+async def test_xiaomi_map_decrypts_for_every_model_length(model: str, miot_device: FakeLanVacuum) -> None:
     """The map of every Xiaomi model downloads, decrypts and parses."""
     raw_map = encrypt_xiaomi_map(MAP_JSON, model, DEVICE_ID)
     vacuum, connector = make_vacuum(model, raw_map)
@@ -121,7 +120,7 @@ async def test_xiaomi_map_decrypts_for_every_model_length(model: str, miot_devic
 
 
 @pytest.mark.parametrize("model", MODELS)
-def test_xiaomi_enc_key_matches_the_app(model: str, miot_device: MagicMock) -> None:
+def test_xiaomi_enc_key_matches_the_app(model: str, miot_device: FakeLanVacuum) -> None:
     """The exported `enc_key` attribute is the key the map is encrypted with."""
     vacuum, _ = make_vacuum(model, b"")
 
@@ -151,7 +150,7 @@ def old_model_key(model: str) -> str:
 @pytest.mark.parametrize(
     "model", [m for m in KNOWN_XIAOMI_MODELS if len(old_model_key(m)) in AES_KEY_LENGTHS]
 )
-def test_models_that_worked_keep_the_same_key(model: str, miot_device: MagicMock) -> None:
+def test_models_that_worked_keep_the_same_key(model: str, miot_device: FakeLanVacuum) -> None:
     """No vacuum whose map decrypted before gets a different key: the key bytes are identical."""
     vacuum, _ = make_vacuum(model, b"")
 
@@ -169,7 +168,7 @@ ROBOROCK_LIKE_MAP = b"\x1f\x8b\x08\x00" + bytes(range(256)) * 4  # a gzip map, n
 
 
 @pytest.mark.parametrize("model", ["roborock.vacuum.s5e", "rockrobo.vacuum.v1", "viomi.vacuum.v8"])
-async def test_map_that_is_not_in_xiaomi_format_fails_as_a_parse_error(model: str, miot_device: MagicMock) -> None:
+async def test_map_that_is_not_in_xiaomi_format_fails_as_a_parse_error(model: str, miot_device: FakeLanVacuum) -> None:
     """Another vendor's map is tried, and when it does not decrypt that is a map parsing failure.
 
     The coordinator offers the matching format only for this error, so a crypto or zlib error
@@ -184,7 +183,7 @@ async def test_map_that_is_not_in_xiaomi_format_fails_as_a_parse_error(model: st
     assert "enc_key" in vacuum.additional_data()
 
 
-async def test_other_vendor_whose_map_is_in_xiaomi_format_still_works(miot_device: MagicMock) -> None:
+async def test_other_vendor_whose_map_is_in_xiaomi_format_still_works(miot_device: FakeLanVacuum) -> None:
     """Nothing is refused by model name: if the Xiaomi format decodes, the map shows."""
     model = "roborock.vacuum.a15"
     vacuum, _ = make_vacuum(model, encrypt_xiaomi_map(MAP_JSON, model, DEVICE_ID))
