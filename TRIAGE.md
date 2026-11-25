@@ -30,16 +30,16 @@ whose fix shipped to *fixed*. Update this header's date and counts and the ROADM
 
 | Status | Count |
 | --- | ---: |
-| planned | 11 |
+| planned | 10 |
 | needs a capture | 19 |
 | feature request kept | 12 |
-| fixed | 58 |
+| fixed | 59 |
 | duplicate | 14 |
 | not planned | 15 |
 | v2-only / obsolete on v3 | 38 |
 | **Total** | **167** |
 
-Of the 58 fixed, 10 are fixed by the open fork PR #18 and 2 by the open fork PR #28, which wait
+Of the 59 fixed, 10 are fixed by the open fork PR #18 and 3 by the open fork PR #28, which wait
 for their pre-releases, and 7 are in Unreleased.
 
 ## All items
@@ -47,7 +47,6 @@ for their pre-releases, and 7 are in Unreleased.
 | # | Title | Type | Status | Fork reference or reason | Users |
 | ---: | --- | --- | --- | --- | ---: |
 | [700](https://github.com/PiotrMachowski/Home-Assistant-custom-components-Xiaomi-Cloud-Map-Extractor/issues/700) | after entering the code from the mail, the error is: Unexpected error | issue | planned | P2 actionable failures: two-factor code ends in "Unexpected error". | 40 |
-| [621](https://github.com/PiotrMachowski/Home-Assistant-custom-components-Xiaomi-Cloud-Map-Extractor/issues/621) | Not working with Jonr P20 ( xtl.vacuum.xm2216 ) | issue | planned | P4 backlog: Jonr P20 (`xtl.vacuum.xm2216`); a working fork is confirmed by three owners. | 37 |
 | [712](https://github.com/PiotrMachowski/Home-Assistant-custom-components-Xiaomi-Cloud-Map-Extractor/issues/712) | bad login retry asks for captcha instead of whole username/password | issue | planned | P2 actionable failures: a failed login retry asks only for the captcha. | 4 |
 | [381](https://github.com/PiotrMachowski/Home-Assistant-custom-components-Xiaomi-Cloud-Map-Extractor/issues/381) | Cloud-Only Mode | issue | planned | P1 reliability: map without the local network (Xiaomi in fork PR #18, Roborock in progress). | 3 |
 | [450](https://github.com/PiotrMachowski/Home-Assistant-custom-components-Xiaomi-Cloud-Map-Extractor/issues/450) | Please add support for dreame.vacuum.md1808 | issue | planned | P4 backlog: a raw md1808 map is attached upstream; check it against vacuum-map-parser-dreame ("incorrect header check"). | 1 |
@@ -93,6 +92,7 @@ for their pre-releases, and 7 are in Unreleased.
 | [422](https://github.com/PiotrMachowski/Home-Assistant-custom-components-Xiaomi-Cloud-Map-Extractor/issues/422) | Failed to retrieve map from vacuum | issue | fixed | Unreleased (fork PR #15: a docked vacuum's map is not downloaded every 10 s) | 103 |
 | [588](https://github.com/PiotrMachowski/Home-Assistant-custom-components-Xiaomi-Cloud-Map-Extractor/issues/588) | Add support Xiaomi X20 Max | issue | fixed | fork PR #18 (open, pre-release) (status property; the map works since v3) | 76 |
 | [585](https://github.com/PiotrMachowski/Home-Assistant-custom-components-Xiaomi-Cloud-Map-Extractor/issues/585) | Xiaomi S20 support | issue | fixed | 0.1.0 (S20 uses the Ijai format) | 53 |
+| [621](https://github.com/PiotrMachowski/Home-Assistant-custom-components-Xiaomi-Cloud-Map-Extractor/issues/621) | Not working with Jonr P20 ( xtl.vacuum.xm2216 ) | issue | fixed | fork PR #28 (open, pre-release for a P20 owner): XTL map format, parser from Maedrawd's fork | 37 |
 | [697](https://github.com/PiotrMachowski/Home-Assistant-custom-components-Xiaomi-Cloud-Map-Extractor/issues/697) | Unable to retrieve map - login: false (despite correct data provided, also worked day before) | issue | fixed | 0.1.0 (session renewal) | 32 |
 | [720](https://github.com/PiotrMachowski/Home-Assistant-custom-components-Xiaomi-Cloud-Map-Extractor/issues/720) | Xiaomi S20+ (xiaomi.vacuum.b108gl) now working, but map index needs manual fix in code | issue | fixed | fork PR #18 (open, pre-release) (map index) | 19 |
 | [236](https://github.com/PiotrMachowski/Home-Assistant-custom-components-Xiaomi-Cloud-Map-Extractor/issues/236) | Always warning on update over x seconds | issue | fixed | Unreleased (fork PR #15: no blocking calls on the event loop) | 17 |

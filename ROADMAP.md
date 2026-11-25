@@ -23,6 +23,9 @@ with a test that fails first (see [AGENTS.md](AGENTS.md)).
 - **Roborock map without the local network**: read the map name through the cloud when Home
   Assistant cannot reach the vacuum, as Ijai does for the WiFi serial (#601, and with fork PR #18
   #381).
+- **Jonr P20** (fork PR #28, pre-release for a P20 owner): `xtl.vacuum.xm2216` with the parser from
+  Maedrawd's fork (#621). Next for it: a real map as a fixture (scrubbed), room names, and the run
+  state through the cloud once its MIoT property is known.
 - **Roidmi sdj60** (fork PR #28, pre-release for an sdj60 owner): the map from
   `get_interim_file_url_pro` and the bitmap split from upstream PR #768 (#572).
 
@@ -53,12 +56,10 @@ numbers refer to the upstream repository; each item names the priority it serves
 3. **Drop-in follow-up** (P3): decide whether to raise a repair issue that points users of the
    original at the import once this integration is running. (The import itself was verified end to
    end on a real Home Assistant, with the original installed and then removed, on 2026-11-24.)
-4. **Jonr P20** (P4, #621; 37 users): `xtl.vacuum.xm2216`, from a fork that three owners confirm;
-   needs its map as a fixture and an owner for the pre-release.
-5. **Dreame md1808 "incorrect header check"** (P4, #450, #757, #772): a raw map is attached to #450;
+4. **Dreame md1808 "incorrect header check"** (P4, #450, #757, #772): a raw map is attached to #450;
    check it against vacuum-map-parser-dreame.
-6. **Small import** (P4, PR #591) if `scripts/` keeps shipping.
-7. **Ijai rendering** (P4, PR #794): fit to the explored area, without the bundled font if possible.
+5. **Small import** (P4, PR #591) if `scripts/` keeps shipping.
+6. **Ijai rendering** (P4, PR #794): fit to the explored area, without the bundled font if possible.
 
 ## 1.0.0 criteria
 

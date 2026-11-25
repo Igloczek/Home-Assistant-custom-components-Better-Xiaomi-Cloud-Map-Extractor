@@ -36,6 +36,7 @@ from .vacuums.vacuum_unsupported import UnsupportedCloudVacuum
 from .vacuums.vacuum_viomi import ViomiCloudVacuum
 from .vacuums.vacuum_ijai import IjaiCloudVacuum
 from .vacuums.vacuum_xiaomi import XiaomiCloudVacuum
+from .vacuums.vacuum_xtl import XtlCloudVacuum
 from .xiaomi_cloud.connector import (
     XiaomiCloudConnector,
     XiaomiCloudDeviceInfo,
@@ -63,6 +64,7 @@ AVAILABLE_VACUUM_PLATFORMS: dict[VacuumApi, Type[BaseXiaomiCloudVacuum]] = {v.va
     DreameCloudVacuum,
     IjaiCloudVacuum,
     XiaomiCloudVacuum,
+    XtlCloudVacuum,
     UnsupportedCloudVacuum
 ]}
 
