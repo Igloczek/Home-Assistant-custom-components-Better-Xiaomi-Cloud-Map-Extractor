@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- A Xiaomi vacuum that stores its maps under another Xiaomi account id than the one logged in, as
+  an H40 (xiaomi.vacuum.ov51gl) does, gets its map instead of "404 Object Not Found": the map is
+  downloaded from the path the vacuum reports (upstream #762).
+
 ## 1.0.0 - 2026-11-25
 
 The first stable release. Every open issue and pull request of the original is analysed in

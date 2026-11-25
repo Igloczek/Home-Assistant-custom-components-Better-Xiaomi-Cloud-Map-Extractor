@@ -13,9 +13,6 @@ vacuum-map-parser-roidmi==0.1.3
 vacuum-map-parser-dreame==0.1.3
 vacuum-map-parser-ijai==0.1.1
 protobuf  # vacuum-map-parser-ijai imports it without declaring it
-vacuum-map-parser-xiaomi==0.1.3
-# vacuum-map-parser-ijai imports google.protobuf without declaring it
-protobuf
 vacuum-map-parser-xiaomi==0.1.4
 # requirements of the Home Assistant camera component, which the integration imports
 PyTurboJPEG==1.8.3
