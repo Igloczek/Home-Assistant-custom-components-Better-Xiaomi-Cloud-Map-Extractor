@@ -19,8 +19,10 @@ from unittest.mock import MagicMock
 import pytest
 from homeassistant import config as conf_util
 from homeassistant import config_entries
+from homeassistant.components.repairs import repairs_flow_manager
 from homeassistant.config_entries import ConfigEntryState
 from homeassistant.core import HomeAssistant
+from homeassistant.data_entry_flow import FlowResultType
 from homeassistant.helpers import issue_registry as ir
 from homeassistant.setup import async_setup_component
 from pytest_homeassistant_custom_component.common import MockConfigEntry
@@ -204,3 +206,79 @@ async def test_leftover_original_at_startup_mentions_the_yaml(
     )
     assert _yaml_issue(hass, entry) is not None
     assert hass.config_entries.async_entries(ORIGINAL_DOMAIN) == [original]
+
+
+async def _fix(hass: HomeAssistant, issue: ir.IssueEntry) -> dict[str, Any]:
+    assert issue.is_fixable
+    assert await async_setup_component(hass, "repairs", {})
+    manager = repairs_flow_manager(hass)
+    result = await manager.async_init(DOMAIN, data={"issue_id": issue.issue_id})
+    assert result["type"] is FlowResultType.FORM
+    assert result["step_id"] == "confirm"
+    assert result["description_placeholders"]["file"] == "configuration.yaml"
+    result = await manager.async_configure(result["flow_id"], {})
+    await hass.async_block_till_done()
+    return result
+
+
+async def test_fix_removes_the_block_and_keeps_the_rest(
+    hass: HomeAssistant, map_connector: MagicMock, tmp_path: Path
+) -> None:
+    """One click: the block goes, a backup stays, the next start finds nothing and nothing else changed."""
+    entry = _imported_entry(hass)
+    configuration = f"homeassistant:\n  name: Home\n\n# Cameras\ncamera:\n{ORIGINAL_BLOCK}\nlogger:\n  default: info\n"
+    await _start(hass, tmp_path, configuration)
+
+    result = await _fix(hass, _yaml_issue(hass, entry))
+
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+    assert _yaml_issue(hass, entry) is None
+    expected = "homeassistant:\n  name: Home\n\n# Cameras\n\nlogger:\n  default: info\n"
+    assert (tmp_path / "configuration.yaml").read_text() == expected
+    backups = list(tmp_path.glob("configuration.yaml.better-xiaomi-backup-*"))
+    assert [backup.read_text() for backup in backups] == [configuration]
+    # Home Assistant loads the result, and the next start raises nothing.
+    config = await conf_util.async_hass_config_yaml(hass)
+    assert "camera" not in config
+    assert config["logger"] == {"default": "info"}
+    assert entry.state is ConfigEntryState.LOADED
+
+
+async def test_fix_in_an_included_file_keeps_the_other_cameras(
+    hass: HomeAssistant, map_connector: MagicMock, tmp_path: Path
+) -> None:
+    entry = _imported_entry(hass)
+    unindented = ORIGINAL_BLOCK.replace("\n  ", "\n").removeprefix("  ")
+    (tmp_path / "cameras.yaml").write_text(f"- platform: generic\n  name: Door\n  still_image_url: http://door/\n{unindented}")
+    await _start(hass, tmp_path, "camera: !include cameras.yaml\n")
+    issue = _yaml_issue(hass, entry)
+    assert issue is not None
+
+    assert await async_setup_component(hass, "repairs", {})
+    manager = repairs_flow_manager(hass)
+    result = await manager.async_init(DOMAIN, data={"issue_id": issue.issue_id})
+    assert result["description_placeholders"]["file"] == "cameras.yaml"
+    result = await manager.async_configure(result["flow_id"], {})
+
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+    assert (tmp_path / "cameras.yaml").read_text() == "- platform: generic\n  name: Door\n  still_image_url: http://door/\n"
+    assert (tmp_path / "configuration.yaml").read_text() == "camera: !include cameras.yaml\n"
+
+
+async def test_fix_leaves_a_changed_file_alone_and_says_what_to_delete(
+    hass: HomeAssistant, map_connector: MagicMock, tmp_path: Path
+) -> None:
+    """The file changed since the start and the block can't be told apart: nothing is written."""
+    entry = _imported_entry(hass)
+    await _start(hass, tmp_path, f"camera:\n{ORIGINAL_BLOCK}")
+    changed = "camera: [{platform: xiaomi_cloud_map_extractor, host: !secret ip}]\n"
+    (tmp_path / "configuration.yaml").write_text(changed)
+
+    result = await _fix(hass, _yaml_issue(hass, entry))
+
+    assert result["type"] is FlowResultType.ABORT
+    assert result["reason"] == "remove_by_hand"
+    assert "- platform: xiaomi_cloud_map_extractor" in result["description_placeholders"]["snippet"]
+    assert (tmp_path / "configuration.yaml").read_text() == changed
+    assert not list(tmp_path.glob("*backup*"))
+    assert _yaml_issue(hass, entry) is not None
