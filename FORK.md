@@ -78,7 +78,7 @@ The fork numbers its own releases, starting at `v0.1.0`, and carries only its ow
 51 inherited upstream tags (v1.x, v2.x, v3.0.0-alpha-N) were deleted on 2026-11-24, before any fork
 release, and must not come back. Refer to upstream versions by commit SHA (v3.0.0-alpha-24 is
 `688fe3e`); the tag rules are in [AGENTS.md](AGENTS.md#github-releases). 0.x releases are cut by agents once verified ([AGENTS.md](AGENTS.md#who-decides-what-ships));
-1.0.0 is the maintainer's call against the [1.0.0 criteria](ROADMAP.md#100-criteria).
+1.0.0 was released on 2026-11-25 ([ROADMAP.md](ROADMAP.md#since-100)).
 
 ## Upstream snapshot
 

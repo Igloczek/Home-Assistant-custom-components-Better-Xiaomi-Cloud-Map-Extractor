@@ -210,7 +210,7 @@ async def test_session_end_from_the_expires_date_is_read_as_gmt(monkeypatch: pyt
         # Session times are naive local time.
         remaining = connector._expiration_from_cookies() - datetime.datetime.now()
     finally:
-        monkeypatch.delenv("TZ")
+        monkeypatch.undo()  # restores a TZ the runner had set
         time.tzset()
 
     assert abs(remaining - datetime.timedelta(days=10)) < datetime.timedelta(minutes=5)

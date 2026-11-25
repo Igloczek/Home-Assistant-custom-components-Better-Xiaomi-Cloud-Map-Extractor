@@ -3,8 +3,8 @@
 Every issue and pull request open on
 [upstream](https://github.com/PiotrMachowski/Home-Assistant-custom-components-Xiaomi-Cloud-Map-Extractor)
 on **2026-11-25**: 141 issues and 26 pull requests, each read in full (body, comments, linked pull
-requests). They were classified against `master` at `7cc7a03`, [CHANGELOG.md](CHANGELOG.md) (0.1.0 to
-0.1.6), fork PR #26 (login dead-ends, to be merged for 1.0.0) and three fork pull requests out as
+requests). They were classified against 1.0.0, [CHANGELOG.md](CHANGELOG.md) (0.1.0 to
+1.0.0; fork PR #26, login dead-ends, is in 1.0.0) and three fork pull requests out as
 pre-releases and waiting for owners to confirm: #18 (Xiaomi live data), #22 (Roborock map without the
 local network) and #28 (Jonr P20, Roidmi sdj60). Upstream numbers are links; "fork PR" means this
 repository. Planned work is ranked in [ROADMAP.md](ROADMAP.md#next-in-order).

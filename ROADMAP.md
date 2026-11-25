@@ -15,13 +15,6 @@ with a test that fails first (see [AGENTS.md](AGENTS.md)).
 
 ## In progress
 
-For 1.0.0:
-
-- **Login dead-ends** (fork PR #26, P2; #700, #712, #780): verify's location followed on any host, SMS
-  codes, refused or unsent codes explained, a wrong password behind a captcha back to the credentials
-  form, and 20 s per request so a region that never answers can't stall setup. Upstream PR #793 (region
-  step) is not imported: the timeout covers it. To be merged for 1.0.0.
-
 Out as pre-releases, waiting for owners to confirm; merged in 1.0.x once confirmed:
 
 - **Xiaomi models: live data and map index** (fork PR #18; b108gl, ov21gl and ov81gl owners):
@@ -54,19 +47,11 @@ numbers refer to the upstream repository; each item names the priority it serves
    end on a real Home Assistant, with the original installed and then removed, on 2026-11-24.)
 2. **Pre-releases in 1.0.x**: merge fork PRs #18, #22 and #28 (above) as owners confirm them.
 
-## 1.0.0 criteria
+## Since 1.0.0
 
-1.0.0 is the maintainer's decision. It is due when both hold:
-
-1. **Upstream backlog done.** Every open upstream issue and pull request is analysed (imported,
-   fixed, ported or recorded under **Not planned** with a reason), and the biggest bugs above are
-   fixed.
-2. **Deep refactor done.** The long monolithic files are split into focused modules with clear
-   boundaries: cloud connector (login, session, encrypted API), per-vendor map APIs, coordinator,
-   entities, config flow. Tests cover everything the refactor touches.
-
-When both hold, an agent brings the maintainer one question, "ready for 1.0.0?", with the evidence:
-the [triage table](TRIAGE.md), the fixed issues, the module map and the test coverage.
+1.0.0 was released on 2026-11-25, with every open upstream issue and pull request analysed and the
+monolithic modules split. From here on, what an agent may merge and release follows the change
+classes in [AGENTS.md](AGENTS.md#who-decides-what-ships).
 
 ## Later
 
@@ -94,8 +79,6 @@ the [triage table](TRIAGE.md), the fixed issues, the module map and the test cov
   set it up against a recorded cloud, like the card's end-to-end suite.
 - **Lint baseline**: widen the ruff rules (pyupgrade, import order, bugbear `B904`) in one dedicated
   change.
-- **Undeclared dependency**: `vacuum-map-parser-ijai` imports `google.protobuf` without declaring it;
-  decide whether `manifest.json` lists `protobuf` or the parser is fixed.
 - **Default HACS listing** once the first stable release is out.
 
 ## Feature requests kept

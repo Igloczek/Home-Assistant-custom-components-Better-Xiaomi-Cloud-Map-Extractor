@@ -73,7 +73,7 @@ Agents drive this project: they investigate, reproduce, build, test, open pull r
 - The release rules under "GitHub releases" still hold: verify before tagging, check that the tag is free, and check that the uploaded zip contains the change.
 - Batching and the class-2 stop below do not apply in 0.x. Hand-offs and reports still go in the chat, never on GitHub.
 
-**From 1.0.0** (the maintainer's call; see [ROADMAP.md](ROADMAP.md#100-criteria)), whether a change may be merged and released depends on what kind of change it is. Sort every change into one of these classes before merging; when it is not clearly class 1, it is class 2.
+**From 1.0.0** (released 2026-11-25; see [ROADMAP.md](ROADMAP.md#since-100)), whether a change may be merged and released depends on what kind of change it is. Sort every change into one of these classes before merging; when it is not clearly class 1, it is class 2.
 
 1. **Clear bug: merge it yourself.** The report is binary (it works or it does not), the reproduction is a red test, and the fix restores documented or obviously intended behaviour with nothing visible changing beyond the fix. Merge after the local checks pass on the exact head.
 2. **Needs the maintainer's call: build it fully, then stop.** Anything that is not an obvious bug, and every change to what users see or how they set things up: config and options flow steps, wording and translations, entity names, defaults and which entities are enabled, how the map is drawn, new options or behaviour, compatibility or migrations, dependency upgrades of the map parsers. Do all the work, open the pull request, do not merge or release it, and hand it over.

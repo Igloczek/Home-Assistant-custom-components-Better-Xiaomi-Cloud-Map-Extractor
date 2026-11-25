@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## 1.0.0 - 2026-11-25
+
+The first stable release. Every open issue and pull request of the original is analysed in
+[TRIAGE.md](TRIAGE.md), and the code is split into focused, tested modules.
+
 ### Fixed
 
 - A Roborock, Viomi or Roidmi map that can't be read (corrupt or cut off) now says the map couldn't be read and keeps the last map, instead of "Unexpected error" with every entity unavailable.
