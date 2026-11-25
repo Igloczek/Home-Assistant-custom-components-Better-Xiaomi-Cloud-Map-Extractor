@@ -63,10 +63,11 @@ maintainer.
   Roborock integration and close.
 - **Map card problems:** room taps, dashboard overlays, zoom, rotation, tiles, and YAML card config
   belong to `Igloczek/lovelace-better-xiaomi-vacuum-map-card`. Redirect the user there.
-- **Testing & feedback issues:** issues opened by the maintainer to collect confirmation or captures
-  from owners (#9, #10, #14, #20, #24, #27, #29) wait for outside comments. When confirmation or
-  captures arrive — even for a single model on a multi-model testing issue — route them immediately
-  to `Chief of staff` so confirmed fixes are merged and shipped right away instead of stalling for
-  every other model. Never post an empty "recorded, waiting for others" reply that triggers no
-  action; only reply when you have a concrete next step (routing for merge/release, launching a
-  build, or asking one specific follow-up question).
+- **Testing & feedback issues:** issues opened to test unmerged pre-releases (currently #24, #29)
+  stay open only until their fix ships in a stable release; once shipped, close them as `completed`
+  rather than keeping them open indefinitely. When confirmation or captures arrive — even for a
+  single model on a multi-model testing issue — route them immediately to `Chief of staff` so
+  confirmed fixes are merged, shipped and closed right away. If a user later comments on a closed
+  issue reporting a bug or regression, reopen it and act on it. Never post an empty "recorded,
+  waiting for others" reply that triggers no action; only reply when you have a concrete next step
+  (routing for merge/release, launching a build, or asking one specific follow-up question).
