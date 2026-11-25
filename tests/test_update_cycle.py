@@ -55,6 +55,7 @@ from .ijai_map import DEVICE_ID, WIFI_SN, build_map, encrypt_map, map_key
 from .log_secrets import MAP_URL_QUERY, assert_no_secrets, leaked
 from .test_session_lifecycle import stored_session
 from .test_vacuum_xiaomi import MAP_JSON, app_key, encrypt_xiaomi_map
+from .xtl_map import xtl_map
 
 MAP_URL = "https://maps.example.com/map/0"
 IMAGE = "image.living_room_vacuum_live_map"
@@ -143,6 +144,10 @@ VENDORS = [
         {(7, 1): OBJ_NAME[(10, 1)], (2, 1): 4}, _xiaomi_map("xiaomi.vacuum.b108gl"),
     ),
 ]
+VENDORS.append(
+    # Upstream #621: Jonr P20, its own map format (parsed for real here); no known state property.
+    Vendor("xtl.vacuum.xm2216", "XTL", {}, {}, xtl_map),
+)
 UNSUPPORTED = Vendor("unknown.vacuum.x1", "UNSUPPORTED", {}, {}, _opaque_map)
 # Upstream #450, #757, #772: the cloud serves the map encrypted, with a per-model IV nobody published.
 MD1808 = Vendor("dreame.vacuum.md1808", "DREAME", {}, {}, lambda _version: MD1808_ENCRYPTED_MAP.read_bytes())
@@ -381,7 +386,7 @@ async def test_cleaning_brings_back_a_download_every_cycle(
 
 # Vendors that report whether they move; for the others the map is checked once a minute when docked.
 # The H50 (ov43gb) has its status at 2/2, which vacuum-map-parser-xiaomi does not map yet.
-NO_STATE = {"viomi.vacuum.x1", "roidmi.vacuum.sdj60", "xiaomi.vacuum.ov43gb"}
+NO_STATE = {"viomi.vacuum.x1", "roidmi.vacuum.sdj60", "xiaomi.vacuum.ov43gb", "xtl.vacuum.xm2216"}
 REPORTS_STATE = [v for v in VENDORS if v.model not in NO_STATE]
 CLOUD_STATE = [v for v in REPORTS_STATE if v.api in ("VIOMI", "ROIDMI", "DREAME")]
 
