@@ -15,14 +15,32 @@ A run may use the local checks (`.venv/bin/ruff check .`, `.venv/bin/pytest`) an
 integration source and mocked fixtures under `tests/`. It never touches the maintainer's own Home
 Assistant (`ha.igielski.dev`). A fix thread follows `AGENTS.md`.
 
-## Shipping a test version
+## Building, shipping, and Chief of staff
 
-A build thread follows `AGENTS.md`: it sorts the change into a class, and a class 1 bug fix merges
-as usual. Anything else built for an issue (or anything depending on a vacuum, region or account
-state we do not own) stays an open pull request and ships as a `vX.Y.Z-beta.N` pre-release on its
-head ("GitHub releases" in `AGENTS.md`), with a comment on the issue asking the reporter's AI agent
-to install, test and report back. The build thread ends with the class 2 hand-off for the maintainer
-in its own chat; merging and the stable release wait for their approval.
+This repository is run ~99% autonomously (see `AGENTS.md`). Triage decides sensible option names,
+shapes and opt-in enhancements itself instead of bouncing routine design questions to the
+maintainer.
+
+- **Build what is safe and sensible:** when a bug reproduces or a feature/follow-up request is real,
+  non-breaking, does not drastically change UX and cannot degrade overall quality, start a
+  `Build #<number>` thread and notify the repository's standing `Chief of staff` thread
+  (`t3_thread_search` for `Chief of staff`).
+- **Locally proven changes ship autonomously:** a build thread follows `AGENTS.md`, proves the
+  change with red-first tests and local checks (`ruff check .`, `pytest`), opens a pull request, and
+  hands it to `Chief of staff` for review, merge and batched release — without waiting for
+  maintainer approval.
+- **Hardware, regions or accounts we do not own:** if the change genuinely cannot be verified
+  without the reporter's vacuum, region or account, the build thread ships a `vX.Y.Z-beta.N`
+  pre-release on the pull request head ("GitHub releases" in `AGENTS.md`) and comments on the issue
+  asking the reporter's AI agent to install, test and report back.
+- **Follow-ups and beta replies:** when a user replies to confirm a pre-release, report a problem
+  with a beta, provide requested data, or ask for a concrete non-breaking follow-up on a closed
+  issue, route the summary (in your own words) to the existing `Build #<number>` thread or to
+  `Chief of staff` so it is acted on without involving the maintainer.
+- **Always settle finished threads:** escalate to the maintainer only when a change is breaking,
+  drastically changes UX for everyone, or risks degrading overall quality/experience (~1%).
+  Otherwise, both triage and build threads settle themselves (`t3_thread_organize` with
+  `action: "settle"`) as soon as their work is delivered and handed off with nothing left to do.
 
 ## Project-specific rules
 
