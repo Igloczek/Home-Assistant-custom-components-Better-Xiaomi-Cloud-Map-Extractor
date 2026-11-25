@@ -51,6 +51,12 @@ def test_config_flow_steps_log_under_the_config_flow(module: str) -> None:
     assert logger is None or logger.name == f"{PACKAGE}.config_flow"
 
 
+def test_issues_log_under_repairs() -> None:
+    from custom_components.better_xiaomi_cloud_map_extractor import issues
+
+    assert issues._LOGGER.name == f"{PACKAGE}.repairs"
+
+
 def test_config_flow_handler_keeps_every_step() -> None:
     translated = json.loads(TRANSLATIONS.read_text())["config"]["step"]
 

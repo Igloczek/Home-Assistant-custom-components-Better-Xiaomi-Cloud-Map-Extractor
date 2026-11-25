@@ -45,7 +45,7 @@ from custom_components.better_xiaomi_cloud_map_extractor.const import (
     DEFAULT_UPDATE_INTERVAL,
     DOMAIN,
 )
-from custom_components.better_xiaomi_cloud_map_extractor.repairs import FAILURE_THRESHOLD, LAN_UNREACHABLE_UPDATES
+from custom_components.better_xiaomi_cloud_map_extractor.issues import FAILURE_THRESHOLD, LAN_UNREACHABLE_UPDATES
 
 from .const import ENTRY_DATA, HOST, MAC, TOKEN
 from .fake_miio import FakeLanVacuum, lan_vacuum

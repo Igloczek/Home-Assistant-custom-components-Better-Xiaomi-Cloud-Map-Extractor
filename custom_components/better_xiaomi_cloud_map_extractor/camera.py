@@ -10,7 +10,8 @@ from .const import CONTENT_TYPE
 from .coordinator import XiaomiCloudMapExtractorDataUpdateCoordinator
 from .entity import XiaomiCloudMapExtractorEntity
 from .types import XiaomiCloudMapExtractorConfigEntry
-from .legacy import handle_old_config, LEGACY_PLATFORM_SCHEMA
+from .legacy import handle_old_config
+from .legacy_schema import LEGACY_PLATFORM_SCHEMA
 
 _LOGGER = logging.getLogger(__name__)
 KEY = "live_map"

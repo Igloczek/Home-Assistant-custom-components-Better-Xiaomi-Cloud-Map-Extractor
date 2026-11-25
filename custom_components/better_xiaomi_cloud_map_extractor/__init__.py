@@ -63,7 +63,7 @@ from .migration import (
     importable_original_entries,
 )
 from .original_yaml import async_check_original_yaml, async_find_original_yaml, original_yaml_issue_id
-from .repairs import issue_ids
+from .issues import issue_ids
 from .store import restore_connector_config, save_connector_config
 from .types import XiaomiCloudMapExtractorConfigEntry, XiaomiCloudMapExtractorRuntimeData
 

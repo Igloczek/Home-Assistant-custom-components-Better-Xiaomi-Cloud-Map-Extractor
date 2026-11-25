@@ -27,7 +27,7 @@ from .connector.utils.exceptions import (
     RetryLaterException,
 )
 from .const import DOMAIN, DEFAULT_UPDATE_INTERVAL
-from .repairs import async_check_map_format, async_report_update
+from .issues import async_check_map_format, async_report_update
 
 _LOGGER = logging.getLogger(__name__)
 

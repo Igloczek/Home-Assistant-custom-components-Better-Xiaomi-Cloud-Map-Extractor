@@ -35,7 +35,7 @@ from custom_components.better_xiaomi_cloud_map_extractor.connector.utils.excepti
     MapSavingDisabledException,
 )
 from custom_components.better_xiaomi_cloud_map_extractor.const import DOMAIN
-from custom_components.better_xiaomi_cloud_map_extractor.repairs import FAILURE_THRESHOLD, LAN_UNREACHABLE_UPDATES
+from custom_components.better_xiaomi_cloud_map_extractor.issues import FAILURE_THRESHOLD, LAN_UNREACHABLE_UPDATES
 from custom_components.better_xiaomi_cloud_map_extractor.store import (
     restore_connector_config,
     save_connector_config,
