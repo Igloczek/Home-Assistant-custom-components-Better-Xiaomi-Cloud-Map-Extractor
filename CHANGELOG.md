@@ -3,6 +3,7 @@
 ## Unreleased
 
 - A vacuum imported from v2 YAML with `force_api` set now loads; before, setup failed with `ValueError: 'viomi' is not a valid VacuumApi`.
+- The cloud connection no longer uses `locale.getdefaultlocale`, which Python 3.15 removes; the locale sent to Xiaomi stays the same, and `LC_CTYPE=utf-8` no longer fails.
 - Internal: split the cloud connector, config flow, repairs, v2 YAML import and map update into focused modules; no behaviour change.
 
 ## 0.1.4 - 2026-11-25

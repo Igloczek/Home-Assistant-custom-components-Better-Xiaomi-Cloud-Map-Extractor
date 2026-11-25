@@ -7,6 +7,7 @@ failed one never replaces the session in use.
 from __future__ import annotations
 import datetime
 import locale
+import os
 import logging
 from collections.abc import AsyncIterator, Callable
 from contextlib import asynccontextmanager
@@ -27,6 +28,17 @@ _LOGGER = logging.getLogger(f"{__package__}.connector")
 # serviceLogin is asked to renew the session this long before the stored expiration.
 SESSION_RENEWAL_MARGIN = datetime.timedelta(days=1)
 DEFAULT_SESSION_LIFETIME = datetime.timedelta(days=20)
+
+
+def _default_locale() -> str | None:
+    """The language code `locale.getdefaultlocale` gave (it goes away in Python 3.15)."""
+    for variable in ("LC_ALL", "LC_CTYPE", "LANG", "LANGUAGE"):
+        if value := os.environ.get(variable):
+            name = locale.normalize(value.split(":")[0])
+            if name == "C" or name.upper() == "UTF-8":
+                return None
+            return name.split("@")[0].split(".")[0]
+    return None
 
 
 @dataclass
@@ -129,7 +141,7 @@ class XiaomiCloudSession:
         self._username = None
         self._password = None
         self._session_creator = session_creator
-        self._locale = locale.getdefaultlocale()[0] or "en_GB"
+        self._locale = _default_locale() or "en_GB"
         timezone = datetime.datetime.now(tzlocal.get_localzone()).strftime('%z')
         self._timezone = f"GMT{timezone[:-2]}:{timezone[-2:]}"
         self.server = server
