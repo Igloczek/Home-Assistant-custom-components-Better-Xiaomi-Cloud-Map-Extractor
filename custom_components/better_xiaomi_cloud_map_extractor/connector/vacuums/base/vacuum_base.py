@@ -69,8 +69,16 @@ class BaseXiaomiCloudVacuum(ABC):
         pass
 
     def decode_and_parse(self: Self, raw_map: bytes) -> MapData:
-        decoded_map = self.map_data_parser.unpack_map(raw_map)
-        return self.map_data_parser.parse(decoded_map)
+        # The parser packages raise whatever their decompression or decoding hits (zlib, gzip,
+        # struct, an index past the end); each is a map that could not be read.
+        try:
+            decoded_map = self.map_data_parser.unpack_map(raw_map)
+            return self.map_data_parser.parse(decoded_map)
+        except FailedMapParseException:
+            raise
+        except Exception as err:  # noqa: BLE001
+            _LOGGER.debug("Failed to read the %s map: %r", self.model, err)
+            raise FailedMapParseException() from err
 
     @abstractmethod
     async def get_map_url(self: Self, map_name: str) -> str | None:
@@ -91,12 +99,11 @@ class BaseXiaomiCloudVacuum(ABC):
         _LOGGER.debug("Downloaded raw map: \"%d\".", len(raw_map_data))
         _LOGGER.debug("Parsing map...")
         map_data = await asyncio.to_thread(self.decode_and_parse, raw_map_data)
-        _LOGGER.debug("Parsed map: (%d x %d)", map_data.image.dimensions.height, map_data.image.dimensions.width)
-        if map_data is not None:
-            map_data.map_name = map_name
-        else:
-            _LOGGER.error("FailedMapParseException")
+        if map_data is None or map_data.image is None:
+            _LOGGER.debug("The %s map parsed to nothing", self.model)
             raise FailedMapParseException()
+        _LOGGER.debug("Parsed map: (%d x %d)", map_data.image.dimensions.height, map_data.image.dimensions.width)
+        map_data.map_name = map_name
         return map_data, raw_map_data
 
     async def get_raw_map_data(self: Self, map_name: str | None) -> bytes | None:

@@ -125,7 +125,7 @@ class DreameCloudVacuum(BaseXiaomiCloudVacuumV2):
             _key = path_extractor(response, "result.out.1.value")
 
             if _key is None or len(_key) == 0:
-                self._robot_stamp = path_extractor(response, "result.out.2.value")
+                self._robot_stamp = path_extractor(response, "result.out.2.value") or 0
                 return None
 
             _map_name = _key.split(",")

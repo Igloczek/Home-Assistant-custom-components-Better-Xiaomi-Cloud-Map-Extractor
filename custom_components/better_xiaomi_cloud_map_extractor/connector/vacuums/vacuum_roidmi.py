@@ -28,6 +28,7 @@ class RoidmiCloudVacuum(BaseXiaomiCloudVacuumV2):
     def vacuum_platform() -> VacuumApi:
         return VacuumApi.ROIDMI
 
+    @property
     def map_archive_extension(self: Self) -> str:
         return "gz"
 

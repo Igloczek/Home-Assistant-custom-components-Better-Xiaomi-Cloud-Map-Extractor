@@ -13,6 +13,7 @@
     "pybase64",
     "python-miio",
     "pycryptodome",
+    "protobuf",
     "vacuum-map-parser-base==0.1.5",
     "vacuum-map-parser-roborock>=0.1.5",
     "vacuum-map-parser-viomi==0.1.3",

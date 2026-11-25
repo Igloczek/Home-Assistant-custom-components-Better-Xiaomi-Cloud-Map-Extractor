@@ -323,3 +323,24 @@ async def test_long_poll_failures_raise_connector_errors(long_poll, expected: ty
     with pytest.raises(expected):
         await connector.login_with_qr_wait_for_completion()
     assert not connector.has_service_token()
+
+
+
+async def test_malformed_login_link_redirect_keeps_the_link(hass: HomeAssistant, cloud: FakeXiaomiCloud) -> None:
+    """A Location header that is no URL: the QR code is still shown, with the link as Xiaomi gave it."""
+    cloud.on("GET", QR_LINK, lambda r: FakeResponse(status=302, headers={"Location": "http://[not-a-host"}))
+
+    result = await _start_qr(hass)
+
+    assert result["type"] is FlowResultType.SHOW_PROGRESS
+    assert result["description_placeholders"]["login_link"].startswith(QR_LINK)
+
+
+async def test_unexpected_error_getting_the_qr_code_shows_an_error(hass: HomeAssistant) -> None:
+    """A bug while asking for the code ends on a form the user can retry from, never "Unknown error"."""
+    with patch.object(XiaomiCloudConnector, "login_with_qr_get_code", AsyncMock(side_effect=RuntimeError("bug"))):
+        result = await _start_qr(hass)
+
+    assert result["type"] is FlowResultType.FORM
+    assert result["step_id"] == "auth_qr_failed"
+    assert result["errors"] == {"base": "qr_failed"}

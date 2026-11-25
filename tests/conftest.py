@@ -70,6 +70,8 @@ def assert_renders(texts: dict, result: dict) -> None:
         # A form field without a label shows its raw key.
         fields = result.get("data_schema") if kind is FlowResultType.FORM else None
         for field in (fields or vol.Schema({})).schema:
+            if step_id == "room_colors_step2" and str(field).isdigit():
+                continue  # one field per room, labelled with the room id itself
             assert str(field) in step.get("data", {}), f"field {str(field)!r} of step {step_id!r} has no label"
     else:
         return
