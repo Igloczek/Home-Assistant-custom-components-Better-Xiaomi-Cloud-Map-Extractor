@@ -50,7 +50,15 @@ from custom_components.better_xiaomi_cloud_map_extractor.issues import FAILURE_T
 from .const import ENTRY_DATA, HOST, MAC, TOKEN
 from .fake_miio import FakeLanVacuum, lan_vacuum
 from .dreame_map import MD1808_ENCRYPTED_MAP, build_frame, plain_map
-from .fake_xiaomi import API, USER_ID, FakeResponse, FakeXiaomiCloud, bad_gateway, connection_timeout
+from .fake_xiaomi import (
+    API,
+    USER_ID,
+    FakeResponse,
+    FakeXiaomiCloud,
+    bad_gateway,
+    connection_timeout,
+    rc4_request_value,
+)
 from .ijai_map import DEVICE_ID, WIFI_SN, build_map, encrypt_map, map_key
 from .log_secrets import MAP_URL_QUERY, assert_no_secrets, leaked
 from .test_session_lifecycle import stored_session
@@ -480,6 +488,124 @@ async def test_unreadable_cloud_state_falls_back_to_the_map_check(
     vacuum.home.map_version += 1
     shown = hass.states.get(IMAGE).state
     await vacuum.cycles(freezer, CYCLES_PER_MINUTE)
+    assert hass.states.get(IMAGE).state != shown
+
+
+# --- Roborock without the local network ---------------------------------------------------------
+# Roborock reads its map name (`get_map_v1`) and state (`get_status`) on the LAN. Off the LAN it asks
+# the same miIO commands through the Xiaomi cloud (`/v2/home/rpc/<did>`), which forwards them to the
+# vacuum, so a vacuum on another network still gets its map (upstream #601).
+
+ROBOROCK = next(v for v in VENDORS if v.api == "ROBOROCK")
+GET_STATUS = {"method": "get_status", "params": []}
+GET_MAP = {"method": "get_map_v1", "params": []}
+
+
+def _map_names_asked(home: VacuumHome) -> list[str]:
+    return [json.loads(rc4_request_value(r, "data"))["obj_name"] for r in home.cloud.calls(f"{API}/home/getmapfileurl")]
+
+
+async def test_roborock_off_the_lan_gets_its_first_map_through_the_cloud(
+    hass: HomeAssistant, setup_vacuum, freezer: FrozenDateTimeFactory
+) -> None:
+    """The map name came only from the LAN: ten retries with a growing backoff, then no map at all."""
+    vacuum = setup_vacuum(ROBOROCK)
+    vacuum.home.lan.reachable = False
+    vacuum.home.lan.roborock_map_name = "cloud-map-name"
+
+    with patch.object(Backoff, "sleep", AsyncMock()) as backoff:
+        await vacuum.setup()
+
+    assert vacuum.entry.runtime_data.coordinator.data.map_data is not None
+    assert GET_MAP in vacuum.home.lan.cloud_calls
+    assert _map_names_asked(vacuum.home) == ["cloud-map-name"]
+    backoff.assert_not_awaited()  # no LAN retries before asking the cloud
+
+
+async def test_roborock_off_the_lan_renews_a_rejected_session_before_retrying(
+    hass: HomeAssistant, setup_vacuum, freezer: FrozenDateTimeFactory
+) -> None:
+    """Xiaomi rejecting the session while the map name is asked through the cloud is renewed at once,
+    not retried with a backoff as if the vacuum were away."""
+    vacuum = setup_vacuum(ROBOROCK)
+    vacuum.home.lan.reachable = False
+    with patch.object(Backoff, "sleep", AsyncMock()):
+        await vacuum.setup()
+        await vacuum.cycles(freezer, 1)  # the status check finds the vacuum off the LAN
+    vacuum.home.cloud.valid_service_tokens.clear()
+    vacuum.home.cloud.pass_token_login()
+    vacuum.home.cloud.sts_issuing("renewed-service-token")
+    vacuum.home.cloud.requests.clear()
+    vacuum.home.map_version += 1
+    shown = hass.states.get(IMAGE).state
+
+    with patch.object(Backoff, "sleep", AsyncMock()) as backoff, lan_vacuum(vacuum.home.lan):
+        await vacuum.entry.runtime_data.coordinator.force_update_data()
+        await hass.async_block_till_done()
+
+    assert hass.states.get(IMAGE).state != shown
+    assert _map_names_asked(vacuum.home) == ["map-name"]
+    backoff.assert_not_awaited()
+
+
+async def test_roborock_on_the_lan_does_not_ask_the_cloud(
+    hass: HomeAssistant, setup_vacuum, freezer: FrozenDateTimeFactory
+) -> None:
+    """A reachable Roborock keeps using the LAN only: the cloud fallback adds no requests."""
+    vacuum = setup_vacuum(ROBOROCK)
+    await vacuum.setup()
+    vacuum.home.start_cleaning()
+    await vacuum.cycles(freezer, 3)
+
+    assert vacuum.home.lan.cloud_calls == []
+
+
+async def test_roborock_off_the_lan_follows_a_clean_through_the_cloud(
+    hass: HomeAssistant, setup_vacuum, freezer: FrozenDateTimeFactory
+) -> None:
+    """Off the LAN the state read failed and the map stopped updating for good; the cloud status follows
+    the clean, and the repair still says the vacuum does not answer on the LAN."""
+    vacuum = setup_vacuum(ROBOROCK)
+    vacuum.home.lan.reachable = False
+    with patch.object(Backoff, "sleep", AsyncMock()):
+        await vacuum.setup()
+        await _settle_docked(vacuum, freezer)
+        before = vacuum.home.downloads
+        await vacuum.cycles(freezer, DOCKED_MINUTES * CYCLES_PER_MINUTE)
+        assert vacuum.home.downloads == before, "a vacuum the cloud reports docked needs no map check"
+        vacuum.home.lan.cloud_calls.clear()
+        await vacuum.cycles(freezer, 1)
+        assert vacuum.home.lan.cloud_calls == [GET_STATUS], "one small cloud request per docked update"
+
+        vacuum.home.start_cleaning()
+        vacuum.home.map_version += 1
+        shown = hass.states.get(IMAGE).state
+        await vacuum.cycles(freezer, 3)
+
+    assert vacuum.home.downloads - before == 3
+    assert hass.states.get(IMAGE).state != shown
+    issue = _lan_issue(hass, vacuum.entry.entry_id)
+    assert issue is not None and issue.severity is ir.IssueSeverity.WARNING
+
+
+async def test_roborock_off_the_lan_with_an_unreadable_cloud_state_still_gets_new_maps(
+    hass: HomeAssistant, setup_vacuum, freezer: FrozenDateTimeFactory
+) -> None:
+    """Neither the LAN nor the cloud tell the state: the map is checked once a minute, never frozen."""
+    vacuum = setup_vacuum(ROBOROCK)
+    vacuum.home.lan.reachable = False
+    vacuum.home.lan.roborock_state = "busy"
+    with patch.object(Backoff, "sleep", AsyncMock()):
+        await vacuum.setup()
+        await _settle_docked(vacuum, freezer)
+        before = vacuum.home.downloads
+        await vacuum.cycles(freezer, DOCKED_MINUTES * CYCLES_PER_MINUTE)
+        assert 0 < vacuum.home.downloads - before <= DOCKED_MINUTES
+
+        vacuum.home.map_version += 1
+        shown = hass.states.get(IMAGE).state
+        await vacuum.cycles(freezer, CYCLES_PER_MINUTE)
+
     assert hass.states.get(IMAGE).state != shown
 
 
