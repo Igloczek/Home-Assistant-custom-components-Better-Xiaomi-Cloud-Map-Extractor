@@ -2,6 +2,20 @@
 
 ## Unreleased
 
+## 1.0.4 - 2026-11-27
+
+### Changed
+
+- The leftover v2 YAML repair (`original_yaml`) is now instruction-only: it still names the exact
+  file and line and shows the redacted YAML block to delete, without modifying user YAML files or
+  writing backup copies (following HACS review feedback).
+
+### Fixed
+
+- Cloud sessions now use Home Assistant's configured timezone (`homeassistant.util.dt.get_default_time_zone()`)
+  instead of `tzlocal`, avoiding an unlisted third-party import and timezone disk reads on the event
+  loop.
+
 ## 1.0.3 - 2026-11-26
 
 ### Changed
