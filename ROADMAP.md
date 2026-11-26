@@ -17,16 +17,9 @@ with a test that fails first (see [AGENTS.md](AGENTS.md)).
 
 Out as pre-releases, waiting for owners to confirm; merged in 1.0.x once confirmed:
 
-- **Xiaomi models: live data and map index** (fork PR #18; b108gl, ov21gl and ov81gl owners):
-  upstream PRs #781, #750 and a generalised #748. Robot position and path, the map index, the current
-  map through the cloud when the LAN does not answer, the status property of models such as the d109gl
-  and the H50 (`xiaomi.vacuum.ov43gb`), ov21gl rooms and S40 zones, and the H40 map path from the
-  object path the vacuum reports (#762). Closes #563, #588, #657, #702, #704, #720, #739, #762.
-- **Roborock map without the local network** (fork PR #22; a Roborock owner off the LAN): the map name
-  and status through the cloud when Home Assistant cannot reach the vacuum (#601, and with fork PR #18
-  #381).
-- **Jonr P20 and Roidmi sdj60** (fork PR #28; owners of each): the new XTL map format for
-  `xtl.vacuum.xm2216` (#621) and the sdj60 map from upstream PR #768 (#572).
+- **Xiaomi `c107` unencrypted map decoding** (fork PR #50, `v1.0.3-beta.1`, issue #10; `xiaomi.vacuum.c107` / Mijia M30 Pro owners): fallback to decode unencrypted `base64(zlib(JSON))` / raw `zlib(JSON)` Xiaomi map blobs after the AES-CBC path, plus debug logging for Xiaomi parse failures.
+- **Roborock map without the local network** (fork PR #22, `v1.0.1-beta.2`, issue #24; a Roborock owner off the LAN): the map name and status through the cloud when Home Assistant cannot reach the vacuum (#601, #381).
+- **Jonr P20 and Roidmi sdj60** (fork PR #28, `v1.0.1-beta.3`, issue #29; owners of each): the new XTL map format for `xtl.vacuum.xm2216` (#621) and the sdj60 map from upstream PR #768 (#572).
 
 Unverified: an unencrypted API answer with code 2 or 3, or the message `invalid signature`, is
 treated as an expired session (renewal, then password login). That mirrors other Xiaomi cloud
@@ -45,7 +38,7 @@ numbers refer to the upstream repository; each item names the priority it serves
 1. **Drop-in follow-up** (P3): decide whether to raise a repair issue that points users of the
    original at the import once this integration is running. (The import itself was verified end to
    end on a real Home Assistant, with the original installed and then removed, on 2026-11-24.)
-2. **Pre-releases in 1.0.x**: merge fork PRs #18, #22 and #28 (above) as owners confirm them.
+2. **Pre-releases in 1.0.x**: merge fork PRs #22, #28 and #50 (above) as owners confirm them.
 
 ## Since 1.0.0
 

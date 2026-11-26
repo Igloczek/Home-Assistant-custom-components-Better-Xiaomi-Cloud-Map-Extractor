@@ -63,7 +63,7 @@ maintainer.
   Roborock integration and close.
 - **Map card problems:** room taps, dashboard overlays, zoom, rotation, tiles, and YAML card config
   belong to `Igloczek/lovelace-better-xiaomi-vacuum-map-card`. Redirect the user there.
-- **Testing & feedback issues:** issues opened to test unmerged pre-releases (currently #24, #29)
+- **Testing & feedback issues:** issues opened to test unmerged pre-releases (currently #10, #24, #29)
   stay open only until their fix ships in a stable release; once shipped, close them as `completed`
   with a clear, marked closing comment stating what version fixed it, what was verified, and that
   replying with a problem will reopen it (never close an issue silently). When confirmation or
