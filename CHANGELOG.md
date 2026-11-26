@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## 1.0.3 - 2026-11-26
+
+### Changed
+
+- The AI agent problem-reporting skill (`.agents/skills/report-problem/SKILL.md`) and [`docs/report-a-problem.md`](docs/report-a-problem.md) now always show the full rendered, redacted report (including diagnostics, options, room names and log lines) and wait for explicit user confirmation before filing or commenting on GitHub (following HACS review feedback).
+
 ## 1.0.2 - 2026-11-25
 
 ### Fixed
