@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -369,3 +370,14 @@ def test_non_agent_issue_is_not_flagged_as_agent(body: str) -> None:
     assert review["isAgent"] is False
     assert review["complete"] is False
     assert review["error"] is None
+
+
+def test_report_problem_skill_requires_user_confirmation_before_filing() -> None:
+    """Frenck's HACS review (hacs/default#14136): show the rendered report and wait for a yes."""
+    skill_path = REPO_ROOT / ".agents" / "skills" / "report-problem" / "SKILL.md"
+    skill = skill_path.read_text(encoding="utf-8")
+
+    assert not re.search(r"do not ask for\s+confirmation before filing", skill, re.IGNORECASE)
+    assert not re.search(r"without further human work", skill, re.IGNORECASE)
+    assert re.search(r"show.*rendered report", skill, re.IGNORECASE)
+    assert re.search(r"wait for.*(?:yes|confirmation)", skill, re.IGNORECASE)

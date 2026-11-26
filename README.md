@@ -249,8 +249,9 @@ and follow it to report this problem with my Xiaomi vacuum map:
 <what is wrong, e.g. "my Xiaomi S12 map fails to update while cleaning">
 ```
 
-It asks once for a temporary Home Assistant token and only reads. It never publishes credentials,
-Xiaomi session tokens, device tokens, map decryption keys, network addresses, or the map image. The
+It asks once for a temporary Home Assistant token, only reads, and shows you the rendered, redacted
+report to confirm before posting anything publicly. It never publishes credentials, Xiaomi session
+tokens, device tokens, map decryption keys, network addresses, or the map image. The
 [step-by-step guide](docs/report-a-problem.md) covers the token, what leaves your computer, and
 follow-up questions.
 

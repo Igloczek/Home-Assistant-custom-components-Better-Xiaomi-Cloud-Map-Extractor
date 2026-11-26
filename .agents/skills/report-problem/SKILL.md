@@ -1,26 +1,30 @@
 ---
 name: report-problem
-description: Turn a user's Better Xiaomi Cloud Map Extractor problem into a complete, redacted, reproducible agent report and file it on the fork's tracker without further human work. Use when a user describes a map download, login, decryption, repair, migration, or entity problem, or points you at an existing issue to enrich.
+description: Turn a user's Better Xiaomi Cloud Map Extractor problem into a complete, redacted, reproducible agent report, show it to the user for confirmation, and file it on the fork's tracker. Use when a user describes a map download, login, decryption, repair, migration, or entity problem, or points you at an existing issue to enrich.
 ---
 
 # Report a map extractor problem, end to end
 
-The user told you what is wrong. Everything after that is your job: collect the evidence, redact it,
-diagnose what you can, check for duplicates, file the report and give the user the link. The
-maintainer trusts agent reports more than hand-written ones because they are complete and
-structured, so do not hand work back to the user that you can do yourself.
+The user told you what is wrong. Your job is to collect the evidence, redact it, diagnose what you
+can, check for duplicates, show the rendered report to the user for a yes, file it, and give the
+user the link. The maintainer trusts agent reports more than hand-written ones because they are
+complete and structured, so do not hand collection or diagnosis work back to the user that you can
+do yourself.
 
 Repository: `Igloczek/better-xiaomi-cloud-map-extractor`. The tooling lives in
 [`scripts/agent-report/`](../../../scripts/agent-report/) (Python 3 standard library, no dependencies).
 
 ## Ground rules
 
-- **The user's request is the go-ahead.** Asking you to report the problem authorises you to
-  collect the integration's data read-only and to file the redacted report publicly. Do not ask for
-  confirmation before filing.
-- **Ask only when blocked.** The only things you may ask for are access (a token or a browser tab,
-  see step 2) and the symptom, if the user gave none. Everything else — versions, vacuum model,
-  map format, diagnostics, repairs, entities, logs — you collect.
+- **Confirm before publishing.** Asking you to report the problem authorises you to collect the
+  integration's data read-only and prepare the redacted report, not to publish it sight unseen.
+  Always show the rendered report (title and full redacted body) to the user and wait for a yes
+  before running `gh issue create`, `gh issue comment`, or `gh issue edit`, or submitting it
+  through a browser.
+- **Otherwise ask only when blocked.** Aside from that confirmation before publishing, the only
+  things you may ask for are access (a token or a browser tab, see step 2) and the symptom, if the
+  user gave none. Everything else — versions, vacuum model, map format, diagnostics, repairs,
+  entities, logs — you collect.
 - **Read-only.** Never change Home Assistant configuration, integrations, options or entities, call
   services, restart anything, or patch files. Never read `secrets.yaml`, `.storage/auth*`,
   `.storage/better_xiaomi_cloud_map_extractor_*`, `.storage/xiaomi_cloud_map_extractor_*`, or credentials.
@@ -131,23 +135,37 @@ Search with `--search` on the vacuum model, error text and symptom; read likely 
 matches, add your report to it as a comment (step 7 with `gh issue comment`) instead of filing a
 new issue.
 
-## 7. File it
+## 7. Review with the user and file it
+
+First render and validate the report:
 
 ```sh
 python3 scripts/agent-report/cli.py render /tmp/map-extractor-report/report.json > /tmp/map-extractor-report/issue.md
 python3 scripts/agent-report/cli.py check /tmp/map-extractor-report/issue.md
+```
+
+`render` refuses a report with missing fields; `check` runs the same validation as triage. Do not
+edit the marker or the data block by hand.
+
+**Show the rendered report and wait for a yes before filing.** Display the issue title (printed by
+`render`) and the full contents of `/tmp/map-extractor-report/issue.md` — including the redacted
+diagnostics, options, room names, entity states and log lines that will become public — and ask the
+user to confirm. If they want anything changed or removed, update `report.json`, re-run `render`
+and `check`, and show the updated report before posting.
+
+Only after the user confirms, file it:
+
+```sh
 gh issue create --repo Igloczek/better-xiaomi-cloud-map-extractor \
   --title "<title printed by render>" --body-file /tmp/map-extractor-report/issue.md
 # duplicate or an existing issue you were pointed at:
 gh issue comment <number> --repo Igloczek/better-xiaomi-cloud-map-extractor --body-file /tmp/map-extractor-report/issue.md
 ```
 
-`render` refuses a report with missing fields; `check` runs the same validation as triage. Do not
-edit the marker or the data block by hand. Triage labels a valid report `agent-report`; you cannot
-set labels yourself.
+Triage labels a valid report `agent-report`; you cannot set labels yourself.
 
-If `gh` is not installed or not logged in, try in order: the user's logged-in browser if you control
-one; otherwise open
+If `gh` is not installed or not logged in (still after the user confirms), try in order: the user's
+logged-in browser if you control one; otherwise open
 `https://github.com/Igloczek/better-xiaomi-cloud-map-extractor/issues/new?template=agent_report.yml&title=<url-encoded title>&report=<url-encoded issue.md>`
 for the user, which needs one click on **Create**. If the URL would exceed 8,000 characters, ask
 the user to run `gh auth login` once instead.
@@ -158,8 +176,9 @@ Give the user the issue link and one sentence on what you found. Tell them to de
 they created one for you.
 
 When the user later points you at the issue ("the maintainer asked something"), read the issue and
-its comments, collect again if needed, and answer as a comment. If triage commented that the report
-is incomplete, fix the fields it lists and edit the issue body with
+its comments, collect again if needed, show the drafted comment or updated report and wait for a
+yes, then post it. If triage commented that the report is incomplete, fix the fields it lists,
+show the updated report for confirmation, and edit the issue body with
 `gh issue edit <number> --body-file issue.md`.
 
 ## Browser snapshot
