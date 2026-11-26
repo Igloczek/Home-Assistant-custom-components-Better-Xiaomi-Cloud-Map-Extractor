@@ -76,3 +76,22 @@ def test_every_import_is_installed_by_the_manifest() -> None:
             missing[module] = sorted(distributions)
 
     assert not missing, f"imported but not installed through manifest.json: {missing}"
+
+
+def test_integration_imports_are_direct_manifest_or_homeassistant_requirements() -> None:
+    """Integration code must not rely on transitive dependencies of third-party requirements."""
+    manifest_direct = {
+        metadata.distribution(Requirement(r).name).metadata["Name"].lower().replace("_", "-")
+        for r in MANIFEST["requirements"]
+    }
+    allowed = manifest_direct | _closure(["homeassistant"])
+    providers = metadata.packages_distributions()
+    files = list(INTEGRATION.rglob("*.py"))
+
+    indirect = {}
+    for module in _imports(files) - set(sys.stdlib_module_names):
+        distributions = {d.lower().replace("_", "-") for d in providers.get(module, [])}
+        if distributions and not distributions & allowed:
+            indirect[module] = sorted(distributions)
+
+    assert not indirect, f"imported from transitive requirement not in manifest.json or Home Assistant: {indirect}"

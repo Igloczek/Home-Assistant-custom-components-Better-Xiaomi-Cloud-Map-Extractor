@@ -715,22 +715,11 @@
     },
     "original_left_yaml": {
       "title": "{name} moved from Xiaomi Cloud Map Extractor",
-      "description": "{name} now runs in Better Xiaomi Cloud Map Extractor with the same device and entity ids. Its entry in Xiaomi Cloud Map Extractor is disabled and no longer needed.\n\nTo finish switching, in this order:\n\n1. Remove the `xiaomi_cloud_map_extractor` camera from `{file}` (line {line}): open the repair **Remove the leftover YAML of the original Xiaomi Cloud Map Extractor** and submit it. It removes the block in one click, with no restart. If the original is uninstalled while the block is still there, Home Assistant reports an error at every start.\n2. Delete the disabled Xiaomi Cloud Map Extractor entry under Settings > Devices & services (the device and entities stay here).\n3. Uninstall Xiaomi Cloud Map Extractor."
+      "description": "{name} now runs in Better Xiaomi Cloud Map Extractor with the same device and entity ids. Its entry in Xiaomi Cloud Map Extractor is disabled and no longer needed.\n\nTo finish switching, in this order:\n\n1. Delete the `xiaomi_cloud_map_extractor` camera from `{file}` (line {line}) — the **Remove the leftover YAML of the original Xiaomi Cloud Map Extractor** repair shows the block — and restart Home Assistant. If the original is uninstalled while the block is still there, Home Assistant reports an error at every start.\n2. Delete the disabled Xiaomi Cloud Map Extractor entry under Settings > Devices & services (the device and entities stay here).\n3. Uninstall Xiaomi Cloud Map Extractor."
     },
     "original_yaml": {
       "title": "Remove the leftover YAML of the original Xiaomi Cloud Map Extractor",
-      "fix_flow": {
-        "step": {
-          "confirm": {
-            "title": "Remove the leftover YAML of the original Xiaomi Cloud Map Extractor",
-            "description": "{name} now runs in Better Xiaomi Cloud Map Extractor, but `{file}` still sets it up for the original Xiaomi Cloud Map Extractor (line {line}):\n\n{snippet}\n\nBetter Xiaomi Cloud Map Extractor does not use this block. Without the original installed, it makes Home Assistant report \"Integration 'xiaomi_cloud_map_extractor' not found\" at every start.\n\nSelect **Submit** to remove it from `{file}`. A backup copy of the file is saved next to it first, and nothing else in the file changes. Your vacuum, entities and settings stay as they are, and there is nothing to restart."
-          }
-        },
-        "abort": {
-          "already_removed": "The block is already gone.",
-          "remove_by_hand": "The block in `{file}` (line {line}) couldn't be removed automatically, so the file was left unchanged. Delete this `- platform: xiaomi_cloud_map_extractor` item from `{file}` (and the `camera:` line, if nothing else is under it), then restart Home Assistant:\n\n{snippet}\n\nThe username, password and token are hidden above; your file may show them or use `!secret`."
-        }
-      }
+      "description": "{name} now runs in Better Xiaomi Cloud Map Extractor, but `{file}` still sets it up for the original Xiaomi Cloud Map Extractor (line {line}):\n\n{snippet}\n\nBetter Xiaomi Cloud Map Extractor does not use this block. Without the original installed, it makes Home Assistant report \"Integration 'xiaomi_cloud_map_extractor' not found\" at every start.\n\nDelete this `- platform: xiaomi_cloud_map_extractor` item from `{file}` (and the `camera:` line, if nothing else is under it), then restart Home Assistant. Your vacuum, entities and settings stay as they are. The username, password and token are hidden above; your file may show them or use `!secret`."
     },
     "wrong_map_format": {
       "title": "{name}: the map cannot be read in the {used_api} map format",

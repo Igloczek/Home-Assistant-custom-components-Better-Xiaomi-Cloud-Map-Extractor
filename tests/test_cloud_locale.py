@@ -1,10 +1,12 @@
-"""The locale the cloud API is called with comes from the environment, like Python's old `getdefaultlocale`."""
+"""The locale and timezone the cloud API is called with."""
 
 from __future__ import annotations
 
+import datetime
 import warnings
 
 import pytest
+from homeassistant.util import dt as dt_util
 
 from custom_components.better_xiaomi_cloud_map_extractor.connector.xiaomi_cloud.connector import XiaomiCloudConnector
 
@@ -49,3 +51,23 @@ def test_no_deprecated_locale_call() -> None:
     with warnings.catch_warnings():
         warnings.simplefilter("error", DeprecationWarning)
         _connector()
+
+
+@pytest.mark.parametrize(
+    ("tz", "expected"),
+    [
+        (datetime.timezone.utc, "GMT+00:00"),
+        (datetime.timezone(datetime.timedelta(hours=5, minutes=30)), "GMT+05:30"),
+        (datetime.timezone(datetime.timedelta(hours=-5)), "GMT-05:00"),
+    ],
+)
+async def test_timezone_uses_home_assistant_default_without_blocking_io(
+    tz: datetime.tzinfo, expected: str
+) -> None:
+    """The session timezone comes from Home Assistant's configured timezone, not tzlocal disk I/O."""
+    previous = dt_util.get_default_time_zone()
+    dt_util.set_default_time_zone(tz)
+    try:
+        assert _connector()._timezone == expected
+    finally:
+        dt_util.set_default_time_zone(previous)

@@ -14,10 +14,10 @@ from contextlib import asynccontextmanager
 from dataclasses import dataclass, fields
 from typing import Self, Unpack
 
-import tzlocal
 from aiohttp import ClientSession, ClientResponse, ClientTimeout
 from aiohttp.client import _RequestOptions
 from aiohttp.typedefs import StrOrURL
+from homeassistant.util import dt as dt_util
 from yarl import URL
 
 from .utils import generate_agent, generate_device_id
@@ -147,7 +147,7 @@ class XiaomiCloudSession:
         self._password = None
         self._session_creator = session_creator
         self._locale = _default_locale() or "en_GB"
-        timezone = datetime.datetime.now(tzlocal.get_localzone()).strftime('%z')
+        timezone = datetime.datetime.now(dt_util.get_default_time_zone()).strftime("%z")
         self._timezone = f"GMT{timezone[:-2]}:{timezone[-2:]}"
         self.server = server
         self._session_data = None

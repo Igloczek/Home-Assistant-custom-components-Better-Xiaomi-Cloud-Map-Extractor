@@ -33,7 +33,7 @@ Compared with the original [Xiaomi Cloud Map Extractor](https://github.com/Piotr
 | 🔧 Wrong IP, token or format | ❌ "Unknown error", dig through logs | ✅ plain-English message & one-click Repairs |
 | ⚡ Home Assistant performance | ❌ freezes HA, downloads docked maps every 10 s | ✅ non-blocking, pauses when docked, no logbook spam |
 | 🤖 Ijai & newer Xiaomi vacuums | ⚠️ decryption errors & tiny 800×800 maps | ✅ fixed decryption, map-saving alerts & auto-fit zoom |
-| 🧹 Old v2 YAML setups | ❌ crashes on import, leaves broken YAML | ✅ imports cleanly & removes old YAML in one click |
+| 🧹 Old v2 YAML setups | ❌ crashes on import, leaves broken YAML | ✅ imports cleanly & points out leftover YAML |
 | 🔒 Privacy in logs & diagnostics | ⚠️ leaks session tokens, map keys & signed URLs | ✅ secrets automatically redacted |
 | 🐛 Bug reports | ✍️ manual forms & logs | 🤖 [your AI agent files them](#reporting-a-problem) |
 
@@ -156,8 +156,8 @@ Keep the original integration installed until the final step:
 3. The import disables the vacuum's entry in the original integration (reversible at any time —
    nothing is deleted) and moves its device and entities here. No new login is needed.
 4. Open **Settings → Repairs** and follow the cleanup steps shown for your vacuum:
-   - If an old v2 YAML `camera:` block is still in your configuration, click the repair to remove it
-     automatically (a backup file is saved first; no restart needed).
+   - If an old v2 YAML `camera:` block is still in your configuration, follow the repair's
+     instructions to delete that block from the listed file and restart Home Assistant.
    - Delete the disabled entry in **Xiaomi Cloud Map Extractor** (your device and entities stay
      here).
    - Uninstall **Xiaomi Cloud Map Extractor** in Marketplace or HACS.
