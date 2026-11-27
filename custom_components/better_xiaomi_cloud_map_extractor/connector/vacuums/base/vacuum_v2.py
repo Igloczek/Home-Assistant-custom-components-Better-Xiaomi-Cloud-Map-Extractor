@@ -20,11 +20,11 @@ class BaseXiaomiCloudVacuumV2(BaseXiaomiCloudVacuum, ABC):
         return url
 
     async def get_fallback_map_url(self: Self, map_name: str, obj_name: str | None = None) -> str | None:
-        url = self._connector.get_api_url(self._server) + '/v2/home/get_interim_file_url_pro'
-    async def get_fallback_map_url(self: Self, map_name: str) -> str | None:
-        return await self.get_interim_file_url("/v2/home/get_interim_file_url_pro", map_name)
+        return await self.get_interim_file_url("/v2/home/get_interim_file_url_pro", map_name, obj_name)
 
-    async def get_interim_file_url(self: Self, endpoint: str, map_name: str) -> str | None:
+    async def get_interim_file_url(
+        self: Self, endpoint: str, map_name: str, obj_name: str | None = None
+    ) -> str | None:
         url = self._connector.get_api_url(self._server) + endpoint
         self.last_used_url = url
         params = {

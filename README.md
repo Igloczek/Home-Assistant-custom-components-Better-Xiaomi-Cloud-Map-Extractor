@@ -6,11 +6,8 @@
 
 A Home Assistant integration that brings your robot vacuum's live map from the Xiaomi cloud into
 Home Assistant — showing rooms, walls, obstacles, the dock, and the robot's live position and path.
-A Home Assistant integration that downloads your robot vacuum's map from the Xiaomi cloud and shows
-it as an image entity, with the robot's position, path, rooms, zones and obstacles drawn on it. It
-works with Xiaomi, Roborock (Mi Home app), Viomi, Roidmi, Dreame, Ijai and Jonr vacuums.
 
-It works with Xiaomi, Roborock (Mi Home app), Viomi, Roidmi, Dreame and Ijai vacuums.
+It works with Xiaomi, Roborock (Mi Home app), Viomi, Roidmi, Dreame, Ijai and Jonr vacuums.
 
 Part of the **Better** family for Home Assistant vacuums, designed to work together:
 
@@ -230,13 +227,10 @@ listed below, it often works by picking its brand's format there.
   - Mi Robot Vacuum-Mop 2 Pro (`ijai.vacuum.v3`), Xiaomi S10, S12, S20, and other Ijai models.
 - **Xiaomi** (other `xiaomi.vacuum.*` models):
   - Xiaomi H50 (`ov43gb`), M40S (`ov31cn`), and other Xiaomi-format models.
-- Ijai map format (`ijai.vacuum.*`, and `xiaomi.vacuum.b106eu`, `c103` and `d106gl`): Ijai vacuums
-  such as the Mi Robot Vacuum-Mop 2 Pro (`ijai.vacuum.v3`) and Xiaomi S10, S12 and S20.
-- Xiaomi map format (the other `xiaomi.vacuum.*` models), such as the H50 (`ov43gb`) and the M40S
-  (`ov31cn`).
-- XTL map format: `xtl.vacuum.xm2216` (Jonr P20, P20 Pro). The parser comes from
-  [Maedrawd's fork](https://github.com/Maedrawd/Home-Assistant-custom-components-Xiaomi-Cloud-Map-Extractor-jonrp20),
-  which owners confirmed against the Mi Home app; rooms are coloured but not yet named.
+- **XTL** (`xtl.vacuum.xm2216`):
+  - Jonr P20 and P20 Pro. The parser comes from
+    [Maedrawd's fork](https://github.com/Maedrawd/Home-Assistant-custom-components-Xiaomi-Cloud-Map-Extractor-jonrp20),
+    which owners confirmed against the Mi Home app; rooms are coloured but not yet named.
 
 </details>
 
