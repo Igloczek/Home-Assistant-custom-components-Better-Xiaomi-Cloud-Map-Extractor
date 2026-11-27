@@ -470,3 +470,27 @@ async def test_menu_import_of_an_original_in_an_unknown_map_format_changes_nothi
     assert original.disabled_by is None
     assert hass.config_entries.async_entries(DOMAIN) == []
     assert ir.async_get(hass).async_get_issue(DOMAIN, f"original_left_{original.entry_id}") is None
+
+
+async def test_import_of_a_jonr_p20_entry_from_maedrawds_fork_keeps_its_xtl_format(
+    hass: HomeAssistant, hass_storage: dict[str, Any], map_connector: MagicMock
+) -> None:
+    """Maedrawd's Jonr P20 fork of the original stores `used_map_api: XTL` under the original's domain."""
+    import dataclasses
+
+    from .original_entries import CONFIG_FLOW
+
+    shape = dataclasses.replace(
+        CONFIG_FLOW, data={**CONFIG_FLOW.data, "model": "xtl.vacuum.xm2216", "used_map_api": "XTL"}
+    )
+    original = add_original(hass, hass_storage, shape)
+
+    result = await _import_from_menu(hass, original)
+    await hass.async_block_till_done()
+
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+    entry = result["result"]
+    assert entry.data["used_map_api"] == "XTL"
+    assert entry.state is ConfigEntryState.LOADED
+    image = er.async_get(hass).async_get("image.living_room_vacuum_live_map")
+    assert dr.async_get(hass).async_get(image.device_id).manufacturer == "XTL (Jonr)"

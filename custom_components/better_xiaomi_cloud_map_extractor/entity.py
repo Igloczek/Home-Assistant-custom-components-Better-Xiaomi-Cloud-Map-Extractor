@@ -45,7 +45,7 @@ class XiaomiCloudMapExtractorEntity(CoordinatorEntity[XiaomiCloudMapExtractorDat
         self._attr_device_info = DeviceInfo(
             connections={(CONNECTION_NETWORK_MAC, self._mac)},
             identifiers={(DOMAIN, self._device_id)},
-            manufacturer=self._used_map_api.title(),
+            manufacturer=self._used_map_api.label,
             name=self._name,
             model=self._model,
         )

@@ -7,7 +7,7 @@
 A Home Assistant integration that brings your robot vacuum's live map from the Xiaomi cloud into
 Home Assistant — showing rooms, walls, obstacles, the dock, and the robot's live position and path.
 
-It works with Xiaomi, Roborock (Mi Home app), Viomi, Roidmi, Dreame and Ijai vacuums.
+It works with Xiaomi, Roborock (Mi Home app), Viomi, Roidmi, Dreame, Ijai and Jonr vacuums.
 
 Part of the **Better** family for Home Assistant vacuums, designed to work together:
 
@@ -177,7 +177,7 @@ The legacy v2 documentation stays on the
 ## Supported devices
 
 Works with **Xiaomi**, **Roborock** (paired with the Xiaomi Home / Mi Home app), **Viomi**,
-**Roidmi**, **Dreame** and **Ijai** vacuums. The map format is detected automatically from your
+**Roidmi**, **Dreame**, **Ijai** and **Jonr** vacuums. The map format is detected automatically from your
 model and marked with `*` in the last setup step (**Used map API**). Even if your exact model isn't
 listed below, it often works by picking its brand's format there.
 
@@ -229,6 +229,10 @@ listed below, it often works by picking its brand's format there.
   - Xiaomi H50 (`ov43gb`), M40S (`ov31cn`), and other Xiaomi-format models.
   - On the `xiaomi.vacuum.ov21gl`, room ids are its grid ids (the vacuum gives every room id 0).
     Cleaning a room by these ids is not confirmed on a real vacuum yet.
+- **XTL** (`xtl.vacuum.xm2216`):
+  - Jonr P20 and P20 Pro. The parser comes from
+    [Maedrawd's fork](https://github.com/Maedrawd/Home-Assistant-custom-components-Xiaomi-Cloud-Map-Extractor-jonrp20),
+    which owners confirmed against the Mi Home app; rooms are coloured but not yet named.
 
 </details>
 

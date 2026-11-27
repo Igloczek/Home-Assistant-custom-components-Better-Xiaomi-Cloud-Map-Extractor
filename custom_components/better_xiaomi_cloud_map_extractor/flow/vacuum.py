@@ -216,7 +216,7 @@ class VacuumSteps(FlowBase):
 
         detected_api = VacuumApi.detect(self._cloud_vacuum.model)
         api_options: list[SelectOptionDict] = [
-            SelectOptionDict(value=v, label=v.title() + (" *" if v == detected_api else "")) for v in VacuumApi
+            SelectOptionDict(value=v, label=v.label + (" *" if v == detected_api else "")) for v in VacuumApi
         ]
         confirm_data_schema = vol.Schema({
             vol.Required(CONF_HOST, default=self._cloud_vacuum.local_ip): str,

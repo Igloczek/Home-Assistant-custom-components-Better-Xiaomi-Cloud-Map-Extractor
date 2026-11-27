@@ -56,6 +56,7 @@ from .ijai_map import DEVICE_ID, WIFI_SN, build_map, encrypt_map, map_key
 from .log_secrets import MAP_URL_QUERY, assert_no_secrets, leaked
 from .test_session_lifecycle import stored_session
 from .test_vacuum_xiaomi import MAP_JSON, app_key, encrypt_xiaomi_map
+from .xtl_map import xtl_map
 
 MAP_URL = "https://maps.example.com/map/0"
 IMAGE = "image.living_room_vacuum_live_map"
@@ -121,6 +122,8 @@ VENDORS = [
     # charging, 1 sweeping.
     Vendor("viomi.vacuum.v8", "VIOMI", {"run_state": 5}, {"run_state": 3}, _opaque_map),
     Vendor("roidmi.vacuum.v60", "ROIDMI", {(2, 1): 6}, {(2, 1): 4}, _opaque_map),
+    # Upstream #572: the sdj60 map comes from the pro endpoint; no known state property.
+    Vendor("roidmi.vacuum.sdj60", "ROIDMI", {}, {}, _opaque_map),
     Vendor("dreame.vacuum.p2008", "DREAME", {(2, 1): 6}, {(2, 1): 1}, _dreame_map),
     # A model with no known state property: the map tells whether it moves.
     Vendor("viomi.vacuum.x1", "VIOMI", {}, {}, _opaque_map),
@@ -142,6 +145,10 @@ VENDORS = [
         {(7, 1): OBJ_NAME[(10, 1)], (2, 1): 4}, _xiaomi_map("xiaomi.vacuum.b108gl"),
     ),
 ]
+VENDORS.append(
+    # Upstream #621: Jonr P20, its own map format (parsed for real here); no known state property.
+    Vendor("xtl.vacuum.xm2216", "XTL", {}, {}, xtl_map),
+)
 UNSUPPORTED = Vendor("unknown.vacuum.x1", "UNSUPPORTED", {}, {}, _opaque_map)
 # Upstream #450, #757, #772: the cloud serves the map encrypted, with a per-model IV nobody published.
 MD1808 = Vendor("dreame.vacuum.md1808", "DREAME", {}, {}, lambda _version: MD1808_ENCRYPTED_MAP.read_bytes())
@@ -380,7 +387,7 @@ async def test_cleaning_brings_back_a_download_every_cycle(
 
 # Vendors that report whether they move; for the others the map is checked once a minute when docked.
 # The H50 (ov43gb) has its status at 2/2, which vacuum-map-parser-xiaomi does not map yet.
-NO_STATE = {"viomi.vacuum.x1", "xiaomi.vacuum.ov43gb"}
+NO_STATE = {"viomi.vacuum.x1", "roidmi.vacuum.sdj60", "xiaomi.vacuum.ov43gb", "xtl.vacuum.xm2216"}
 REPORTS_STATE = [v for v in VENDORS if v.model not in NO_STATE]
 CLOUD_STATE = [v for v in REPORTS_STATE if v.api in ("VIOMI", "ROIDMI", "DREAME")]
 
@@ -777,3 +784,32 @@ async def test_unknown_stored_map_format_sets_up_as_unsupported(
     await hass.async_block_till_done()
     warnings = [r for r in caplog.records if r.levelno >= logging.WARNING and "NO_SUCH_FORMAT" in r.getMessage()]
     assert len(warnings) == 1, [r.getMessage() for r in warnings]
+
+
+async def test_jonr_p20_added_as_unsupported_switches_to_xtl_in_one_repair(
+    hass: HomeAssistant, setup_vacuum, freezer: FrozenDateTimeFactory
+) -> None:
+    """A P20 added before XTL existed holds UNSUPPORTED; the format-upgrade repair moves it to XTL,
+    and the real XTL parser draws its map."""
+    from homeassistant.components.repairs import repairs_flow_manager
+    from homeassistant.data_entry_flow import FlowResultType
+
+    vacuum = setup_vacuum(Vendor("xtl.vacuum.xm2216", "UNSUPPORTED", {}, {}, xtl_map))
+    await vacuum.setup()
+    issue = ir.async_get(hass).async_get_issue(DOMAIN, f"map_format_upgrade_{vacuum.entry.entry_id}")
+    assert issue is not None
+    assert issue.translation_placeholders["detected_api"] == "XTL (Jonr)"
+
+    assert await async_setup_component(hass, "repairs", {})
+    manager = repairs_flow_manager(hass)
+    result = await manager.async_init(DOMAIN, data={"issue_id": issue.issue_id})
+    assert result["description_placeholders"]["detected_api"] == "XTL (Jonr)"
+    result = await manager.async_configure(result["flow_id"], {})
+    await hass.async_block_till_done()
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+
+    assert vacuum.entry.data[CONF_USED_MAP_API] == "XTL"
+    await vacuum.cycles(freezer, 1)
+    map_data = vacuum.entry.runtime_data.coordinator.data.map_data
+    assert map_data is not None and map_data.image is not None and not map_data.image.is_empty
+    assert ir.async_get(hass).async_get_issue(DOMAIN, issue.issue_id) is None

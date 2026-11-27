@@ -9,6 +9,7 @@ from .vacuums.vacuum_unsupported import UnsupportedCloudVacuum
 from .vacuums.vacuum_viomi import ViomiCloudVacuum
 from .vacuums.vacuum_ijai import IjaiCloudVacuum
 from .vacuums.vacuum_xiaomi import XiaomiCloudVacuum
+from .vacuums.vacuum_xtl import XtlCloudVacuum
 
 AVAILABLE_VACUUM_PLATFORMS: dict[VacuumApi, type[BaseXiaomiCloudVacuum]] = {v.vacuum_platform(): v for v in [
     RoborockCloudVacuum,
@@ -17,5 +18,6 @@ AVAILABLE_VACUUM_PLATFORMS: dict[VacuumApi, type[BaseXiaomiCloudVacuum]] = {v.va
     DreameCloudVacuum,
     IjaiCloudVacuum,
     XiaomiCloudVacuum,
+    XtlCloudVacuum,
     UnsupportedCloudVacuum
 ]}
