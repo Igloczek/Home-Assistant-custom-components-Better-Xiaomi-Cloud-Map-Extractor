@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## 1.0.7 - 2026-11-27
+
+Testing the Roborock-without-the-local-network or Jonr P20 / Roidmi sdj60 pre-releases? Take
+`v1.0.8-beta.1` or `v1.0.8-beta.2` instead of the `v1.0.7` betas: they contain everything in this release.
+
 ### Fixed
 
 - A vacuum added while its model wasn't supported yet gets a repair as soon as a release can read its
