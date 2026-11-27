@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- `manifest.json` in the repository carries the released version instead of upstream's `v3.0.0-beta`, so a manual install shows the right version.
+
 ## 1.0.4 - 2026-11-27
 
 ### Changed
