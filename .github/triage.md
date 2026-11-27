@@ -37,6 +37,12 @@ maintainer.
   with a beta, provide requested data, or ask for a concrete non-breaking follow-up on a closed
   issue, route the summary (in your own words) to the existing `Build #<number>` thread or to
   `Chief of staff` so it is acted on without involving the maintainer.
+- **Lead the communication:** every comment states what shipped (version and link), the exact
+  settings or steps to try (worked out for that user where possible), how to test, and what to send
+  back. Never post "an agent has started working on it" or "will update when released"; if nothing
+  concrete has happened yet, post nothing and hand the work to a build thread or `Chief of staff`.
+- **Never wait on unseen work:** before saying anything is waiting on a pull request or a build
+  thread, look at it (`gh pr list --state open`, the thread's latest state).
 - **Always mark agent comments:** every GitHub comment posted autonomously by any agent (triage,
   build, or `Chief of staff`) must start with `<!-- triage-agent -->` followed by
   `> 🤖 **AI agent reply.** ...` so it is never mistaken for the maintainer.
