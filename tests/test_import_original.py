@@ -430,3 +430,43 @@ async def test_originals_imported_from_yaml_are_told_apart_by_host(
         f"Xiaomi Cloud Map Extractor ({HOST})",
         f"Xiaomi Cloud Map Extractor ({OTHER_HOST})",
     ]
+
+
+def _unknown_format_original(hass: HomeAssistant, hass_storage: dict[str, Any]) -> MockConfigEntry:
+    """An entry of another fork of the original, in a map format this version can't read."""
+    import dataclasses
+
+    from .original_entries import CONFIG_FLOW
+
+    shape = dataclasses.replace(
+        CONFIG_FLOW, data={**CONFIG_FLOW.data, "model": "xtl.vacuum.xm2216", "used_map_api": "NO_SUCH_FORMAT"}
+    )
+    return add_original(hass, hass_storage, shape)
+
+
+async def test_original_in_an_unknown_map_format_is_not_offered_for_discovery(
+    hass: HomeAssistant, hass_storage: dict[str, Any], map_connector: MagicMock
+) -> None:
+    """Importing it would disable a working map in the original for one that shows as unsupported."""
+    original = _unknown_format_original(hass, hass_storage)
+
+    assert await async_setup_component(hass, DOMAIN, {})
+    await hass.async_block_till_done()
+
+    assert hass.config_entries.flow.async_progress_by_handler(DOMAIN) == []
+    assert original.disabled_by is None
+
+
+async def test_menu_import_of_an_original_in_an_unknown_map_format_changes_nothing(
+    hass: HomeAssistant, hass_storage: dict[str, Any], map_connector: MagicMock
+) -> None:
+    original = _unknown_format_original(hass, hass_storage)
+
+    result = await _import_from_menu(hass, original)
+
+    assert result["type"] is FlowResultType.ABORT
+    assert result["reason"] == "original_unknown_map_format"
+    assert result["description_placeholders"]["map_format"] == "NO_SUCH_FORMAT"
+    assert original.disabled_by is None
+    assert hass.config_entries.async_entries(DOMAIN) == []
+    assert ir.async_get(hass).async_get_issue(DOMAIN, f"original_left_{original.entry_id}") is None

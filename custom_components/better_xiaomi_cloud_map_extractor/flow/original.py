@@ -25,6 +25,7 @@ from ..migration import (
     async_disable_original,
     importable_original_entries,
     unique_id_taken,
+    unknown_map_format,
     vacuum_mac,
 )
 
@@ -65,6 +66,15 @@ class OriginalImportSteps(FlowBase):
         if user_input is not None:
             self._original = next((e for e in originals if e.entry_id == user_input["original_entry"]), None)
             if self._original is not None:
+                if (map_format := unknown_map_format(self._original)) is not None:
+                    return self.async_abort(
+                        reason="original_unknown_map_format",
+                        description_placeholders={
+                            "name": self._original_label(self._original),
+                            "map_format": map_format,
+                            "original_name": ORIGINAL_NAME,
+                        },
+                    )
                 return await self._async_import_original()
         schema = vol.Schema({
             vol.Required("original_entry", default=originals[0].entry_id): SelectSelector(
@@ -85,7 +95,11 @@ class OriginalImportSteps(FlowBase):
     ) -> ConfigFlowResult:
         """A vacuum is still set up in the original integration (started by async_setup)."""
         original = self.hass.config_entries.async_get_entry(discovery_info["entry_id"])
-        if original is None or original not in importable_original_entries(self.hass):
+        if (
+            original is None
+            or original not in importable_original_entries(self.hass)
+            or unknown_map_format(original) is not None
+        ):
             return self.async_abort(reason="no_original_entries")
         await self.async_set_unique_id(vacuum_mac(original))
         self._abort_if_unique_id_configured()

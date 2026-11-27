@@ -17,9 +17,8 @@ with a test that fails first (see [AGENTS.md](AGENTS.md)).
 
 Out as pre-releases, waiting for owners to confirm; merged in 1.0.x once confirmed:
 
-- **Xiaomi `c107` unencrypted map decoding** (fork PR #50, `v1.0.3-beta.1`, issue #10; `xiaomi.vacuum.c107` / Mijia M30 Pro owners): fallback to decode unencrypted `base64(zlib(JSON))` / raw `zlib(JSON)` Xiaomi map blobs after the AES-CBC path, plus debug logging for Xiaomi parse failures.
-- **Roborock map without the local network** (fork PR #22, `v1.0.1-beta.2`, issue #24; a Roborock owner off the LAN): the map name and status through the cloud when Home Assistant cannot reach the vacuum (#601, #381).
-- **Jonr P20 and Roidmi sdj60** (fork PR #28, `v1.0.1-beta.3`, issue #29; owners of each): the new XTL map format for `xtl.vacuum.xm2216` (#621) and the sdj60 map from upstream PR #768 (#572).
+- **Roborock map without the local network** (fork PR #22, `v1.0.8-beta.1`, issue #24; a Roborock owner off the LAN): the map name and status through the cloud when Home Assistant cannot reach the vacuum (#601, #381).
+- **Jonr P20 and Roidmi sdj60** (fork PR #28, `v1.0.8-beta.2`, issue #29; owners of each): the new XTL map format for `xtl.vacuum.xm2216` (#621) and the sdj60 map from upstream PR #768 (#572).
 
 Unverified: an unencrypted API answer with code 2 or 3, or the message `invalid signature`, is
 treated as an expired session (renewal, then password login). That mirrors other Xiaomi cloud
