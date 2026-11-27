@@ -37,6 +37,9 @@ maintainer.
   with a beta, provide requested data, or ask for a concrete non-breaking follow-up on a closed
   issue, route the summary (in your own words) to the existing `Build #<number>` thread or to
   `Chief of staff` so it is acted on without involving the maintainer.
+- **API shapes go through a council first:** before proposing a new or changed option, value,
+  attribute or service on GitHub or starting a build on it, convene the adversarial Fable 5.2 council
+  described in "API changes go through a council" in `AGENTS.md`.
 - **Lead the communication:** every comment states what shipped (version and link), the exact
   settings or steps to try (worked out for that user where possible), how to test, and what to send
   back. Never post "an agent has started working on it" or "will update when released"; if nothing
