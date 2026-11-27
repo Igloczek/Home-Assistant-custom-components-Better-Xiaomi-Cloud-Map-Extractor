@@ -63,7 +63,7 @@ from .migration import (
     importable_original_entries,
 )
 from .original_yaml import async_check_original_yaml, async_find_original_yaml, original_yaml_issue_id
-from .issues import async_clear_entry_state, issue_ids
+from .issues import async_check_format_upgrade, async_clear_entry_state, async_warn_unknown_format, issue_ids
 from .store import restore_connector_config, save_connector_config
 from .types import XiaomiCloudMapExtractorConfigEntry, XiaomiCloudMapExtractorRuntimeData
 
@@ -98,6 +98,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: XiaomiCloudMapExtractorC
     async_fill_unique_id(hass, entry)
     async_check_original_yaml(hass, entry)
     await async_adopt_original_entities(hass, entry)
+    async_warn_unknown_format(entry)
+    async_check_format_upgrade(hass, entry)
     xcme_configuration = to_configuration(entry)
 
     def session_creator() -> ClientSession:

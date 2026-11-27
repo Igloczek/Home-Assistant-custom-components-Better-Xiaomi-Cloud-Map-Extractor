@@ -1,6 +1,6 @@
 """Repairs: the fix flow of each issue raised in `issues.py`, with the most direct fix.
 
-- `wrong_map_format`: one confirm stores the vendor's map format.
+- `wrong_map_format`, `map_format_upgrade`: one confirm stores the detected map format.
 - `device_not_found`, `vacuum_token`, `map_download_failing`, `vacuum_unreachable`: the vacuum is looked
   up in every Xiaomi region with the stored session, and what the cloud knows (region, IP address,
   token) is offered; a login is asked for only when the session can't be renewed or the account

@@ -43,10 +43,20 @@ class VacuumApi(StrEnum):
     def configured(used_map_api: str | None, vacuum_model: str) -> VacuumApi:
         """The API stored in a config entry. The YAML import stores None unless the YAML set `force_api`.
 
-        Entries imported before 0.1.5 hold `force_api` as the YAML spelled it, in lower case."""
+        Entries imported before 0.1.5 hold `force_api` as the YAML spelled it, in lower case.
+        A value this version doesn't know reads as UNSUPPORTED (see `known`)."""
         if used_map_api:
-            return VacuumApi(used_map_api.upper())
+            return VacuumApi.known(used_map_api) or VacuumApi.UNSUPPORTED
         return VacuumApi.detect(vacuum_model)
+
+    @staticmethod
+    def known(used_map_api: str) -> VacuumApi | None:
+        """A stored format, or None when this version doesn't know it: written by another fork of the
+        original (the Jonr P20 one stores XTL) or by a newer release before a downgrade."""
+        try:
+            return VacuumApi(used_map_api.upper())
+        except ValueError:
+            return None
 
     @staticmethod
     def detect(vacuum_model: str) -> VacuumApi | None:

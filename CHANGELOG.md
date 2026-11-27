@@ -1,5 +1,17 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+- A vacuum added while its model wasn't supported yet gets a repair as soon as a release can read its
+  map: Settings → Repairs → "its map can now be shown" → Submit switches it to the new map format.
+  Entities, options and login stay as they are. Before, it stayed unsupported until it was deleted and
+  added again.
+- An entry set to a map format this version doesn't know (for example `XTL`, stored by another fork of
+  the original, or a format from a newer release after a downgrade) sets up and shows the vacuum as
+  unsupported instead of failing with `ValueError`. The stored value is kept.
+
 ## 1.0.6 - 2026-11-27
 
 ### Fixed

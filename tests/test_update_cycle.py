@@ -22,6 +22,7 @@ from freezegun.api import FrozenDateTimeFactory
 from homeassistant.config_entries import ConfigEntryState
 from homeassistant.const import EVENT_STATE_CHANGED
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers import issue_registry as ir
 from homeassistant.setup import async_setup_component
@@ -748,3 +749,28 @@ async def test_auto_update_switch_shows_its_state(
         await hass.async_block_till_done()
 
     assert hass.states.get(switch).state == "off"
+
+
+# --- a stored map format this version doesn't know ------------------------------------------------
+
+# Written by another fork of the original (the Jonr P20 one stores XTL) and imported, or left by a
+# newer release after a downgrade.
+UNKNOWN_FORMAT = Vendor("xtl.vacuum.xm2216", "XTL", {}, {}, _opaque_map)
+
+
+async def test_unknown_stored_map_format_sets_up_as_unsupported(
+    hass: HomeAssistant, setup_vacuum, freezer: FrozenDateTimeFactory, caplog: pytest.LogCaptureFixture
+) -> None:
+    """`VacuumApi("XTL")` raised ValueError and the entry never set up."""
+    vacuum = setup_vacuum(UNKNOWN_FORMAT)
+    await vacuum.setup()
+    await vacuum.cycles(freezer, 2)
+
+    assert vacuum.entry.data[CONF_USED_MAP_API] == "XTL", "the stored value is kept for a release that knows it"
+    image = hass.states.get(IMAGE)
+    assert image is not None and image.state != "unavailable"
+    entity = er.async_get(hass).async_get(IMAGE)
+    device = dr.async_get(hass).async_get(entity.device_id)
+    assert device.manufacturer == "Unsupported"
+    warnings = [r for r in caplog.records if r.levelno >= logging.WARNING and "XTL" in r.getMessage()]
+    assert len(warnings) == 1, [r.getMessage() for r in warnings]

@@ -732,6 +732,17 @@
         }
       }
     },
+    "map_format_upgrade": {
+      "title": "{name}: its map can now be shown",
+      "fix_flow": {
+        "step": {
+          "confirm": {
+            "title": "Show the map of {name}",
+            "description": "This version reads {model} maps in the {detected_api} format. {name} was added before that and is still set to unsupported.\n\nSelect **Submit** to switch it to the {detected_api} map format and reload the integration. Your entities, options and login stay as they are."
+          }
+        }
+      }
+    },
     "device_not_found": {
       "title": "{name} is not in the {server} Xiaomi Cloud region",
       "fix_flow": {
