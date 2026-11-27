@@ -26,6 +26,13 @@ Testing the Roborock-without-the-local-network or Jonr P20 / Roidmi sdj60 pre-re
   their ids no longer change when a room is added.
 - A live cleaning path whose points mostly fall outside the map is no longer drawn, so a vacuum
   whose path record the integration misreads cannot draw lines across the map.
+- A Roborock that Home Assistant can't reach on the local network (another network or VLAN, a
+  changed IP address) gets its map again (upstream #601): the map name and the cleaning state are
+  asked through Xiaomi Cloud, which passes the request on to the vacuum. Before, it retried the
+  vacuum for up to a minute and then had no map, and once it had one, the map stopped updating.
+  Such a Roborock can now also be added: setup accepts it when Xiaomi Cloud reaches it. The Repairs
+  issue that says the vacuum does not answer on the local network still appears, so a changed IP
+  address can be fixed; it now says the map keeps coming through Xiaomi Cloud meanwhile.
 
 ## 1.0.6 - 2026-11-27
 
@@ -106,13 +113,6 @@ Testing the Roborock-without-the-local-network or Jonr P20 / Roidmi sdj60 pre-re
 
 - Rewrote `README.md` for end users with a side-by-side comparison table and clearer installation and migration steps (PR #39).
 - Added AI-agent-first problem reporting (`report-problem` skill, zero-dependency Python collector/redactor CLI, and automated issue triage, PR #40).
-
-- A Roborock that Home Assistant can't reach on the local network (another network or VLAN, a
-  changed IP address) gets its map again (upstream #601): the map name and the cleaning state are
-  asked through Xiaomi Cloud, which passes the request on to the vacuum. Before, it retried the
-  vacuum for up to a minute and then had no map, and once it had one, the map stopped updating.
-  Such a Roborock can now also be added: setup accepts it when Xiaomi Cloud reaches it. The Repairs
-  issue that says the vacuum does not answer on the local network still appears.
 
 ## 1.0.0 - 2026-11-25
 
