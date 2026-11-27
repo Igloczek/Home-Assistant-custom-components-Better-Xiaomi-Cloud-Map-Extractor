@@ -195,7 +195,14 @@ def _inflate(data: bytes) -> bytes | None:
 def with_live_data(
     payload: dict[str, Any], path: list[dict[str, Any]], position: dict[str, Any] | None
 ) -> dict[str, Any]:
-    """The map payload with the live path and position the cloud map lacks (PR #781)."""
+    """The map payload with the live path and position the cloud map lacks (PR #781).
+
+    A path whose points lie mostly outside the map is dropped: the trajectory decoder scans for
+    marker bytes and is confirmed on the S20+ only, so another record layout reads as garbage.
+    """
+    if path and not _mostly_on_map(payload, path):
+        _LOGGER.debug("Most of the %d live path points lie outside the map, dropping the live path", len(path))
+        path = []
     if not path and position is None:
         return payload
     payload = dict(payload)
@@ -208,21 +215,52 @@ def with_live_data(
     return payload
 
 
-def with_unique_room_ids(payload: dict[str, Any]) -> dict[str, Any]:
-    """Rooms keyed by grid id when `map_room_info` repeats a `room_id` (PR #748, generalised).
+def _mostly_on_map(payload: dict[str, Any], path: list[dict[str, Any]]) -> bool:
+    """Whether at least half the points lie within the map's bounds (True when the map has none)."""
+    try:
+        resolution = float(payload.get("resolution", 50))
+        left, bottom = float(payload.get("origin_x", 0)), float(payload.get("origin_y", 0))
+        right = left + float(payload["width"]) * resolution
+        top = bottom + float(payload["height"]) * resolution
+    except (KeyError, TypeError, ValueError):
+        return True
+    outside = sum(1 for p in path if not (left <= p["x"] <= right and bottom <= p["y"] <= top))
+    return outside * 2 <= len(path)
 
-    The ov21gl gives every room `room_id` 0, and the parser keys rooms by `room_id`, so all rooms
-    collapsed into one. `room_attrs` then name rooms by grid id (`id`), so their repeated
-    `room_id` is dropped too.
-    """
+
+# Models whose rooms are always keyed by grid id: every room's `room_id` is 0.
+GRID_ID_ROOM_MODELS = frozenset({"xiaomi.vacuum.ov21gl"})
+
+
+def _room_ids(payload: dict[str, Any]) -> list[Any] | None:
     info = payload.get("map_room_info")
     if not isinstance(info, list):
+        return None
+    return [e.get("room_id") for e in info if isinstance(e, dict) and e.get("grid_id") is not None]
+
+
+def partly_repeated_room_ids(payload: dict[str, Any]) -> bool:
+    """Whether `map_room_info` repeats some room ids but not one id on every room."""
+    room_ids = _room_ids(payload) or []
+    return len(set(room_ids)) not in (1, len(room_ids))
+
+
+def with_unique_room_ids(payload: dict[str, Any], model: str) -> dict[str, Any]:
+    """Rooms keyed by grid id on the models that need it (PR #748).
+
+    The parser keys rooms by `room_id`. The ov21gl gives every room `room_id` 0, so all rooms
+    collapsed into one: its rooms are always keyed by grid id, also on a one-room map, so the
+    keys do not change when a room is added. On other models, rooms are keyed by grid id only
+    when two or more rooms all share one `room_id`. A map where only some ids repeat keeps the
+    ids the vacuum sends: those are the ids it cleans rooms by. When rooms are keyed by grid id,
+    `room_attrs` name them by grid id (`id`), so their `room_id` is dropped too.
+    """
+    room_ids = _room_ids(payload)
+    if room_ids is None:
         return payload
-    entries = [e for e in info if isinstance(e, dict) and e.get("grid_id") is not None]
-    room_ids = [e.get("room_id") for e in entries]
-    if len(set(room_ids)) == len(room_ids):
+    if model not in GRID_ID_ROOM_MODELS and (len(room_ids) < 2 or len(set(room_ids)) != 1):
         return payload
-    _LOGGER.debug("map_room_info repeats room ids, keying rooms by grid id")
+    info = payload["map_room_info"]
     payload = dict(payload)
     payload["map_room_info"] = [
         {**e, "room_id": e["grid_id"]} if isinstance(e, dict) and e.get("grid_id") is not None else e for e in info

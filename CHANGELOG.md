@@ -11,6 +11,13 @@
 - An entry set to a map format this version doesn't know (for example `XTL`, stored by another fork of
   the original, or a format from a newer release after a downgrade) sets up and shows the vacuum as
   unsupported instead of failing with `ValueError`. The stored value is kept.
+- On a Xiaomi map where only some room ids repeat, room ids stay as the vacuum sends them, so room
+  cleaning from the map card targets the right rooms again and room names stay on their own rooms.
+  Since 1.0.2 every room of such a map was renumbered by its grid id.
+- Rooms of the `xiaomi.vacuum.ov21gl` are always keyed by their grid id, also on a one-room map, so
+  their ids no longer change when a room is added.
+- A live cleaning path whose points mostly fall outside the map is no longer drawn, so a vacuum
+  whose path record the integration misreads cannot draw lines across the map.
 
 ## 1.0.6 - 2026-11-27
 
