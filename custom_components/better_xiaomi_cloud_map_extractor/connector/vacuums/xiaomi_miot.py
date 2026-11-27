@@ -239,10 +239,30 @@ def _room_ids(payload: dict[str, Any]) -> list[Any] | None:
     return [e.get("room_id") for e in info if isinstance(e, dict) and e.get("grid_id") is not None]
 
 
-def partly_repeated_room_ids(payload: dict[str, Any]) -> bool:
-    """Whether `map_room_info` repeats some room ids but not one id on every room."""
-    room_ids = _room_ids(payload) or []
-    return len(set(room_ids)) not in (1, len(room_ids))
+def room_key_rule(payload: dict[str, Any], model: str) -> str | None:
+    """How `with_unique_room_ids` keys this map's rooms, for the log: None when nothing is unusual.
+
+    "model": the model is in GRID_ID_ROOM_MODELS. "same id": every room shares one `room_id`, so
+    rooms are keyed by grid id; a model that always does belongs in GRID_ID_ROOM_MODELS. "kept":
+    some ids repeat and the ids the vacuum sends are kept.
+    """
+    room_ids = _room_ids(payload)
+    if room_ids is None:
+        return None
+    if model in GRID_ID_ROOM_MODELS:
+        return "model"
+    if len(room_ids) >= 2 and len(set(room_ids)) == 1:
+        return "same id"
+    if len(set(room_ids)) != len(room_ids):
+        return "kept"
+    return None
+
+
+ROOM_KEY_LOG = {
+    "model": "The %s map's rooms are keyed by grid id (a model that gives its rooms no usable room id)",
+    "same id": "The %s map gives every room the same room id; keying its rooms by grid id",
+    "kept": "The %s map repeats some room ids; keeping the room ids it sends",
+}
 
 
 def with_unique_room_ids(payload: dict[str, Any], model: str) -> dict[str, Any]:

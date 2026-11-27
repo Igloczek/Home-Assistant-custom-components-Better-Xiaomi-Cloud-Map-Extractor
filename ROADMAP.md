@@ -48,6 +48,16 @@ classes in [AGENTS.md](AGENTS.md#who-decides-what-ships).
 
 ## Later
 
+- **Xiaomi ov21gl room ids: confirm on hardware.** Its rooms are keyed by grid id (`GRID_ID_ROOM_MODELS`
+  in `xiaomi_miot.py`) because every room carries `room_id` 0; that comes from upstream PR #748 and a
+  synthetic fixture, not a captured map. Ask on the fork's issue #20 (the #748 author follows it)
+  whether room cleaning by these ids works and whether `map_room_info` ever carries a non-zero
+  `room_id`; add the CN variant `ov21cn` to the set if it behaves the same.
+- **Xiaomi room names when a room has `room_id` 0.** vacuum-map-parser-xiaomi resolves a name with
+  `room_id or grid_id or id`, so a 0 falls through to the grid id and can name the wrong room
+  (same since 1.0.0). Resolve `room_attrs` to room keys next to `with_unique_room_ids`, with a test
+  that names every room including the zero ones.
+
 - **Ijai map saving off: confirm with an owner.** The message relies on `remember-state` (siid 10,
   piid 1) reading 0 when map saving is off in Xiaomi Home; that comes from the miot-spec and #759,
   not a captured answer. Replace the fixture with a scrubbed `get_properties` answer from an owner,

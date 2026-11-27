@@ -664,3 +664,36 @@ async def test_no_go_and_no_mop_zones_and_virtual_walls() -> None:
     assert [a.as_list() for a in map_data.no_go_areas] == [[-200, -150, -100, -150, -100, -50, -200, -50]]
     assert [a.as_list() for a in map_data.no_mopping_areas] == [[100, 50, 200, 50, 200, 150, 100, 150]]
     assert [w.as_list() for w in map_data.walls] == [[0, -150, 0, 150]]
+
+
+async def test_room_key_rule_is_logged_correctly_once_per_rule(caplog: pytest.LogCaptureFixture) -> None:
+    """Each rule logs once per vacuum with what really happens; the ov21gl is re-keyed even when
+    some of its ids repeat, and a model outside the quirk set re-keyed by the general rule says so."""
+    caplog.set_level(logging.DEBUG)
+    for model, rooms in [
+        ("xiaomi.vacuum.ov21gl", [(3, 1), (4, 0), (5, 0), (6, 0)]),
+        ("xiaomi.vacuum.ov21cn", [(3, 0), (4, 0)]),
+    ]:
+        cloud = Cloud({"3": encrypt_xiaomi_map(rooms_map(rooms, []), model, DEVICE_ID)})
+        with lan_vacuum(FakeLanVacuum(model, properties={(2, 2): 1, (10, 1): obj_name("3")})):
+            vacuum = make_vacuum(model, cloud)
+            await vacuum.get_map()
+            await vacuum.get_map()
+
+    ov21gl = [r.getMessage() for r in caplog.records if "ov21gl" in r.getMessage() and "room" in r.getMessage()]
+    assert len(ov21gl) == 1 and "keeping" not in ov21gl[0] and "grid id" in ov21gl[0]
+    ov21cn = [r.getMessage() for r in caplog.records if "ov21cn" in r.getMessage() and "room" in r.getMessage()]
+    assert len(ov21cn) == 1 and "grid id" in ov21cn[0]
+
+
+async def test_room_key_log_is_not_used_up_while_debug_is_off(caplog: pytest.LogCaptureFixture) -> None:
+    model = "xiaomi.vacuum.ov81gl"
+    cloud = Cloud({"3": encrypt_xiaomi_map(rooms_map([(3, 1), (4, 2), (5, 3), (6, 3)], []), model, DEVICE_ID)})
+    with lan_vacuum(FakeLanVacuum(model, properties={(2, 2): 1, (10, 1): obj_name("3")})):
+        vacuum = make_vacuum(model, cloud)
+        caplog.set_level(logging.INFO)
+        await vacuum.get_map()
+        caplog.set_level(logging.DEBUG)
+        await vacuum.get_map()
+
+    assert [r for r in caplog.records if model in r.getMessage() and "room id" in r.getMessage()]

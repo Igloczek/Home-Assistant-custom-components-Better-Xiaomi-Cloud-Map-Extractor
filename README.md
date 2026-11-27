@@ -228,6 +228,7 @@ listed below, it often works by picking its brand's format there.
 - **Xiaomi** (other `xiaomi.vacuum.*` models):
   - Xiaomi H50 (`ov43gb`), M40S (`ov31cn`), and other Xiaomi-format models.
   - On the `xiaomi.vacuum.ov21gl`, room ids are its grid ids (the vacuum gives every room id 0).
+    Cleaning a room by these ids is not confirmed on a real vacuum yet.
 
 </details>
 
