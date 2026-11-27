@@ -238,8 +238,8 @@ class XiaomiCloudVacuum(BaseXiaomiCloudVacuumV2):
         return f"{self._user_id}/{self._device_id}/{name}"
 
     def decode_and_parse(self, raw_map: bytes) -> MapData:
-        # Try parsing as JSON first (old format), otherwise use raw data directly (new format)
-        # Data may not be JSON-wrapped (c107 uploads base64(zlib(JSON)) without an envelope).
+        # Encrypted maps come in a {"version": 2, "data": ...} envelope or as raw ciphertext; c107
+        # uploads base64(zlib(JSON)) without one, decoded when decryption fails.
         with contextlib.suppress(json.JSONDecodeError, UnicodeDecodeError, ValueError):
             envelope = json.loads(raw_map)
             if isinstance(envelope, dict) and isinstance(envelope.get("data"), str):
@@ -287,10 +287,8 @@ def _decode_unencrypted_map(raw_map: bytes) -> dict[str, Any] | None:
     candidates = [raw_map]
     compact = b"".join(raw_map.split())
     if compact:
-        try:
+        with contextlib.suppress(ValueError):
             candidates.insert(0, base64.b64decode(compact, validate=True))
-        except ValueError:
-            pass
     for candidate in candidates:
         try:
             payload = json.loads(zlib.decompress(candidate))
