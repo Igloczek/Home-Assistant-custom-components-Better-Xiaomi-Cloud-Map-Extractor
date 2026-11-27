@@ -70,6 +70,9 @@ LAN_UNREACHABLE_UPDATES = 30
 DATA_FAILURES: HassKey[dict[str, dict[str, int]]] = HassKey(f"{DOMAIN}_failures")
 
 
+DATA_UNKNOWN_FORMAT_WARNED: HassKey[set[tuple[str, str]]] = HassKey(f"{DOMAIN}_unknown_format_warned")
+
+
 @callback
 def async_clear_entry_state(hass: HomeAssistant, entry_id: str) -> None:
     """Drop per-entry failure counters when an entry is removed."""
@@ -217,10 +220,14 @@ def _new_format(entry: ConfigEntry) -> VacuumApi | None:
 
 
 @callback
-def async_warn_unknown_format(entry: ConfigEntry) -> None:
-    """A stored format this version doesn't know is shown as unsupported; the entry keeps it."""
+def async_warn_unknown_format(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    """A stored format this version doesn't know is shown as unsupported; the entry keeps it.
+
+    Warned once per Home Assistant run, not on every setup retry or reload."""
     stored = entry.data.get(CONF_USED_MAP_API)
-    if stored and VacuumApi.known(stored) is None:
+    warned = hass.data.setdefault(DATA_UNKNOWN_FORMAT_WARNED, set())
+    if stored and VacuumApi.known(stored) is None and (entry.entry_id, stored) not in warned:
+        warned.add((entry.entry_id, stored))
         _LOGGER.warning(
             "%s (%s) is set to the %s map format, which this version doesn't know; its map is shown "
             "as unsupported",

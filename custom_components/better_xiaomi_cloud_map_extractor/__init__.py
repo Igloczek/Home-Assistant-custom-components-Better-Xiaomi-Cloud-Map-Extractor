@@ -98,7 +98,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: XiaomiCloudMapExtractorC
     async_fill_unique_id(hass, entry)
     async_check_original_yaml(hass, entry)
     await async_adopt_original_entities(hass, entry)
-    async_warn_unknown_format(entry)
+    async_warn_unknown_format(hass, entry)
     async_check_format_upgrade(hass, entry)
     xcme_configuration = to_configuration(entry)
 
