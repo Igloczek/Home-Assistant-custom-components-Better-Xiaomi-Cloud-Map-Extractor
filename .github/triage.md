@@ -37,6 +37,10 @@ maintainer.
   with a beta, provide requested data, or ask for a concrete non-breaking follow-up on a closed
   issue, route the summary (in your own words) to the existing `Build #<number>` thread or to
   `Chief of staff` so it is acted on without involving the maintainer.
+- **Report in:** as soon as the triage run starts working, message `Chief of staff` (`t3_thread_send`)
+  with this thread's link, the issue and the plan in one line, and again with the outcome. A build
+  thread you start does the same ("Every thread reports to `Chief of staff`" in `AGENTS.md`), so put
+  that step in its brief.
 - **API shapes go through a council first:** before proposing a new or changed option, value,
   attribute or service on GitHub or starting a build on it, convene the adversarial Fable 5.2 council
   described in "API changes go through a council" in `AGENTS.md`.
