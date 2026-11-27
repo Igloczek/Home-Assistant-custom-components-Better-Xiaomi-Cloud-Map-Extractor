@@ -26,7 +26,8 @@ from homeassistant.helpers.device_registry import format_mac
 from homeassistant.helpers.storage import Store
 from homeassistant.loader import IntegrationNotFound, async_get_integration
 
-from .const import DOMAIN, ORIGINAL_DOMAIN, STORAGE_VERSION
+from .connector.vacuums.base.model import VacuumApi
+from .const import CONF_USED_MAP_API, DOMAIN, ORIGINAL_DOMAIN, STORAGE_VERSION
 from .original_yaml import original_yaml_block
 
 _LOGGER = logging.getLogger(__name__)
@@ -91,6 +92,19 @@ def importable_original_entries(hass: HomeAssistant) -> list[ConfigEntry]:
         if ((mac := vacuum_mac(entry)) is not None and mac not in macs)
         or (mac is None and entry.data.get(CONF_HOST) not in hosts)
     ]
+
+
+def unknown_map_format(entry: ConfigEntry) -> str | None:
+    """The map format an original entry stores when this version can't read it, else None.
+
+    Another fork of the original (the Jonr P20 one stores XTL) or a newer release writes formats this
+    version doesn't know. Importing such an entry would disable a map that works in the original for
+    one shown as unsupported here, so it is not offered.
+    """
+    stored = entry.data.get(CONF_USED_MAP_API)
+    if stored and VacuumApi.known(stored) is None:
+        return str(stored)
+    return None
 
 
 def original_left_issue_id(original: ConfigEntry) -> str:

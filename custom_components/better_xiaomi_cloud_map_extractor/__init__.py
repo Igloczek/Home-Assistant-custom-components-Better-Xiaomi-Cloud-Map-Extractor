@@ -61,6 +61,7 @@ from .migration import (
     async_flag_leftover_originals,
     async_original_changed,
     importable_original_entries,
+    unknown_map_format,
 )
 from .original_yaml import async_check_original_yaml, async_find_original_yaml, original_yaml_issue_id
 from .issues import async_check_format_upgrade, async_clear_entry_state, async_warn_unknown_format, issue_ids
@@ -85,6 +86,8 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     async_flag_leftover_originals(hass)
 
     for original in importable_original_entries(hass):
+        if unknown_map_format(original) is not None:
+            continue
         discovery_flow.async_create_flow(
             hass,
             DOMAIN,

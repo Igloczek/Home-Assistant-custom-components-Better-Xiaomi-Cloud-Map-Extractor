@@ -7,7 +7,8 @@
       "cloud_no_devices": "No vacuums found for this Xiaomi Cloud account.",
       "reauth_successful": "Re-authentication was successful",
       "no_original_entries": "Every vacuum from Xiaomi Cloud Map Extractor is already set up here.",
-      "reauth_wrong_vacuum": "The selected vacuum is not the one this entry was configured for."
+      "reauth_wrong_vacuum": "The selected vacuum is not the one this entry was configured for.",
+      "original_unknown_map_format": "{name} uses the {map_format} map format in {original_name}, which this version of Better Xiaomi Cloud Map Extractor can't read yet. Nothing was changed: the vacuum keeps working in {original_name}. Import it once a release supports {map_format}."
     },
     "error": {
       "invalid_captcha": "Invalid captcha provided, try again.",

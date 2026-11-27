@@ -11,6 +11,9 @@
 - An entry set to a map format this version doesn't know (for example `XTL`, stored by another fork of
   the original, or a format from a newer release after a downgrade) sets up and shows the vacuum as
   unsupported instead of failing with `ValueError`. The stored value is kept.
+- A vacuum set up in Xiaomi Cloud Map Extractor (or another fork of it) in a map format this version
+  can't read, such as `XTL` from the Jonr P20 fork, is no longer offered for import, and importing it
+  from the menu stops with a message instead of disabling a map that works there.
 - On a Xiaomi map where only some room ids repeat, room ids stay as the vacuum sends them, so room
   cleaning from the map card targets the right rooms again and room names stay on their own rooms.
   Since 1.0.2 every room of such a map was renumbered by its grid id.
