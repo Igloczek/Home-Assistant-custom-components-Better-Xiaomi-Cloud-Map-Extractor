@@ -2,10 +2,25 @@
 
 ## Unreleased
 
+<<<<<<< HEAD
 ## 1.0.7 - 2026-11-27
 
 Testing the Roborock-without-the-local-network or Jonr P20 / Roidmi sdj60 pre-releases? Take
 `v1.0.8-beta.1` or `v1.0.8-beta.2` instead of the `v1.0.7` betas: they contain everything in this release.
+=======
+### Added
+
+- Roidmi `roidmi.vacuum.sdj60` shows its map (upstream #572, ported from upstream PR #768 by
+  @winchester7). Its map is read from the endpoint the Mi Home app uses, where the other one points at
+  a file that is no map and failed with "list indices must be integers or slices, not str". Other
+  Roidmi models are unchanged.
+- Jonr P20 and P20 Pro (`xtl.vacuum.xm2216`) show their map: floor plan with room colours, charger,
+  vacuum and the path of the clean (upstream #621). The map format and its parser come from
+  [Maedrawd's fork](https://github.com/Maedrawd/Home-Assistant-custom-components-Xiaomi-Cloud-Map-Extractor-jonrp20)
+  (@Maedrawd), which three owners confirmed against the Mi Home app. Room names, no-go zones and
+  whether the vacuum is cleaning are not read yet; the map is checked once a minute while it does not
+  change.
+>>>>>>> 03edcff (XTL: label 'XTL (Jonr)', import test for Maedrawd's entries, rooms commitment in FORK.md, CHANGELOG under Unreleased)
 
 ### Fixed
 
@@ -106,17 +121,6 @@ Testing the Roborock-without-the-local-network or Jonr P20 / Roidmi sdj60 pre-re
 
 - Rewrote `README.md` for end users with a side-by-side comparison table and clearer installation and migration steps (PR #39).
 - Added AI-agent-first problem reporting (`report-problem` skill, zero-dependency Python collector/redactor CLI, and automated issue triage, PR #40).
-
-- Roidmi `roidmi.vacuum.sdj60` shows its map (upstream #572, ported from upstream PR #768 by
-  @winchester7). Its map is read from the endpoint the Mi Home app uses, where the other one points at
-  a file that is no map and failed with "list indices must be integers or slices, not str". Other
-  Roidmi models are unchanged.
-- Jonr P20 and P20 Pro (`xtl.vacuum.xm2216`) show their map: floor plan with room colours, charger,
-  vacuum and the path of the clean (upstream #621). The map format and its parser come from
-  [Maedrawd's fork](https://github.com/Maedrawd/Home-Assistant-custom-components-Xiaomi-Cloud-Map-Extractor-jonrp20)
-  (@Maedrawd), which three owners confirmed against the Mi Home app. Room names, no-go zones and
-  whether the vacuum is cleaning are not read yet; the map is checked once a minute while it does not
-  change.
 
 ## 1.0.0 - 2026-11-25
 

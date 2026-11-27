@@ -189,7 +189,7 @@ def async_check_map_format(hass: HomeAssistant, entry: ConfigEntry, status: Stat
         _LOGGER.warning(
             "The map of %s (%s) could not be read in the Xiaomi map format; this model uses the %s "
             "format. Open Settings → Repairs to switch it.",
-            entry.title, entry.data[CONF_MODEL], detected.title(),
+            entry.title, entry.data[CONF_MODEL], detected.label,
         )
     ir.async_create_issue(
         hass,
@@ -201,8 +201,8 @@ def async_check_map_format(hass: HomeAssistant, entry: ConfigEntry, status: Stat
         translation_placeholders={
             "name": entry.title,
             "model": entry.data[CONF_MODEL],
-            "used_api": VacuumApi.XIAOMI.title(),
-            "detected_api": detected.title(),
+            "used_api": VacuumApi.XIAOMI.label,
+            "detected_api": detected.label,
         },
         data={"entry_id": entry.entry_id, "detected_api": detected.value},
     )

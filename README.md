@@ -229,6 +229,10 @@ listed below, it often works by picking its brand's format there.
   - Xiaomi H50 (`ov43gb`), M40S (`ov31cn`), and other Xiaomi-format models.
   - On the `xiaomi.vacuum.ov21gl`, room ids are its grid ids (the vacuum gives every room id 0).
     Cleaning a room by these ids is not confirmed on a real vacuum yet.
+- **XTL** (`xtl.vacuum.xm2216`):
+  - Jonr P20 and P20 Pro. The parser comes from
+    [Maedrawd's fork](https://github.com/Maedrawd/Home-Assistant-custom-components-Xiaomi-Cloud-Map-Extractor-jonrp20),
+    which owners confirmed against the Mi Home app; rooms are coloured but not yet named.
 
 </details>
 

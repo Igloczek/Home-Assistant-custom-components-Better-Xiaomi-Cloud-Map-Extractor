@@ -40,6 +40,11 @@ class VacuumApi(StrEnum):
     XTL = "XTL"
     UNSUPPORTED = "UNSUPPORTED"
 
+    @property
+    def label(self) -> str:
+        """The name users see: in the map format selector and as the device's manufacturer."""
+        return _LABELS.get(self, self.value.title())
+
     @staticmethod
     def configured(used_map_api: str | None, vacuum_model: str) -> VacuumApi:
         """The API stored in a config entry. The YAML import stores None unless the YAML set `force_api`.
@@ -92,3 +97,6 @@ API_EXCEPTIONS = {
     # Jonr P20 (upstream #621). Other xtl.vacuum models may use another format: unsupported until seen.
     "xtl.vacuum.xm2216": VacuumApi.XTL,
 }
+
+
+_LABELS = {VacuumApi.XTL: "XTL (Jonr)"}
