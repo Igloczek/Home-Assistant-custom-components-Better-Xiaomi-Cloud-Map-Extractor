@@ -56,7 +56,7 @@ The fork's domain is `better_xiaomi_cloud_map_extractor`, so it installs next to
 - Map update: `connector/__init__.py` (`XiaomiCloudMapExtractorConnector`: when to download, map status), `connector/cloud_session.py` (keeps the cloud session working: passToken renewal, throttled password login, storing new sessions), `connector/platforms.py` (map format → vendor class).
 - Runtime: `coordinator.py` maps connector exceptions to `ConfigEntryAuthFailed` (reauth) or `UpdateFailed` (retry); entities in `image.py`, `camera.py`, `sensor.py`, `binary_sensor.py`, `button.py`, `switch.py`.
 - Cloud access: `connector/xiaomi_cloud/connector.py` (`XiaomiCloudConnector`, the one object callers use, `to_config`/`from_config`) composed of `session.py` (session data, stored config, `_login_attempt`), `login_credentials.py` (password login, captcha), `login_two_factor.py` (identity verification), `login_qr.py`, `renewal.py` (passToken), `devices.py` (homes and devices per region), `api.py` (RC4 encrypted calls, map download) and `network.py` (outage versus refusal). All log under the `connector.xiaomi_cloud.connector` logger. The session is persisted per MAC by `store.py`.
-- Vendors: `connector/vacuums/vacuum_*.py` download the map; parsing and drawing live in the external `vacuum-map-parser-*` packages pinned in `manifest.json`.
+- Vendors: `connector/vacuums/vacuum_*.py` download the map; parsing and drawing live in the external `vacuum-map-parser-*` packages pinned in `manifest.json`, except the XTL format (Jonr P20), parsed by `connector/vacuums/map_parser_xtl.py` (`vacuum_xtl.py` downloads it).
 - Agent problem reporting: [`.agents/skills/report-problem/SKILL.md`](.agents/skills/report-problem/SKILL.md) (procedure for users' AI agents), `scripts/agent-report/` (zero-dependency Python 3 collector, redactor, renderer and validator, tested by `tests/test_agent_report.py`), [`docs/report-a-problem.md`](docs/report-a-problem.md) and `.github/ISSUE_TEMPLATE/agent_report.yml`.
 
 ## Fixes are for every user
@@ -64,7 +64,6 @@ The fork's domain is `better_xiaomi_cloud_map_extractor`, so it installs next to
 - Fix problems in the integration, for every supported vacuum and region. A report from one user's vacuum is a sample of a general bug: find the general cause and check the other vendors and flows for it.
 - Never create or change scripts, automations, helpers or Home Assistant configuration in a user's Home Assistant (including the maintainer's `ha.igielski.dev`) to work around an integration bug.
 - When a vacuum or cloud protocol cannot do what a feature needs, say so and surface it clearly in the UI or document the limitation; do not ship a per-installation workaround as the fix.
-- Vendors: `connector/vacuums/vacuum_*.py` download the map; parsing and drawing live in the external `vacuum-map-parser-*` packages pinned in `manifest.json`, except the XTL format (Jonr P20), parsed by `connector/vacuums/map_parser_xtl.py` (`vacuum_xtl.py` downloads it).
 
 ## Local checks
 
