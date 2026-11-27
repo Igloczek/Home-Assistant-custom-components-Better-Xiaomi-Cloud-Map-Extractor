@@ -1,8 +1,18 @@
 # Changelog
 
-## Unreleased
+## 1.0.5 - 2026-11-27
 
-- `manifest.json` in the repository carries the released version instead of upstream's `v3.0.0-beta`, so a manual install shows the right version.
+### Fixed
+
+- Connections to the Xiaomi cloud are always released, including failed map downloads and login
+  redirect hops, so a long-running Home Assistant no longer slowly leaks connections.
+- Downloading diagnostics no longer fails before the first map has been fetched.
+- The map entities no longer keep the account password, username or device token in memory, and
+  camera and image entities serve the cached map without an extra thread hop.
+- Removing an entry clears its failure counters, and the update coordinator is tied to its config
+  entry as Home Assistant expects.
+- `manifest.json` in the repository carries the released version instead of upstream's `v3.0.0-beta`,
+  so a manual install shows the right version.
 
 ## 1.0.4 - 2026-11-27
 
