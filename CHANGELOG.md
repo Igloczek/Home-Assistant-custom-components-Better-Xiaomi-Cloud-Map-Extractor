@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.0.6 - 2026-11-27
+
+### Fixed
+
+- Xiaomi vacuums that upload their map unencrypted, such as the Mijia M30 Pro (`xiaomi.vacuum.c107`),
+  show their map. Before, the Live map stayed `unknown`. Encrypted maps of every other Xiaomi model are
+  read exactly as before; the new decoding is only tried when decryption fails.
+
 ## 1.0.5 - 2026-11-27
 
 ### Fixed
