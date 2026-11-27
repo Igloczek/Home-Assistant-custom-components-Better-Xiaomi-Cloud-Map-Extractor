@@ -242,18 +242,16 @@ class VacuumSteps(FlowBase):
         try:
             status = await self.hass.async_add_executor_job(roborock_vacuum.status)
             return status is not None
-        except Exception:
-            _LOGGER.exception("Could not validate Roborock vacuum")
         except Exception as e:
             if "token" in repr(e):  # it answered and refused the token: the cloud can't fix that
-                _LOGGER.error(e, exc_info=True)
+                _LOGGER.exception("Could not validate Roborock vacuum")
                 return False
             _LOGGER.debug("The vacuum did not answer on the local network (%r), asking the cloud", e)
         # A vacuum on another network: the map name and status come through the cloud then.
         try:
             response = await self._connector.get_other_info(
                 str(self._cloud_vacuum.device_id), "get_status", [], server=self._cloud_vacuum.server)
-        except Exception as e:  # noqa: BLE001 - reported as the form error below
+        except Exception as e:  # reported as the form error below
             _LOGGER.debug("The cloud did not reach the vacuum either: %r", e)
             return False
         if roborock_state(response) is None:
