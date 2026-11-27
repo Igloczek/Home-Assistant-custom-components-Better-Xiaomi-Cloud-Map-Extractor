@@ -28,6 +28,8 @@ A standing pinned thread titled `Chief of staff` owns day-to-day delivery for th
 
 - Triage and build threads hand ready pull requests, reporter beta confirmations and design calls to `Chief of staff` (`t3_thread_search` for `Chief of staff`), not to the maintainer.
 - `Chief of staff` only escalates to the maintainer for the ~1% calls under "Who decides what ships". Routine merges, opt-in options and releases do not ask for approval.
+- **Never wait on a PR you haven't looked at.** Before ending any turn, and before saying you are waiting for something, run `gh pr list --state open` and read the latest state of every thread and issue you depend on. A ready pull request is reviewed and merged in that turn, then released with the next batch. Don't rely on hand-off messages arriving: a build thread that settles on hand-off drops out of the open-thread view. A pre-release whose base fell behind the latest stable release is rebased and republished, so a tester never has to go back to older code.
+- **Lead the communication.** Every message to a reporter, a build thread or the maintainer states the concrete result and the next step: what shipped (version and link); the exact settings or steps to try, with values worked out for that user where possible instead of making them guess; how to test; and what to send back (screenshots, values, logs). "An agent has started working on it" or "will update when released" is not a comment: if nothing concrete has happened yet, post nothing and ship first.
 
 ## Fork relationship
 
