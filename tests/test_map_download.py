@@ -6,7 +6,6 @@ again), never an aiohttp error reaching the coordinator, and it never waits aioh
 
 from __future__ import annotations
 
-import asyncio
 
 from custom_components.better_xiaomi_cloud_map_extractor.connector.xiaomi_cloud.connector import XiaomiCloudConnector
 
@@ -34,7 +33,7 @@ async def test_map_download_has_a_timeout() -> None:
 async def test_map_download_breaking_off_while_reading_is_a_failed_download() -> None:
     class BrokenOff(FakeResponse):
         async def read(self) -> bytes:
-            raise asyncio.TimeoutError
+            raise TimeoutError
 
     cloud = FakeXiaomiCloud()
     cloud.on("GET", MAP_URL, lambda r: BrokenOff(body=b""))

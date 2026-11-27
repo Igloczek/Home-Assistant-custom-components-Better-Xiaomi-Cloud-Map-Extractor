@@ -171,18 +171,18 @@ class XiaomiCloudMapExtractorConnector:
                 _LOGGER.debug("Hash not changed: '%s'", self._last_hash)
                 self._unchanged_downloads += 1
 
-        except DeviceNotFoundException as e:
+        except DeviceNotFoundException:
             self._map_cache.status = XiaomiCloudMapExtractorConnectorStatus.DEVICE_NOT_FOUND
-            raise e
-        except InvalidCredentialsException as e:
+            raise
+        except InvalidCredentialsException:
             self._map_cache.status = XiaomiCloudMapExtractorConnectorStatus.INVALID_CREDENTIALS
-            raise e
-        except FailedLoginException as e:
+            raise
+        except FailedLoginException:
             self._map_cache.status = XiaomiCloudMapExtractorConnectorStatus.FAILED_LOGIN
-            raise e
-        except InvalidDeviceTokenException as e:
+            raise
+        except InvalidDeviceTokenException:
             self._map_cache.status = XiaomiCloudMapExtractorConnectorStatus.INVALID_TOKEN
-            raise e
+            raise
         except FailedMapDownloadException:
             self._map_cache.status = XiaomiCloudMapExtractorConnectorStatus.FAILED_MAP_DOWNLOAD
         except FailedMapParseException:
@@ -198,7 +198,7 @@ class XiaomiCloudMapExtractorConnector:
         except TwoFactorAuthRequiredException as e:
             self._map_cache.status = XiaomiCloudMapExtractorConnectorStatus.TWO_FACTOR_REQUIRED
             self._map_cache.two_factor_url = e.url
-            raise e
+            raise
         finally:
             self._map_cache.last_update_timestamp = datetime.now()
             if self._vacuum_connector:

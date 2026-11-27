@@ -14,9 +14,42 @@ target-version = "py313"
 line-length = 120
 
 [tool.ruff.lint]
-# Correctness-focused baseline: pyflakes, syntax/runtime errors, bugbear, async pitfalls.
-# Style rules are deliberately off so upstream imports stay small; widen this set in its own change.
-select = ["F", "E9", "B", "ASYNC", "PLE"]
+# Home Assistant Core-aligned correctness, async, logging, deprecation, and security rules.
+# Formatting/style rules stay off so upstream imports remain minimal.
+select = [
+    "F",      # pyflakes
+    "E9",     # syntax/runtime errors
+    "B",      # flake8-bugbear
+    "ASYNC",  # flake8-async
+    "PLE",    # pylint errors
+    "G",      # flake8-logging-format
+    "LOG",    # flake8-logging
+    "PIE",    # flake8-pie
+    "RUF012", # mutable class attributes
+    "RUF021", # parenthesize chained and/or
+    "RUF100", # unused noqa directives
+    "SIM105", # contextlib.suppress
+    "TRY201", # bare raise
+    "TRY400", # logging.exception inside except
+    "T100",   # debugger breakpoints
+    "T20",    # print statements
+    "UP006",  # PEP 585 generic types
+    "UP035",  # deprecated typing imports
+    "UP041",  # builtin TimeoutError
+    "UP045",  # PEP 604 Optional
+    "DTZ003", # datetime.utcnow()
+    "DTZ004", # datetime.utcfromtimestamp()
+    "DTZ011", # date.today()
+    # Home Assistant Core's Bandit security subset + silent try-except-pass
+    "S102", "S103", "S107", "S108", "S110",
+    "S301", "S306", "S307",
+    "S313", "S314", "S315", "S316", "S317", "S318", "S319",
+    "S601", "S602", "S604", "S608", "S609",
+]
 ignore = [
     "B904", # raise ... from err inside except: upstream style, tracked separately
 ]
+
+[tool.ruff.lint.per-file-ignores]
+"scripts/*" = ["T201"]
+"tests/*" = ["S107"]

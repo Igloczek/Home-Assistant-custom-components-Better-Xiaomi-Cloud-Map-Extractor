@@ -12,11 +12,11 @@ ORIGINAL_DOMAIN: Final = "xiaomi_cloud_map_extractor"
 ORIGINAL_NAME: Final = "Xiaomi Cloud Map Extractor"
 
 PLATFORMS: list[Platform] = [
+    Platform.BINARY_SENSOR,
+    Platform.BUTTON,
     Platform.CAMERA,
     Platform.IMAGE,
     Platform.SENSOR,
-    Platform.BINARY_SENSOR,
-    Platform.BUTTON,
     Platform.SWITCH,
 ]
 

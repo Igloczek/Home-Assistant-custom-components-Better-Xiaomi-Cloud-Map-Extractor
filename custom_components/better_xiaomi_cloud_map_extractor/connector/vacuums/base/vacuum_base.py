@@ -76,7 +76,7 @@ class BaseXiaomiCloudVacuum(ABC):
             return self.map_data_parser.parse(decoded_map)
         except FailedMapParseException:
             raise
-        except Exception as err:  # noqa: BLE001
+        except Exception as err:
             _LOGGER.debug("Failed to read the %s map: %r", self.model, err)
             raise FailedMapParseException() from err
 

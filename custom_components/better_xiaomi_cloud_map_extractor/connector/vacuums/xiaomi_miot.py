@@ -14,6 +14,7 @@ families. The layouts below come from each model's spec on miot-spec.org (record
 from __future__ import annotations
 
 import base64
+import contextlib
 import json
 import logging
 import struct
@@ -163,10 +164,8 @@ def decode_trajectory(raw: bytes, key: bytes | None = None) -> list[dict[str, An
     try:
         raw = base64.b64decode(json.loads(raw)["data"])
     except (ValueError, KeyError, TypeError):
-        try:
+        with contextlib.suppress(ValueError):
             raw = base64.b64decode(raw, validate=True)
-        except ValueError:
-            pass
     data = _inflate(raw)
     if data is None and key is not None and raw and len(raw) % AES.block_size == 0:
         try:

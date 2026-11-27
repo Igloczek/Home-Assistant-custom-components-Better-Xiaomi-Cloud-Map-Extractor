@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import asyncio
 import datetime
 import logging
 from dataclasses import asdict
@@ -114,7 +113,7 @@ async def test_renew_session_network_error_is_a_connection_failure() -> None:
     cloud = FakeXiaomiCloud()
 
     def timeout(_request):
-        raise asyncio.TimeoutError()
+        raise TimeoutError()
 
     cloud.on("GET", SERVICE_LOGIN, timeout)
     connector = await XiaomiCloudConnector.from_config(stored_config(), cloud.session_creator)
@@ -127,7 +126,7 @@ async def test_login_timeout_is_a_connection_failure_not_bad_credentials() -> No
     cloud = FakeXiaomiCloud()
 
     def timeout(_request):
-        raise asyncio.TimeoutError()
+        raise TimeoutError()
 
     cloud.on("GET", SERVICE_LOGIN, timeout)
     connector = XiaomiCloudConnector(cloud.session_creator, server="de")
@@ -149,7 +148,7 @@ async def test_api_timeout_raises_connection_failure() -> None:
     cloud = FakeXiaomiCloud()
 
     def timeout(_request):
-        raise asyncio.TimeoutError()
+        raise TimeoutError()
 
     cloud.on("POST", f"{API}/v2/home/get_interim_file_url", timeout)
     connector = await XiaomiCloudConnector.from_config(stored_config(), cloud.session_creator)

@@ -1,10 +1,9 @@
 """QR code login: the code is approved in the Xiaomi Home app, no password involved."""
 from __future__ import annotations
-import asyncio
 import datetime
 import logging
 import time
-from typing import Self, Any
+from typing import Any, Self
 
 from aiohttp import ClientTimeout
 from aiohttp.typedefs import StrOrURL
@@ -116,8 +115,12 @@ class QrLogin(XiaomiCloudSession):
         except NETWORK_ERRORS:
             _LOGGER.debug("Xiaomi cloud qr login - login link not resolved, using it as is")
             return login_url
-        location = response.headers.get("Location")
-        if response.status not in (301, 302, 303, 307, 308) or not location:
+        try:
+            status = response.status
+            location = response.headers.get("Location")
+        finally:
+            response.release()
+        if status not in (301, 302, 303, 307, 308) or not location:
             return login_url
         try:
             target = URL(login_url).join(URL(location))
@@ -146,7 +149,7 @@ class QrLogin(XiaomiCloudSession):
                     headers={'Connection': 'keep-alive'},
                 )
                 response_text = await resp.text()
-            except (asyncio.TimeoutError, TimeoutError):
+            except TimeoutError:
                 if time.monotonic() >= self._qr_deadline:
                     _LOGGER.debug("Xiaomi cloud qr login - QR code expired")
                     raise QrLoginTimeoutException()
@@ -179,18 +182,22 @@ class QrLogin(XiaomiCloudSession):
             resp = await self._session_data.get(json_resp["location"], timeout=QR_REQUEST_TIMEOUT)
         except NETWORK_ERRORS as e:
             raise FailedConnectionException(e)
-        if _is_outage(resp.status):
-            raise _unavailable(resp.status)
-        service_token = resp.cookies.get("serviceToken")
-        if resp.status != 200 or service_token is None or not service_token.value:
-            _LOGGER.debug("Xiaomi cloud qr login - no serviceToken issued (status %s)", resp.status)
-            raise FailedLoginException("Xiaomi did not issue a serviceToken")
+        try:
+            if _is_outage(resp.status):
+                raise _unavailable(resp.status)
+            service_token = resp.cookies.get("serviceToken")
+            if resp.status != 200 or service_token is None or not service_token.value:
+                _LOGGER.debug("Xiaomi cloud qr login - no serviceToken issued (status %s)", resp.status)
+                raise FailedLoginException("Xiaomi did not issue a serviceToken")
+            token_value = service_token.value
+        finally:
+            resp.release()
 
         self._session_data.userId = str(json_resp["userId"])
         self._session_data.cUserId = json_resp.get("cUserId") or self._cookie("cUserId")
         self._session_data.ssecurity = json_resp["ssecurity"]
         self.pass_token = json_resp.get("passToken") or self._pass_token_from_cookies()
-        self._session_data.serviceToken = service_token.value
+        self._session_data.serviceToken = token_value
         self._session_data.expiration = expiration
         self._long_polling_url = None
         _LOGGER.debug("Xiaomi cloud qr login - logged in")

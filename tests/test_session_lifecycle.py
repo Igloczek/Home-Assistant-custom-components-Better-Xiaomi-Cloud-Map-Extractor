@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import asyncio
 import datetime
 from unittest.mock import MagicMock, patch
 
@@ -156,7 +155,7 @@ async def test_network_timeout_never_triggers_a_login() -> None:
     cloud.password_login("captcha")
 
     def timeout(_request):
-        raise asyncio.TimeoutError()
+        raise TimeoutError()
 
     cloud.on("POST", f"{API}/v2/homeroom/gethome", timeout)
     connector = make_connector(cloud, stored_session(expires_in=datetime.timedelta(days=20)), SessionSaver())
@@ -186,7 +185,7 @@ async def test_expiring_session_keeps_working_when_renewal_times_out() -> None:
     cloud.password_login("captcha")
 
     def timeout(_request):
-        raise asyncio.TimeoutError()
+        raise TimeoutError()
 
     cloud.on("GET", SERVICE_LOGIN, timeout)
     connector = make_connector(cloud, stored_session(expires_in=datetime.timedelta(hours=6)), SessionSaver())

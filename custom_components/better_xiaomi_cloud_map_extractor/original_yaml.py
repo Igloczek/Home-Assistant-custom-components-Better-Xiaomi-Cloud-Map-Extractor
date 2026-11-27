@@ -12,6 +12,7 @@ they were loaded from (`__config_file__`, `__line__`), also from `!include` file
 
 from __future__ import annotations
 
+import contextlib
 import os
 from dataclasses import dataclass
 from typing import Any
@@ -86,10 +87,8 @@ def _location(hass: HomeAssistant, item: Any) -> tuple[str, str]:
     line = getattr(item, "__line__", None)
     if file is None:
         return "configuration.yaml", "?"
-    try:
+    with contextlib.suppress(ValueError):
         file = os.path.relpath(file, hass.config.config_dir)
-    except ValueError:
-        pass
     return file, "?" if line is None else str(line)
 
 

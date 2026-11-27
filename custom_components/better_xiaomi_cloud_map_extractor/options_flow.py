@@ -38,16 +38,14 @@ from .types import XiaomiCloudMapExtractorConfigEntry
 
 class XiaomiCloudMapExtractorOptionsFlowHandler(OptionsFlow):
     """Options for the component."""
+
+    config_entry: XiaomiCloudMapExtractorConfigEntry
     _room_color_ids: list[str]
     _changed_options: dict[str, Any]
 
     def __init__(self: Self) -> None:
         self._changed_options = {}
         self._room_color_ids = []
-
-    @property
-    def config_entry(self: Self) -> XiaomiCloudMapExtractorConfigEntry:
-        return super().config_entry
 
     async def async_step_init(self: Self, user_input=None) -> ConfigFlowResult:  # pylint: disable=unused-argument
         """Manage the options."""

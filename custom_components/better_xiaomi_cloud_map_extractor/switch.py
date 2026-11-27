@@ -1,17 +1,17 @@
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Coroutine
 from dataclasses import dataclass
-from typing import Any, Coroutine
+from typing import Any
 
 from homeassistant.components.switch import (
+    DOMAIN as SWITCH_DOMAIN,
     SwitchEntity,
     SwitchEntityDescription,
-    DOMAIN,
 )
 from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from .coordinator import XiaomiCloudMapExtractorDataUpdateCoordinator
 from .entity import XiaomiCloudMapExtractorEntity
@@ -40,7 +40,7 @@ SWITCH_TYPES: tuple[XiaomiCloudMapExtractorSwitchEntityDescription, ...] = (
 async def async_setup_entry(
         hass: HomeAssistant,
         config_entry: XiaomiCloudMapExtractorConfigEntry,
-        async_add_entities: AddEntitiesCallback,
+        async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
     coordinator = config_entry.runtime_data.coordinator
 
@@ -59,7 +59,7 @@ class XiaomiCloudMapExtractorSwitchEntity(XiaomiCloudMapExtractorEntity, SwitchE
             config_entry: XiaomiCloudMapExtractorConfigEntry,
             description: XiaomiCloudMapExtractorSwitchEntityDescription,
     ) -> None:
-        super().__init__(coordinator, config_entry, DOMAIN, description.key)
+        super().__init__(coordinator, config_entry, SWITCH_DOMAIN, description.key)
 
         self.entity_description = description
 
@@ -67,12 +67,12 @@ class XiaomiCloudMapExtractorSwitchEntity(XiaomiCloudMapExtractorEntity, SwitchE
     def is_on(self) -> bool | None:
         return self.entity_description.is_on_fn(self.coordinator)
 
-    async def async_turn_on(self) -> None:
+    async def async_turn_on(self, **kwargs: Any) -> None:
         await self.entity_description.set_fn(self.coordinator, True)
         self.async_write_ha_state()  # a refresh with an unchanged map writes no state
         await self.coordinator.async_request_refresh()
 
-    async def async_turn_off(self) -> None:
+    async def async_turn_off(self, **kwargs: Any) -> None:
         await self.entity_description.set_fn(self.coordinator, False)
         self.async_write_ha_state()
         await self.coordinator.async_request_refresh()

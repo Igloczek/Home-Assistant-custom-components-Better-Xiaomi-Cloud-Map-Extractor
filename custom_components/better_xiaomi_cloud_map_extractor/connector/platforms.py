@@ -1,5 +1,4 @@
 """Which vendor class downloads and parses the map for each map format (`VacuumApi`)."""
-from typing import Type
 
 from .vacuums.base.model import VacuumApi
 from .vacuums.base.vacuum_base import BaseXiaomiCloudVacuum
@@ -11,7 +10,7 @@ from .vacuums.vacuum_viomi import ViomiCloudVacuum
 from .vacuums.vacuum_ijai import IjaiCloudVacuum
 from .vacuums.vacuum_xiaomi import XiaomiCloudVacuum
 
-AVAILABLE_VACUUM_PLATFORMS: dict[VacuumApi, Type[BaseXiaomiCloudVacuum]] = {v.vacuum_platform(): v for v in [
+AVAILABLE_VACUUM_PLATFORMS: dict[VacuumApi, type[BaseXiaomiCloudVacuum]] = {v.vacuum_platform(): v for v in [
     RoborockCloudVacuum,
     ViomiCloudVacuum,
     RoidmiCloudVacuum,

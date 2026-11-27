@@ -63,7 +63,7 @@ from .migration import (
     importable_original_entries,
 )
 from .original_yaml import async_check_original_yaml, async_find_original_yaml, original_yaml_issue_id
-from .issues import issue_ids
+from .issues import async_clear_entry_state, issue_ids
 from .store import restore_connector_config, save_connector_config
 from .types import XiaomiCloudMapExtractorConfigEntry, XiaomiCloudMapExtractorRuntimeData
 
@@ -113,7 +113,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: XiaomiCloudMapExtractorC
     xcme_connector = XiaomiCloudMapExtractorConnector(
         session_creator, xcme_configuration, connector_config, session_saver
     )
-    xcme_update_coordinator = XiaomiCloudMapExtractorDataUpdateCoordinator(hass, xcme_connector)
+    xcme_update_coordinator = XiaomiCloudMapExtractorDataUpdateCoordinator(hass, xcme_connector, entry)
     # Set before the first refresh so a reauth flow started by it can read why it was started.
     entry.runtime_data = XiaomiCloudMapExtractorRuntimeData(xcme_update_coordinator)
     await xcme_update_coordinator.async_config_entry_first_refresh()
@@ -128,6 +128,7 @@ async def async_unload_entry(hass: HomeAssistant, entry: XiaomiCloudMapExtractor
 
 
 async def async_remove_entry(hass: HomeAssistant, entry: XiaomiCloudMapExtractorConfigEntry) -> None:
+    async_clear_entry_state(hass, entry.entry_id)
     for issue_id in issue_ids(entry.entry_id):
         ir.async_delete_issue(hass, DOMAIN, issue_id)
     ir.async_delete_issue(hass, DOMAIN, original_yaml_issue_id(entry))

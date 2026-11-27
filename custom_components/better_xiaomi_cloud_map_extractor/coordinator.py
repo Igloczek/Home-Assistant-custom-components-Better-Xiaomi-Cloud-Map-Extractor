@@ -5,6 +5,7 @@ from typing import Self
 from miio import DeviceException
 
 from aiohttp import ClientError
+from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
@@ -82,12 +83,20 @@ class XiaomiCloudMapExtractorDataUpdateCoordinator(DataUpdateCoordinator[XiaomiC
             self: Self,
             hass: HomeAssistant,
             connector: XiaomiCloudMapExtractorConnector,
+            config_entry: ConfigEntry | None = None,
     ) -> None:
         self.connector = connector
         self.auth_issue: AuthIssue | None = None
         # always_update=False: an update that brings the same map and status writes no state.
-        super().__init__(hass, _LOGGER, name=DOMAIN, update_interval=DEFAULT_UPDATE_INTERVAL,
-                         update_method=self.update_data, always_update=False)
+        super().__init__(
+            hass,
+            _LOGGER,
+            config_entry=config_entry,
+            name=DOMAIN,
+            update_interval=DEFAULT_UPDATE_INTERVAL,
+            update_method=self.update_data,
+            always_update=False,
+        )
 
     async def update_data(self: Self) -> XiaomiCloudMapExtractorData:
         try:
@@ -103,7 +112,7 @@ class XiaomiCloudMapExtractorDataUpdateCoordinator(DataUpdateCoordinator[XiaomiC
             raise ConfigEntryAuthFailed(
                 str(err), translation_domain=DOMAIN, translation_key=self.auth_issue.reason
             ) from err
-        except Exception as err:  # noqa: BLE001 - every failure gets a translated message
+        except Exception as err:  # every failure gets a translated message
             if self.config_entry is not None:
                 async_report_update(self.hass, self.config_entry, err)
             key = update_failure_key(err)

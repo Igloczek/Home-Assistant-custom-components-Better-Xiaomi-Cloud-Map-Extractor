@@ -2,7 +2,8 @@
 
 What the YAML may contain is in `legacy_schema.py`.
 """
-from typing import Mapping, Any, Callable
+from collections.abc import Callable, Mapping
+from typing import Any
 
 import logging
 from aiohttp import ClientSession
@@ -121,8 +122,8 @@ async def create_config_entry_data_from_yaml(
             mac = format_mac(device.mac)
             name = device.name
             server = device.server
-    except Exception as e:  # noqa: BLE001 - the entry is created anyway; setup asks to log in when needed
-        _LOGGER.error("Failed to connect to Xiaomi Cloud", exc_info=e)
+    except Exception:  # the entry is created anyway; setup asks to log in when needed
+        _LOGGER.exception("Failed to connect to Xiaomi Cloud")
 
     data = {
         CONF_HOST: import_info[CONF_HOST],

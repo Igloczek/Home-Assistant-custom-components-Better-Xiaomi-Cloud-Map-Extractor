@@ -1,21 +1,18 @@
-from typing import Self, Any
+from typing import Any, Self
 
 from homeassistant.const import (
-    CONF_HOST,
-    CONF_TOKEN,
+    CONF_DEVICE_ID,
     CONF_MAC,
-    CONF_USERNAME,
-    CONF_PASSWORD,
     CONF_MODEL,
-    CONF_DEVICE_ID, CONF_NAME
+    CONF_NAME,
 )
-from homeassistant.helpers.device_registry import DeviceInfo, CONNECTION_NETWORK_MAC
+from homeassistant.helpers.device_registry import CONNECTION_NETWORK_MAC, DeviceInfo
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from vacuum_map_parser_base.map_data import MapData
 
 from .connector.model import XiaomiCloudMapExtractorData
 from .connector.vacuums.base.model import VacuumApi
-from .const import CONF_SERVER, CONF_USED_MAP_API, DOMAIN
+from .const import CONF_USED_MAP_API, DOMAIN
 from .coordinator import XiaomiCloudMapExtractorDataUpdateCoordinator
 from .types import XiaomiCloudMapExtractorConfigEntry
 
@@ -23,14 +20,9 @@ from .types import XiaomiCloudMapExtractorConfigEntry
 class XiaomiCloudMapExtractorEntity(CoordinatorEntity[XiaomiCloudMapExtractorDataUpdateCoordinator]):
     _attr_has_entity_name = True
     _entity_component_unrecorded_attributes = frozenset({"path", "zones", "walls", "obstacles", "areas", "calibration_points", "rooms"})
-    _host: str
-    _token: str
     _mac: str
-    _username: str
-    _password: str
     _model: str
     _device_id: str
-    _server: str
     _used_map_api: VacuumApi
     _attr_device_info: DeviceInfo
 
@@ -43,15 +35,10 @@ class XiaomiCloudMapExtractorEntity(CoordinatorEntity[XiaomiCloudMapExtractorDat
     ) -> None:
         """Initialize."""
         super().__init__(coordinator)
-        self._host = config_entry.data[CONF_HOST]
-        self._token = config_entry.data[CONF_TOKEN]
         self._mac = config_entry.data[CONF_MAC]
-        self._username = config_entry.data[CONF_USERNAME]
-        self._password = config_entry.data[CONF_PASSWORD]
         self._model = config_entry.data[CONF_MODEL]
         self._name = config_entry.data[CONF_NAME]
         self._device_id = config_entry.data[CONF_DEVICE_ID]
-        self._server = config_entry.data[CONF_SERVER]
         self._used_map_api = VacuumApi.configured(
             config_entry.data[CONF_USED_MAP_API], config_entry.data[CONF_MODEL]
         )

@@ -64,7 +64,7 @@ class VacuumSteps(FlowBase):
     async def _after_auth(self: Self) -> ConfigFlowResult:
         try:
             devices_raw = await self._connector.get_devices()
-        except Exception as e:  # noqa: BLE001 - every error becomes a message on the retry form
+        except Exception as e:  # every error becomes a message on the retry form
             self._devices_error = device_list_error(e)
             return await self.async_step_devices_failed()
 
@@ -155,7 +155,7 @@ class VacuumSteps(FlowBase):
                 self._connector.server = self._cloud_vacuum.server
                 try:
                     await save_connector_config(self.hass, self._cloud_vacuum.mac, self._connector.to_config())
-                except Exception:  # noqa: BLE001 - without the session the entry could not log in
+                except Exception:  # without the session the entry could not log in
                     _LOGGER.exception("Could not save the Xiaomi Cloud session")
                     errors["base"] = "session_not_saved"
                 if errors:
@@ -241,8 +241,8 @@ class VacuumSteps(FlowBase):
         try:
             status = await self.hass.async_add_executor_job(roborock_vacuum.status)
             return status is not None
-        except Exception as e:
-            _LOGGER.error(e, exc_info=True)
+        except Exception:
+            _LOGGER.exception("Could not validate Roborock vacuum")
             return False
 
     def _unique_id_for(self: Self, entry: XiaomiCloudMapExtractorConfigEntry, unique_id: str) -> str | None:

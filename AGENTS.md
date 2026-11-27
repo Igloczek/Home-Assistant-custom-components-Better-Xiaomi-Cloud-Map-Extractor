@@ -72,7 +72,8 @@ uv venv -p 3.14 .venv && uv pip install -p .venv -r requirements_test.txt   # on
 - Tests use `pytest-homeassistant-custom-component`; the Xiaomi cloud and the vacuum are always mocked (`tests/conftest.py`). Never put a real account, token, IP or map in a fixture; scrub captured data first.
 - Keep `requirements_test.txt` in step with `manifest.json` requirements; bump the pinned harness to follow Home Assistant releases.
 - Run the smallest check that proves a change (one test file or `-k`), then the full `pytest` before pushing. It takes a few seconds.
-- CI (`.github/workflows/tests.yml`, `hacs.yaml`, `hassfest.yaml`) runs on every push and pull request to `master`.
+- CI (`.github/workflows/tests.yml`, `hacs.yaml`, `hassfest.yaml`) runs on every push and pull request to `master`. `pyproject.toml` enforces Home Assistant Core's correctness, async, logging, deprecation and Bandit security Ruff rules (`S102`..`S609`, `ASYNC`, `G`, `LOG`, `RUF012`, `TRY400`, etc.). For deeper Home Assistant architecture audits, consult `home-assistant/core`'s official skills (`ha-integration-knowledge`, `ha-review`, `ha-quality-scale-verify`) and `pylint-home-assistant`.
+- When a GitHub UI action is blocked by API permissions (such as re-requesting a review on an external repository), use the built-in browser (`preview_*`, already logged into GitHub) directly instead of asking the maintainer to click it.
 
 ## Every bug improves the test suite
 

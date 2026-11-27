@@ -127,14 +127,17 @@ class CredentialsLogin(TwoFactorLogin):
             _LOGGER.debug("Xiaomi cloud login - step 3 status: %s", response.status)
         except NETWORK_ERRORS as e:
             raise FailedConnectionException(e)
-        if response.status == 200 and "serviceToken" in response.cookies:
-            self._session_data.serviceToken = response.cookies.get("serviceToken").value
-            self.pass_token = self.pass_token or self._pass_token_from_cookies()
-        elif response.status == 200 or _is_outage(response.status):
-            # The password was already accepted in step 2; STS not issuing the token is Xiaomi's problem.
-            raise _unavailable(response.status)
-        else:
-            raise InvalidCredentialsException()
+        try:
+            if response.status == 200 and "serviceToken" in response.cookies:
+                self._session_data.serviceToken = response.cookies.get("serviceToken").value
+                self.pass_token = self.pass_token or self._pass_token_from_cookies()
+            elif response.status == 200 or _is_outage(response.status):
+                # The password was already accepted in step 2; STS not issuing the token is Xiaomi's problem.
+                raise _unavailable(response.status)
+            else:
+                raise InvalidCredentialsException()
+        finally:
+            response.release()
 
     async def continue_login_with_captcha(self: Self, captcha_code: str) -> str | None:
         _LOGGER.debug("Continuing login with captcha entered.")

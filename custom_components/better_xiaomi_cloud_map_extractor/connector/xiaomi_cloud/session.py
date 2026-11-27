@@ -142,12 +142,12 @@ class XiaomiCloudSession:
     _sign: str | None
     server: str | None
 
-    def __init__(self: Self, session_creator: Callable[[], ClientSession], server: str | None = None):
+    def __init__(self: Self, session_creator: Callable[[], ClientSession], server: str | None = None) -> None:
         self._username = None
         self._password = None
         self._session_creator = session_creator
         self._locale = _default_locale() or "en_GB"
-        timezone = datetime.datetime.now(dt_util.get_default_time_zone()).strftime("%z")
+        timezone = dt_util.now().strftime("%z")
         self._timezone = f"GMT{timezone[:-2]}:{timezone[-2:]}"
         self.server = server
         self._session_data = None

@@ -1,11 +1,12 @@
 """Encrypted (RC4 signed) calls to the Xiaomi cloud API with the session, and the map download."""
 from __future__ import annotations
 import base64
+import binascii
 import hashlib
 import json
 import logging
 import time
-from typing import Self, Any
+from typing import Any, Self
 
 from aiohttp import ClientTimeout
 
@@ -29,11 +30,14 @@ class EncryptedApi(XiaomiCloudSession):
         try:
             _LOGGER.debug("Downloading raw map...")
             response = await self._session_data.session.get(map_url, timeout=MAP_DOWNLOAD_TIMEOUT)
-            if response.status != 200:
-                _LOGGER.debug("Downloading the map failed. Status: (%d).", response.status)
-                return None
-            data = await response.content.read()
-        except Exception as err:  # noqa: BLE001 - a failed download; the last map stays
+            try:
+                if response.status != 200:
+                    _LOGGER.debug("Downloading the map failed. Status: (%d).", response.status)
+                    return None
+                data = await response.content.read()
+            finally:
+                response.release()
+        except Exception as err:  # a failed download; the last map stays
             _LOGGER.debug("Downloading the map failed: %s", type(err).__name__)
             return None
         _LOGGER.debug("Downloaded raw map (%d).", len(data))
@@ -86,8 +90,8 @@ class EncryptedApi(XiaomiCloudSession):
             raise _unavailable(response.status)
         try:
             return json.loads(decrypt_rc4(self._signed_nonce(fields["_nonce"]), response_text))
-        except Exception:
-            pass
+        except (ValueError, binascii.Error, UnicodeDecodeError):
+            _LOGGER.debug("API response was not RC4-encrypted JSON, reading plain error payload")
         # An unencrypted body is an error report, e.g. {"code": 3, "message": "auth err"}.
         try:
             result = json.loads(response_text)

@@ -91,7 +91,7 @@ class LoginSteps(FlowBase):
             except TwoFactorAuthRequiredException as e:
                 self._two_factor_exception = e
                 return await self.async_step_auth_two_factor()
-            except Exception as e:  # noqa: BLE001 - every error becomes a message on the form
+            except Exception as e:  # every error becomes a message on the form
                 errors["base"] = login_error(e)
 
             if not errors:
@@ -131,8 +131,8 @@ class LoginSteps(FlowBase):
             except FailedLoginException:
                 self._qr_error = "qr_code_unavailable"
                 return await self.async_step_auth_qr_failed()
-            except Exception as err:  # noqa: BLE001 - a bug still ends on a form the user can retry from
-                _LOGGER.error("Unexpected error while getting the QR code", exc_info=err)
+            except Exception:  # a bug still ends on a form the user can retry from
+                _LOGGER.exception("Unexpected error while getting the QR code")
                 self._qr_error = "qr_failed"
                 return await self.async_step_auth_qr_failed()
             self._qr_placeholders = {
@@ -202,7 +202,7 @@ class LoginSteps(FlowBase):
             except InvalidCredentialsException:
                 # The captcha was right, the password is not: only the credentials form can fix that (#712).
                 return self._credentials_form({"base": "cloud_login_error"})
-            except Exception as e:  # noqa: BLE001 - every error becomes a message on the form
+            except Exception as e:  # every error becomes a message on the form
                 errors["base"] = login_error(e)
         captcha_image_data = self._captcha_exception.image_data
         captcha_image_b64 = base64.b64encode(captcha_image_data).decode("utf-8")
@@ -247,7 +247,7 @@ class LoginSteps(FlowBase):
                 errors[CONF_TWO_FACTOR_CODE] = "invalid_two_factor_code"
             except VerificationIncompleteException:
                 errors["base"] = "verification_incomplete"
-            except Exception as e:  # noqa: BLE001 - every error becomes a message on the form
+            except Exception as e:  # every error becomes a message on the form
                 errors["base"] = login_error(e)
         elif not self._two_factor_exception.code_sent:
             # Xiaomi did not send a code (it wanted a captcha first, or refused): the link is the way.

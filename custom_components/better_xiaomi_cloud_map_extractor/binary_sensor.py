@@ -5,14 +5,13 @@ from dataclasses import dataclass
 from typing import Any
 
 from homeassistant.components.binary_sensor import (
+    DOMAIN as BINARY_SENSOR_DOMAIN,
     BinarySensorEntity,
     BinarySensorEntityDescription,
-    DOMAIN,
 )
 from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from homeassistant.helpers.typing import StateType
+from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 from vacuum_map_parser_base.map_data import MapData
 
 from .coordinator import XiaomiCloudMapExtractorDataUpdateCoordinator
@@ -41,7 +40,7 @@ SENSOR_TYPES: tuple[XiaomiCloudMapExtractorBinarySensorEntityDescription, ...] =
 async def async_setup_entry(
         hass: HomeAssistant,
         config_entry: XiaomiCloudMapExtractorConfigEntry,
-        async_add_entities: AddEntitiesCallback,
+        async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
     coordinator = config_entry.runtime_data.coordinator
 
@@ -60,12 +59,12 @@ class XiaomiCloudMapExtractorBinarySensorEntity(XiaomiCloudMapExtractorEntity, B
             config_entry: XiaomiCloudMapExtractorConfigEntry,
             description: XiaomiCloudMapExtractorBinarySensorEntityDescription,
     ) -> None:
-        super().__init__(coordinator, config_entry, DOMAIN, description.key)
+        super().__init__(coordinator, config_entry, BINARY_SENSOR_DOMAIN, description.key)
 
         self.entity_description = description
 
     @property
-    def is_on(self) -> StateType:
+    def is_on(self) -> bool | None:
         if (map_data := self._map_data()) is None:
             return None
         return self.entity_description.value_fn(map_data)

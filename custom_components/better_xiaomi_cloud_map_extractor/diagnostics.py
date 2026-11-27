@@ -28,5 +28,9 @@ async def async_get_config_entry_diagnostics(
     coordinator = entry.runtime_data.coordinator
     return {
         "config_entry_data": async_redact_data(entry.as_dict(), TO_REDACT_ENTRY),
-        "device_data": async_redact_data(coordinator.data.as_dict(), TO_REDACT_DEVICE),
+        "device_data": (
+            async_redact_data(coordinator.data.as_dict(), TO_REDACT_DEVICE)
+            if coordinator.data is not None
+            else None
+        ),
     }

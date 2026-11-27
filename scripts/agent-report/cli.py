@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import argparse
 import base64
+import contextlib
 import json
 import os
 import socket
@@ -31,7 +32,7 @@ from typing import Any
 # Allow running directly as `python3 scripts/agent-report/cli.py`.
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from core import (  # noqa: E402
+from core import (
     DOMAIN,
     DOMAINS,
     ORIGINAL_DOMAIN,
@@ -183,14 +184,10 @@ class _HAWebSocket:
                 raise RuntimeError(err.get("message") or err.get("code") or "WebSocket call failed")
 
     def close(self) -> None:
-        try:
+        with contextlib.suppress(OSError):
             self._send_frame(0x8, b"")
-        except OSError:
-            pass
-        try:
+        with contextlib.suppress(OSError):
             self._sock.close()
-        except OSError:
-            pass
 
 
 def _fetch_diagnostics(base_url: str, token: str, entry_id: str) -> dict[str, Any]:

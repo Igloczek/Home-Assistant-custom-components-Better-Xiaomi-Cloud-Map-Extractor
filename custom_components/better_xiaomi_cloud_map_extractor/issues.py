@@ -26,6 +26,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_HOST, CONF_MODEL
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers import issue_registry as ir
+from homeassistant.util.hass_dict import HassKey
 from miio import DeviceException
 
 from .connector.model import XiaomiCloudMapExtractorConnectorStatus as Status
@@ -63,6 +64,14 @@ FAILURE_THRESHOLD = 3
 # Map updates in a row without an answer from the vacuum on the local network: 5 minutes at the
 # default interval, so a Wi-Fi drop or a restart of the vacuum raises nothing.
 LAN_UNREACHABLE_UPDATES = 30
+DATA_FAILURES: HassKey[dict[str, dict[str, int]]] = HassKey(f"{DOMAIN}_failures")
+
+
+@callback
+def async_clear_entry_state(hass: HomeAssistant, entry_id: str) -> None:
+    """Drop per-entry failure counters when an entry is removed."""
+    if (counters := hass.data.get(DATA_FAILURES)) is not None:
+        counters.pop(entry_id, None)
 
 
 def wrong_map_format_issue_id(entry_id: str) -> str:
@@ -96,7 +105,7 @@ def async_report_update(
     hass: HomeAssistant, entry: ConfigEntry, outcome: Exception | XiaomiCloudMapExtractorData
 ) -> None:
     """Counts failures in a row and raises an issue once they keep happening; clears it once fixed."""
-    counters: dict[str, dict[str, int]] = hass.data.setdefault(DOMAIN, {}).setdefault("failures", {})
+    counters = hass.data.setdefault(DATA_FAILURES, {})
     previous = counters.get(entry.entry_id, {})
     counts: dict[str, int] = {}
     if isinstance(outcome, XiaomiCloudMapExtractorData):

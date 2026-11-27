@@ -4,6 +4,7 @@ import hmac
 import json
 import os
 import random
+from typing import Any
 
 from Crypto.Cipher import ARC4
 
@@ -43,18 +44,19 @@ def generate_enc_signature(url, method: str, signed_nonce: str, params: dict[str
 
 def generate_enc_params(url: str, method: str, signed_nonce: str, nonce: str, params: dict[str, str],
                         ssecurity: str) -> dict[str, str]:
-    params['rc4_hash__'] = generate_enc_signature(url, method, signed_nonce, params)
-    for k, v in params.items():
-        params[k] = encrypt_rc4(signed_nonce, v)
-    params.update({
-        'signature': generate_enc_signature(url, method, signed_nonce, params),
-        'ssecurity': ssecurity,
-        '_nonce': nonce,
+    encrypted = dict(params)
+    encrypted["rc4_hash__"] = generate_enc_signature(url, method, signed_nonce, encrypted)
+    for k, v in encrypted.items():
+        encrypted[k] = encrypt_rc4(signed_nonce, v)
+    encrypted.update({
+        "signature": generate_enc_signature(url, method, signed_nonce, encrypted),
+        "ssecurity": ssecurity,
+        "_nonce": nonce,
     })
-    return params
+    return encrypted
 
 
-def to_json(response_text: str) -> any:
+def to_json(response_text: str) -> Any:
     return json.loads(response_text.replace("&&&START&&&", ""))
 
 

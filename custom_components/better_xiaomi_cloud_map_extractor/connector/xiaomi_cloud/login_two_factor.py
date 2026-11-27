@@ -10,6 +10,7 @@ from urllib.parse import parse_qs, urlparse
 
 from aiohttp import ClientResponse
 from aiohttp.typedefs import StrOrURL
+from homeassistant.util import dt as dt_util
 from yarl import URL
 
 from .network import NETWORK_ERRORS, _is_outage, _unavailable
@@ -201,7 +202,7 @@ class TwoFactorLogin(XiaomiCloudSession):
                 elif cookie.get("expires"):
                     # A cookie date is GMT; parsing it naive would read it as local time.
                     expires = email.utils.parsedate_to_datetime(cookie["expires"])
-                    max_age = int((expires - datetime.datetime.now(datetime.UTC)).total_seconds())
+                    max_age = int((expires - dt_util.utcnow()).total_seconds())
                 else:
                     continue
             except (TypeError, ValueError):

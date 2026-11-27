@@ -54,16 +54,19 @@ class SessionRenewal(XiaomiCloudSession):
             sts_response = await self._session_data.get(response_json["location"])
         except NETWORK_ERRORS as e:
             raise FailedConnectionException(e)
-        service_token = sts_response.cookies.get("serviceToken")
-        if sts_response.status == 200 and service_token is not None:
-            pass
-        elif sts_response.status == 200 or _is_outage(sts_response.status):
-            raise _unavailable(sts_response.status)
-        else:
-            _LOGGER.info("Xiaomi did not issue a new serviceToken (status %s)", sts_response.status)
-            return False
+        try:
+            service_token = sts_response.cookies.get("serviceToken")
+            if sts_response.status == 200 and service_token is not None:
+                token_value = service_token.value
+            elif sts_response.status == 200 or _is_outage(sts_response.status):
+                raise _unavailable(sts_response.status)
+            else:
+                _LOGGER.info("Xiaomi did not issue a new serviceToken (status %s)", sts_response.status)
+                return False
+        finally:
+            sts_response.release()
 
-        self._session_data.serviceToken = service_token.value
+        self._session_data.serviceToken = token_value
         self._session_data.ssecurity = response_json["ssecurity"]
         if (user_id := response_json.get("userId")) is not None:
             self._session_data.userId = str(user_id)

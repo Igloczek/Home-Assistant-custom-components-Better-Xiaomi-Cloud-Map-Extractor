@@ -1,5 +1,6 @@
 import asyncio
 import base64
+import contextlib
 import json
 import logging
 from typing import Self, Any
@@ -39,7 +40,7 @@ MODEL_KEY_LENGTH = 16
 
 
 class XiaomiCloudVacuum(BaseXiaomiCloudVacuumV2):
-    def __init__(self, vacuum_config: VacuumConfig):
+    def __init__(self, vacuum_config: VacuumConfig) -> None:
         super().__init__(vacuum_config)
         self._token = vacuum_config.token
         self._host = vacuum_config.host
@@ -151,7 +152,7 @@ class XiaomiCloudVacuum(BaseXiaomiCloudVacuumV2):
                 if not self._last_map_state:
                     # Never told which map is current: report the vacuum unreachable rather than show
                     # map "0", which may be a deleted one (upstream #720).
-                    raise lan_error
+                    raise
                 # The map the vacuum last reported; the vacuum_unreachable repair says why.
                 return {**values, **self._last_map_state}
         if any(values.get(p) is not None for p in map_properties):
@@ -237,11 +238,8 @@ class XiaomiCloudVacuum(BaseXiaomiCloudVacuumV2):
 
     def decode_and_parse(self, raw_map: bytes) -> MapData:
         # Try parsing as JSON first (old format), otherwise use raw data directly (new format)
-        try:
+        with contextlib.suppress(json.JSONDecodeError, KeyError, UnicodeDecodeError):
             raw_map = base64.decodebytes(json.loads(raw_map)["data"].encode("latin1"))
-        except (json.JSONDecodeError, KeyError, UnicodeDecodeError):
-            # Data may not be JSON-wrapped
-            pass
 
         try:
             decoded_map = self.map_data_parser.unpack_map(

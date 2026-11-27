@@ -1,18 +1,18 @@
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Coroutine
 from dataclasses import dataclass
-from typing import Any, Coroutine
+from typing import Any
 
 from homeassistant.components.button import (
+    DOMAIN as BUTTON_DOMAIN,
+    ButtonDeviceClass,
     ButtonEntity,
     ButtonEntityDescription,
-    ButtonDeviceClass,
-    DOMAIN,
 )
 from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from .coordinator import XiaomiCloudMapExtractorDataUpdateCoordinator
 from .entity import XiaomiCloudMapExtractorEntity
@@ -40,7 +40,7 @@ BUTTON_TYPES: tuple[XiaomiCloudMapExtractorButtonEntityDescription, ...] = (
 async def async_setup_entry(
         hass: HomeAssistant,
         config_entry: XiaomiCloudMapExtractorConfigEntry,
-        async_add_entities: AddEntitiesCallback,
+        async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
     coordinator = config_entry.runtime_data.coordinator
 
@@ -59,7 +59,7 @@ class XiaomiCloudMapExtractorButtonEntity(XiaomiCloudMapExtractorEntity, ButtonE
             config_entry: XiaomiCloudMapExtractorConfigEntry,
             description: XiaomiCloudMapExtractorButtonEntityDescription,
     ) -> None:
-        super().__init__(coordinator, config_entry, DOMAIN, description.key)
+        super().__init__(coordinator, config_entry, BUTTON_DOMAIN, description.key)
 
         self.entity_description = description
 

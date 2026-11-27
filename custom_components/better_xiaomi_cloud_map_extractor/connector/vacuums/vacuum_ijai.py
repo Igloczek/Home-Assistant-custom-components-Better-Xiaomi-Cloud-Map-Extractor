@@ -1,6 +1,7 @@
 import asyncio
 import base64
 import binascii
+import contextlib
 import json
 import logging
 import re
@@ -65,9 +66,9 @@ REALTIME_UPLOAD_ACTION: dict[str, tuple[int, int]] = {
 
 
 class IjaiCloudVacuum(BaseXiaomiCloudVacuumV2):
-    WIFI_INFO_SN_POSSIBLE_LEN = [18, 19, 20]
+    WIFI_INFO_SN_POSSIBLE_LEN = (18, 19, 20)
 
-    def __init__(self, vacuum_config: VacuumConfig):
+    def __init__(self, vacuum_config: VacuumConfig) -> None:
         super().__init__(vacuum_config)
         self._token = vacuum_config.token
         self._host = vacuum_config.host
@@ -316,7 +317,7 @@ class IjaiCloudVacuum(BaseXiaomiCloudVacuumV2):
             try:
                 decoded_map = _with_current_map_info(decoded_map)
                 return self._parser_for(decoded_map).parse(decoded_map)
-            except Exception as err:  # noqa: BLE001 - decrypted, but not a map the parser can read
+            except Exception as err:  # decrypted, but not a map the parser can read
                 _LOGGER.debug("Failed to parse the %s map: %r", self.model, err)
                 raise FailedMapParseException() from err
 
@@ -372,10 +373,8 @@ def map_key(wifi_sn: str, owner_id: str, device_id: str, model: str, mac: str, h
 
 def unpack_map(raw_map: bytes, key: str, hex_key: bool) -> bytes:
     # IjaiMapDataParser.unpack_map with an explicit key.
-    try:
+    with contextlib.suppress(binascii.Error):
         raw_map = base64.b64decode(raw_map, validate=True)
-    except binascii.Error:
-        pass
     return zlib.decompress(_aes_decrypt(raw_map, key, hex_key))
 
 

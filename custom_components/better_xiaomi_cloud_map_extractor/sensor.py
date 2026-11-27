@@ -6,14 +6,14 @@ from dataclasses import dataclass
 from typing import Any
 
 from homeassistant.components.sensor import (
+    DOMAIN as SENSOR_DOMAIN,
     SensorEntity,
     SensorEntityDescription,
     SensorStateClass,
-    DOMAIN,
 )
 from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 from homeassistant.helpers.typing import StateType
 from vacuum_map_parser_base.map_data import MapData
 
@@ -121,7 +121,7 @@ SENSOR_TYPES: tuple[XiaomiCloudMapExtractorSensorEntityDescription, ...] = (
         key="goto_path",
         translation_key="goto_path",
         suggested_display_precision=0,
-        value_fn=lambda map_data: len_len(map_data.goto_path and map_data.goto_path.path or []),
+        value_fn=lambda map_data: len_len((map_data.goto_path and map_data.goto_path.path) or []),
         attributes_fn=lambda map_data: map_data.goto_path.as_dict() if map_data.goto_path else {},
         state_class=SensorStateClass.MEASUREMENT,
         entity_category=EntityCategory.DIAGNOSTIC,
@@ -132,7 +132,7 @@ SENSOR_TYPES: tuple[XiaomiCloudMapExtractorSensorEntityDescription, ...] = (
         key="goto_predicted_path",
         translation_key="goto_predicted_path",
         suggested_display_precision=0,
-        value_fn=lambda map_data: len_len(map_data.predicted_path and map_data.predicted_path.path or []),
+        value_fn=lambda map_data: len_len((map_data.predicted_path and map_data.predicted_path.path) or []),
         attributes_fn=lambda map_data: map_data.predicted_path.as_dict() if map_data.predicted_path else {},
         state_class=SensorStateClass.MEASUREMENT,
         entity_category=EntityCategory.DIAGNOSTIC,
@@ -143,7 +143,7 @@ SENSOR_TYPES: tuple[XiaomiCloudMapExtractorSensorEntityDescription, ...] = (
         key="mop_path",
         translation_key="mop_path",
         suggested_display_precision=0,
-        value_fn=lambda map_data: len_len(map_data.mop_path and map_data.mop_path.path or []),
+        value_fn=lambda map_data: len_len((map_data.mop_path and map_data.mop_path.path) or []),
         attributes_fn=lambda map_data: map_data.mop_path.as_dict() if map_data.mop_path else {},
         state_class=SensorStateClass.MEASUREMENT,
         entity_category=EntityCategory.DIAGNOSTIC,
@@ -154,7 +154,7 @@ SENSOR_TYPES: tuple[XiaomiCloudMapExtractorSensorEntityDescription, ...] = (
         key="path",
         translation_key="path",
         suggested_display_precision=0,
-        value_fn=lambda map_data: len_len(map_data.path and map_data.path.path or []),
+        value_fn=lambda map_data: len_len((map_data.path and map_data.path.path) or []),
         attributes_fn=lambda map_data: map_data.path.as_dict() if map_data.path else {},
         state_class=SensorStateClass.MEASUREMENT,
         entity_category=EntityCategory.DIAGNOSTIC,
@@ -252,7 +252,7 @@ SENSOR_TYPES: tuple[XiaomiCloudMapExtractorSensorEntityDescription, ...] = (
 async def async_setup_entry(
         hass: HomeAssistant,
         config_entry: XiaomiCloudMapExtractorConfigEntry,
-        async_add_entities: AddEntitiesCallback,
+        async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
     coordinator = config_entry.runtime_data.coordinator
 
@@ -271,7 +271,7 @@ class XiaomiCloudMapExtractorSensorEntity(XiaomiCloudMapExtractorEntity, SensorE
             config_entry: XiaomiCloudMapExtractorConfigEntry,
             description: XiaomiCloudMapExtractorSensorEntityDescription,
     ) -> None:
-        super().__init__(coordinator, config_entry, DOMAIN, description.key)
+        super().__init__(coordinator, config_entry, SENSOR_DOMAIN, description.key)
 
         self.entity_description = description
 

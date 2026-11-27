@@ -1,7 +1,8 @@
 """Importing a vacuum from the original integration (its config entry or its YAML camera)."""
 from __future__ import annotations
 
-from typing import Any, Self, Mapping
+from collections.abc import Mapping
+from typing import Any, Self
 
 import voluptuous as vol
 from aiohttp import ClientSession

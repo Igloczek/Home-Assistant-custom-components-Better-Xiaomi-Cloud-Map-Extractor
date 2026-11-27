@@ -100,20 +100,27 @@ class FakeResponse:
         self.headers = CIMultiDict(self.headers)
         self.content = self
         self.history: tuple[FakeResponse, ...] = ()
+        self.released = False
+
+    def release(self) -> None:
+        self.released = True
 
     @property
     def _bytes(self) -> bytes:
         return self.body.encode() if isinstance(self.body, str) else self.body
 
     async def text(self) -> str:
+        self.released = True
         return self._bytes.decode(errors="replace")
 
     async def read(self) -> bytes:
+        self.released = True
         return self._bytes
 
     async def json(self) -> Any:
         """Like aiohttp: no `&&&START&&&` stripping. Xiaomi's passport prefixes every JSON body with it,
         so `response.json()` never works on a real passport answer (#780)."""
+        self.released = True
         return json.loads(self._bytes.decode())
 
 
@@ -145,6 +152,7 @@ class FakeXiaomiCloud:
     def __init__(self) -> None:
         self.routes: dict[tuple[str, str], Handler] = {}
         self.requests: list[Request] = []
+        self.responses: list[FakeResponse] = []
         self.valid_service_tokens: set[str] = set()
         self.ssecurity = SSECURITY
         # Requests to these endpoints wait until the event is set, like a long poll Xiaomi holds open.
@@ -173,6 +181,7 @@ class FakeXiaomiCloud:
         response = handler(request)
         if response.url is None:
             response.url = request.url
+        self.responses.append(response)
         return response
 
     # --- canned Xiaomi behaviour ------------------------------------------------------

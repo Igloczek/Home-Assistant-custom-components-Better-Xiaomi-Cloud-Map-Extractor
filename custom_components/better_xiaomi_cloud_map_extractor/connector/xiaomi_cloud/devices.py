@@ -4,7 +4,7 @@ import asyncio
 import json
 import logging
 from dataclasses import dataclass
-from typing import Optional, Self
+from typing import Self
 
 from .api import EncryptedApi
 from .const import AVAILABLE_SERVERS
@@ -81,7 +81,7 @@ class DeviceDiscovery(EncryptedApi):
         except (FailedConnectionException, TimeoutError) as e:
             if strict:
                 raise
-            _LOGGER.error("Failed to get devices from home: %s", e)
+            _LOGGER.warning("Failed to get devices from home: %s", e)
             return []
 
         result = response.get("result") if isinstance(response, dict) else None
@@ -106,7 +106,7 @@ class DeviceDiscovery(EncryptedApi):
             for device in raw_devices
         ]
 
-    async def get_devices(self: Self, server: Optional[str] = None) -> list[XiaomiCloudDeviceInfo]:
+    async def get_devices(self: Self, server: str | None = None) -> list[XiaomiCloudDeviceInfo]:
         """The account's devices on one server, or on every server when none is given.
 
         Errors always reach the caller for a single server (map updates): a timeout or an expired
@@ -140,7 +140,7 @@ class DeviceDiscovery(EncryptedApi):
         device_lists = await asyncio.gather(*device_coro_list)
         return [device for device_list in device_lists for device in device_list]
 
-    async def get_device_details(self: Self, device_id: str, server: Optional[str] = None) -> XiaomiCloudDeviceInfo | None:
+    async def get_device_details(self: Self, device_id: str, server: str | None = None) -> XiaomiCloudDeviceInfo | None:
         devices = await self.get_devices(server)
         matching_device = filter(lambda device: device.device_id == device_id, devices)
         return next(matching_device, None)
