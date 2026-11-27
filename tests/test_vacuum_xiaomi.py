@@ -16,6 +16,8 @@ from __future__ import annotations
 import base64
 import hashlib
 import json
+import logging
+import struct
 import zlib
 from pathlib import Path
 from collections.abc import Iterator
@@ -39,8 +41,10 @@ from custom_components.better_xiaomi_cloud_map_extractor.connector.vacuums.vacuu
 
 from .conftest import make_device
 from .fake_miio import FakeLanVacuum, lan_vacuum
+from .log_secrets import assert_no_secrets
 
 MAP_JSON = (Path(__file__).parent / "fixtures" / "xiaomi" / "map.json").read_text()
+MAP_ROOM_ID_ZERO_JSON = (Path(__file__).parent / "fixtures" / "xiaomi" / "map_room_id_zero.json").read_text()
 DEVICE_ID = "123456789"
 USER_ID = 2
 IV = b"ABCDEF1234123412"
@@ -64,11 +68,21 @@ def app_key(model: str, device_id: str) -> bytes:
     return hashlib.md5(wrapped).digest()
 
 
+def encrypt_xiaomi_map_raw(map_json: str, model: str, device_id: str) -> bytes:
+    """Raw AES-CBC ciphertext of zlib(map_json), without the `{"data": ...}` JSON envelope."""
+    cipher = AES.new(app_key(model, device_id), AES.MODE_CBC, IV)
+    return cipher.encrypt(pad(zlib.compress(map_json.encode()), 16))
+
+
 def encrypt_xiaomi_map(map_json: str, model: str, device_id: str) -> bytes:
     """Build the cloud object the vacuum uploads, as the Xiaomi Home app reads it."""
-    cipher = AES.new(app_key(model, device_id), AES.MODE_CBC, IV)
-    data = cipher.encrypt(pad(zlib.compress(map_json.encode()), 16))
+    data = encrypt_xiaomi_map_raw(map_json, model, device_id)
     return json.dumps({"version": 2, "data": base64.b64encode(data).decode()}).encode()
+
+
+def encode_unencrypted_xiaomi_map(map_json: str) -> bytes:
+    """Unencrypted `base64(zlib(map_json))` blob uploaded by models such as `xiaomi.vacuum.c107`."""
+    return base64.b64encode(zlib.compress(map_json.encode()))
 
 
 def make_vacuum(model: str, raw_map: bytes) -> tuple[XiaomiCloudVacuum, MagicMock]:
@@ -191,3 +205,142 @@ async def test_other_vendor_whose_map_is_in_xiaomi_format_still_works(miot_devic
     map_data, _ = await vacuum.get_map()
 
     assert map_data.image.dimensions.width == 10
+
+
+async def test_encrypted_raw_ciphertext_xiaomi_map_still_decrypts(miot_device: FakeLanVacuum) -> None:
+    """Encrypted Xiaomi maps without the JSON envelope keep taking the AES decrypt path."""
+    model = "xiaomi.vacuum.ov81gl"
+    raw_map = encrypt_xiaomi_map_raw(MAP_JSON, model, DEVICE_ID)
+    vacuum, _ = make_vacuum(model, raw_map)
+
+    map_data, returned_raw = await vacuum.get_map()
+
+    assert returned_raw == raw_map
+    assert map_data.image.dimensions.width == 10
+    assert {room.name for room in map_data.rooms.values()} == {"Kitchen", "Hall"}
+
+
+@pytest.mark.parametrize(
+    "raw_map",
+    [
+        encode_unencrypted_xiaomi_map(MAP_JSON),
+        base64.encodebytes(zlib.compress(MAP_JSON.encode())),
+        zlib.compress(MAP_JSON.encode()),
+        json.dumps({"version": 2, "data": encode_unencrypted_xiaomi_map(MAP_JSON).decode()}).encode(),
+    ],
+    ids=["base64-zlib", "base64-zlib-multiline", "raw-zlib", "json-envelope-unencrypted-zlib"],
+)
+async def test_unencrypted_c107_xiaomi_map_decodes_and_parses(
+    raw_map: bytes, miot_device: FakeLanVacuum
+) -> None:
+    """`xiaomi.vacuum.c107` uploads unencrypted `base64(zlib(map_json))` without a JSON envelope (#10)."""
+    model = "xiaomi.vacuum.c107"
+    vacuum, connector = make_vacuum(model, raw_map)
+
+    map_data, returned_raw = await vacuum.get_map()
+
+    connector.get_raw_map_data.assert_awaited_once_with(MAP_URL)
+    assert returned_raw == raw_map
+    assert map_data.map_name == "0"
+    assert map_data.image.dimensions.width == 10
+    assert map_data.image.dimensions.height == 8
+    assert {room.name for room in map_data.rooms.values()} == {"Kitchen", "Hall"}
+
+
+async def test_unencrypted_xiaomi_map_applies_unique_room_ids_and_live_data() -> None:
+    """Unencrypted Xiaomi maps go through the same room-id deduplication and live-data overlay."""
+    model = "xiaomi.vacuum.c107"
+    payload = json.loads(MAP_ROOM_ID_ZERO_JSON)
+    payload.pop("position", None)
+    raw_map = encode_unencrypted_xiaomi_map(json.dumps(payload))
+    points = [(-100, -50), (0, 0), (120, -80)]
+    raw_trajectory = zlib.compress(
+        struct.pack("<HH", 1, len(points)) + b"".join(struct.pack("<Bii", 2, x, y) for x, y in points)
+    )
+    objects = {"3": raw_map, "traj-17": raw_trajectory}
+    base_url = "https://example.invalid/objects/"
+
+    async def file_url(_url: str, params: dict[str, str]) -> dict[str, object]:
+        path = json.loads(params["data"])["obj_name"]
+        return {"code": 0, "result": {"url": base_url + path.split("/")[-1]}}
+
+    async def download(url: str | None) -> bytes | None:
+        return objects.get(url.removeprefix(base_url)) if url else None
+
+    vacuum, connector = make_vacuum(model, raw_map)
+    connector.execute_api_call_encrypted = AsyncMock(side_effect=file_url)
+    connector.get_raw_map_data = AsyncMock(side_effect=download)
+
+    lan = FakeLanVacuum(
+        model,
+        properties={
+            (2, 1): "4.3.3_0016",
+            (2, 2): 4,
+            (10, 1): json.dumps({"obj_name": f"{USER_ID}/{DEVICE_ID}/3"}),
+            (10, 2): json.dumps({"obj_name": f"{USER_ID}/{DEVICE_ID}/traj-17"}),
+            (10, 4): json.dumps({"position": [120, -80, 1571]}),
+        },
+    )
+    with lan_vacuum(lan):
+        map_data, returned_raw = await vacuum.get_map()
+
+    assert returned_raw == raw_map
+    assert map_data.map_name == "3"
+    assert sorted(room.name for room in map_data.rooms.values()) == ["Hall", "Kitchen"]
+    assert sorted(map_data.rooms) == [3, 4]
+    assert [(p.x, p.y) for p in map_data.path.path[0]] == points
+    assert (map_data.vacuum_position.x, map_data.vacuum_position.y) == (120, -80)
+    assert round(map_data.vacuum_position.a) == 90
+
+
+@pytest.mark.parametrize(
+    "raw_map",
+    [
+        b"corrupt-payload-raw-marker-bytes",
+        encrypt_xiaomi_map(MAP_JSON, "xiaomi.vacuum.ov81gl", "999999999"),
+        encrypt_xiaomi_map_raw(MAP_JSON, "xiaomi.vacuum.ov81gl", "999999999"),
+        base64.b64encode(zlib.compress(b"[1, 2, 3]")),
+        zlib.compress(b'"just-a-string"'),
+        ROBOROCK_LIKE_MAP,
+    ],
+    ids=[
+        "corrupt",
+        "wrong-key-envelope",
+        "wrong-key-raw",
+        "base64-zlib-non-dict",
+        "raw-zlib-non-dict",
+        "non-xiaomi-vendor",
+    ],
+)
+async def test_corrupt_wrong_key_and_non_dict_maps_fail_and_log_without_secrets(
+    raw_map: bytes, miot_device: FakeLanVacuum, caplog: pytest.LogCaptureFixture
+) -> None:
+    """Bad Xiaomi maps raise `FailedMapParseException` and log the error at DEBUG without secrets."""
+    model = "xiaomi.vacuum.c107"
+    caplog.set_level(logging.DEBUG)
+    vacuum, _ = make_vacuum(model, raw_map)
+
+    with pytest.raises(FailedMapParseException):
+        await vacuum.get_map()
+
+    debug_messages = [r.getMessage() for r in caplog.records if r.levelno == logging.DEBUG]
+    assert any(f"Failed to read the {model} map:" in msg for msg in debug_messages)
+    assert_no_secrets(
+        caplog,
+        {
+            "device token": "0123456789abcdef0123456789abcdef",
+            "map key": app_key(model, DEVICE_ID).hex(),
+            "raw marker": "corrupt-payload-raw-marker-bytes",
+        },
+    )
+
+
+async def test_unencrypted_dict_without_map_fields_fails_as_parse_error(
+    miot_device: FakeLanVacuum,
+) -> None:
+    """An unencrypted JSON dict that is not a Xiaomi map still fails as a parse error."""
+    model = "xiaomi.vacuum.c107"
+    vacuum, _ = make_vacuum(model, base64.b64encode(zlib.compress(b'{"not_a_map": 1}')))
+
+    with pytest.raises(FailedMapParseException):
+        await vacuum.get_map()

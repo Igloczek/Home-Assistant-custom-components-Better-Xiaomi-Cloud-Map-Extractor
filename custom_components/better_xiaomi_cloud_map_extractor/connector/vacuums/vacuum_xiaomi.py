@@ -3,6 +3,7 @@ import base64
 import contextlib
 import json
 import logging
+import zlib
 from typing import Self, Any
 
 from miio.exceptions import DeviceException
@@ -237,17 +238,25 @@ class XiaomiCloudVacuum(BaseXiaomiCloudVacuumV2):
         return f"{self._user_id}/{self._device_id}/{name}"
 
     def decode_and_parse(self, raw_map: bytes) -> MapData:
-        # Try parsing as JSON first (old format), otherwise use raw data directly (new format)
-        with contextlib.suppress(json.JSONDecodeError, KeyError, UnicodeDecodeError):
-            raw_map = base64.decodebytes(json.loads(raw_map)["data"].encode("latin1"))
+        # Encrypted maps come in a {"version": 2, "data": ...} envelope or as raw ciphertext; c107
+        # uploads base64(zlib(JSON)) without one, decoded when decryption fails.
+        with contextlib.suppress(json.JSONDecodeError, UnicodeDecodeError, ValueError):
+            envelope = json.loads(raw_map)
+            if isinstance(envelope, dict) and isinstance(envelope.get("data"), str):
+                raw_map = base64.decodebytes(envelope["data"].encode("latin1"))
 
         try:
-            decoded_map = self.map_data_parser.unpack_map(
-                raw_map.hex(),
-                model=self._model_key,
-                device_id=str(self._device_id),
-            )
-            payload = json.loads(decoded_map) if isinstance(decoded_map, str) else decoded_map
+            try:
+                decoded_map = self.map_data_parser.unpack_map(
+                    raw_map.hex(),
+                    model=self._model_key,
+                    device_id=str(self._device_id),
+                )
+                payload = json.loads(decoded_map) if isinstance(decoded_map, str) else decoded_map
+            except Exception:
+                payload = _decode_unencrypted_map(raw_map)
+                if payload is None:
+                    raise
             if isinstance(payload, dict):
                 payload = with_unique_room_ids(payload)
                 payload = with_live_data(payload, self._live_path, self._live_position)
@@ -255,6 +264,7 @@ class XiaomiCloudVacuum(BaseXiaomiCloudVacuumV2):
         except Exception as err:
             # A map in another vendor's format fails here with whatever the cipher, zlib or JSON
             # step raises; report it as a parse failure so the coordinator can offer the right format.
+            _LOGGER.debug("Failed to read the %s map: %r", self.model, err)
             raise FailedMapParseException(f"{self.model}: the map could not be read in the Xiaomi format") from err
 
     def additional_data(self: Self) -> dict[str, Any]:
@@ -266,3 +276,24 @@ class XiaomiCloudVacuum(BaseXiaomiCloudVacuumV2):
             enc_key = None
 
         return {**super_data, "enc_key": enc_key}
+
+
+def _decode_unencrypted_map(raw_map: bytes) -> dict[str, Any] | None:
+    """Decode an unencrypted `base64(zlib(map JSON))` or `zlib(map JSON)` Xiaomi map payload.
+
+    Some models (such as `xiaomi.vacuum.c107`, Mijia M30 Pro) upload compressed map JSON as plain
+    base64 without AES encryption or the `{"version": 2, "data": ...}` envelope.
+    """
+    candidates = [raw_map]
+    compact = b"".join(raw_map.split())
+    if compact:
+        with contextlib.suppress(ValueError):
+            candidates.insert(0, base64.b64decode(compact, validate=True))
+    for candidate in candidates:
+        try:
+            payload = json.loads(zlib.decompress(candidate))
+        except (zlib.error, UnicodeDecodeError, json.JSONDecodeError):
+            continue
+        if isinstance(payload, dict):
+            return payload
+    return None
