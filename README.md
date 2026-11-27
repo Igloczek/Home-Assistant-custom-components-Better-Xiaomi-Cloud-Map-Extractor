@@ -177,7 +177,7 @@ The legacy v2 documentation stays on the
 ## Supported devices
 
 Works with **Xiaomi**, **Roborock** (paired with the Xiaomi Home / Mi Home app), **Viomi**,
-**Roidmi**, **Dreame** and **Ijai** vacuums. The map format is detected automatically from your
+**Roidmi**, **Dreame**, **Ijai** and **Jonr** vacuums. The map format is detected automatically from your
 model and marked with `*` in the last setup step (**Used map API**). Even if your exact model isn't
 listed below, it often works by picking its brand's format there.
 

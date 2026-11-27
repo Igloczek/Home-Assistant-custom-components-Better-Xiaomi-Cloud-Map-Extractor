@@ -784,3 +784,32 @@ async def test_unknown_stored_map_format_sets_up_as_unsupported(
     await hass.async_block_till_done()
     warnings = [r for r in caplog.records if r.levelno >= logging.WARNING and "NO_SUCH_FORMAT" in r.getMessage()]
     assert len(warnings) == 1, [r.getMessage() for r in warnings]
+
+
+async def test_jonr_p20_added_as_unsupported_switches_to_xtl_in_one_repair(
+    hass: HomeAssistant, setup_vacuum, freezer: FrozenDateTimeFactory
+) -> None:
+    """A P20 added before XTL existed holds UNSUPPORTED; the format-upgrade repair moves it to XTL,
+    and the real XTL parser draws its map."""
+    from homeassistant.components.repairs import repairs_flow_manager
+    from homeassistant.data_entry_flow import FlowResultType
+
+    vacuum = setup_vacuum(Vendor("xtl.vacuum.xm2216", "UNSUPPORTED", {}, {}, xtl_map))
+    await vacuum.setup()
+    issue = ir.async_get(hass).async_get_issue(DOMAIN, f"map_format_upgrade_{vacuum.entry.entry_id}")
+    assert issue is not None
+    assert issue.translation_placeholders["detected_api"] == "XTL (Jonr)"
+
+    assert await async_setup_component(hass, "repairs", {})
+    manager = repairs_flow_manager(hass)
+    result = await manager.async_init(DOMAIN, data={"issue_id": issue.issue_id})
+    assert result["description_placeholders"]["detected_api"] == "XTL (Jonr)"
+    result = await manager.async_configure(result["flow_id"], {})
+    await hass.async_block_till_done()
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+
+    assert vacuum.entry.data[CONF_USED_MAP_API] == "XTL"
+    await vacuum.cycles(freezer, 1)
+    map_data = vacuum.entry.runtime_data.coordinator.data.map_data
+    assert map_data is not None and map_data.image is not None and not map_data.image.is_empty
+    assert ir.async_get(hass).async_get_issue(DOMAIN, issue.issue_id) is None
