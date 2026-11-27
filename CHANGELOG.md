@@ -2,14 +2,6 @@
 
 ## Unreleased
 
-<<<<<<< HEAD
-## 1.0.7 - 2026-11-27
-
-Testing the Roborock-without-the-local-network or Jonr P20 / Roidmi sdj60 pre-releases? Take
-`v1.0.8-beta.1` or `v1.0.8-beta.2` instead of the `v1.0.7` betas: they contain everything in this release.
-=======
-### Added
-
 - Roidmi `roidmi.vacuum.sdj60` shows its map (upstream #572, ported from upstream PR #768 by
   @winchester7). Its map is read from the endpoint the Mi Home app uses, where the other one points at
   a file that is no map and failed with "list indices must be integers or slices, not str". Other
@@ -20,7 +12,11 @@ Testing the Roborock-without-the-local-network or Jonr P20 / Roidmi sdj60 pre-re
   (@Maedrawd), which three owners confirmed against the Mi Home app. Room names, no-go zones and
   whether the vacuum is cleaning are not read yet; the map is checked once a minute while it does not
   change.
->>>>>>> 03edcff (XTL: label 'XTL (Jonr)', import test for Maedrawd's entries, rooms commitment in FORK.md, CHANGELOG under Unreleased)
+
+## 1.0.7 - 2026-11-27
+
+Testing the Roborock-without-the-local-network or Jonr P20 / Roidmi sdj60 pre-releases? Take
+`v1.0.8-beta.1` or `v1.0.8-beta.2` instead of the `v1.0.7` betas: they contain everything in this release.
 
 ### Fixed
 
