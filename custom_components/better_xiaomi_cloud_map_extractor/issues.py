@@ -1,6 +1,8 @@
 """Issues: failures that need the user, raised once they keep happening and cleared once fixed.
 
 - `wrong_map_format`: a vacuum whose map fails in the Xiaomi format gets its vendor's format.
+- `map_format_upgrade`: a vacuum added while its model was unsupported gets the format this version
+  reads it in. Checked at every setup, so it shows up right after the update that adds the format.
 - `device_not_found`, `vacuum_token`, `map_download_failing`: the same failure FAILURE_THRESHOLD map
   updates in a row. The fix looks the vacuum up in every Xiaomi region with the stored session and
   offers what the cloud knows (region, IP address, token); a login is asked for only when the
@@ -45,6 +47,7 @@ from .const import CONF_SERVER, CONF_USED_MAP_API, DOMAIN
 _LOGGER = logging.getLogger(f"{__package__}.repairs")
 
 WRONG_MAP_FORMAT = "wrong_map_format"
+MAP_FORMAT_UPGRADE = "map_format_upgrade"
 DEVICE_NOT_FOUND = "device_not_found"
 VACUUM_TOKEN = "vacuum_token"
 MAP_DOWNLOAD_FAILING = "map_download_failing"
@@ -67,6 +70,9 @@ LAN_UNREACHABLE_UPDATES = 30
 DATA_FAILURES: HassKey[dict[str, dict[str, int]]] = HassKey(f"{DOMAIN}_failures")
 
 
+DATA_UNKNOWN_FORMAT_WARNED: HassKey[set[tuple[str, str]]] = HassKey(f"{DOMAIN}_unknown_format_warned")
+
+
 @callback
 def async_clear_entry_state(hass: HomeAssistant, entry_id: str) -> None:
     """Drop per-entry failure counters when an entry is removed."""
@@ -80,7 +86,7 @@ def wrong_map_format_issue_id(entry_id: str) -> str:
 
 def issue_ids(entry_id: str) -> list[str]:
     """Every issue this integration may raise for an entry."""
-    return [f"{key}_{entry_id}" for key in (WRONG_MAP_FORMAT, *PERSISTENT_FAILURES)]
+    return [f"{key}_{entry_id}" for key in (WRONG_MAP_FORMAT, MAP_FORMAT_UPGRADE, *PERSISTENT_FAILURES)]
 
 
 def persistent_failure(outcome: Exception | Status) -> str | None:
@@ -171,6 +177,7 @@ def async_check_map_format(hass: HomeAssistant, entry: ConfigEntry, status: Stat
     Only a real parse failure raises the issue, so a vacuum whose map works in the Xiaomi format
     is never touched.
     """
+    async_check_format_upgrade(hass, entry)
     issue_id = wrong_map_format_issue_id(entry.entry_id)
     if status is Status.OK:
         ir.async_delete_issue(hass, DOMAIN, issue_id)
@@ -195,6 +202,61 @@ def async_check_map_format(hass: HomeAssistant, entry: ConfigEntry, status: Stat
             "name": entry.title,
             "model": entry.data[CONF_MODEL],
             "used_api": VacuumApi.XIAOMI.title(),
+            "detected_api": detected.title(),
+        },
+        data={"entry_id": entry.entry_id, "detected_api": detected.value},
+    )
+
+
+def _new_format(entry: ConfigEntry) -> VacuumApi | None:
+    """The format this version reads a vacuum in that was stored as unsupported, if there is one."""
+    stored = entry.data.get(CONF_USED_MAP_API)
+    if not stored or VacuumApi.known(stored) is not VacuumApi.UNSUPPORTED:
+        return None
+    detected = VacuumApi.detect(entry.data.get(CONF_MODEL, ""))
+    if detected in (None, VacuumApi.UNSUPPORTED):
+        return None
+    return detected
+
+
+@callback
+def async_warn_unknown_format(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    """A stored format this version doesn't know is shown as unsupported; the entry keeps it.
+
+    Warned once per Home Assistant run, not on every setup retry or reload."""
+    stored = entry.data.get(CONF_USED_MAP_API)
+    warned = hass.data.setdefault(DATA_UNKNOWN_FORMAT_WARNED, set())
+    if stored and VacuumApi.known(stored) is None and (entry.entry_id, stored) not in warned:
+        warned.add((entry.entry_id, stored))
+        _LOGGER.warning(
+            "%s (%s) is set to the %s map format, which this version doesn't know; its map is shown "
+            "as unsupported",
+            entry.title, entry.data.get(CONF_MODEL), stored,
+        )
+
+
+@callback
+def async_check_format_upgrade(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    """Offer the format a newer release added for a vacuum stored as unsupported; withdraw it otherwise."""
+    issue_id = f"{MAP_FORMAT_UPGRADE}_{entry.entry_id}"
+    if (detected := _new_format(entry)) is None:
+        ir.async_delete_issue(hass, DOMAIN, issue_id)
+        return
+    if ir.async_get(hass).async_get_issue(DOMAIN, issue_id) is None:
+        _LOGGER.warning(
+            "This version reads the map of %s (%s) in the %s format. Open Settings → Repairs to switch it.",
+            entry.title, entry.data[CONF_MODEL], detected.title(),
+        )
+    ir.async_create_issue(
+        hass,
+        DOMAIN,
+        issue_id,
+        is_fixable=True,
+        severity=ir.IssueSeverity.WARNING,
+        translation_key=MAP_FORMAT_UPGRADE,
+        translation_placeholders={
+            "name": entry.title,
+            "model": entry.data[CONF_MODEL],
             "detected_api": detected.title(),
         },
         data={"entry_id": entry.entry_id, "detected_api": detected.value},
