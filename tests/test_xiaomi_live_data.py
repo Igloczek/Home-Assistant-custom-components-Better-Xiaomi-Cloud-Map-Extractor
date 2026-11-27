@@ -14,6 +14,7 @@ connector that serves objects by name. Every map, trajectory and id here is synt
 
 from __future__ import annotations
 
+import base64
 import json
 import logging
 import struct
@@ -503,6 +504,159 @@ async def test_unique_room_ids_are_kept() -> None:
     assert {room_id: room.name for room_id, room in map_data.rooms.items()} == {1: "Kitchen", 2: "Hall"}
 
 
+# Room keys: the `rooms` attribute's keys are the room ids the map card sends back to the vacuum, so they
+# must not depend on what one payload happens to contain. A map of four rooms, one per quadrant:
+#   grid 3 | grid 4
+#   grid 5 | grid 6
+FOUR_ROOMS_PIXELS = bytes(
+    [255] * 10
+    + ([255, 3, 3, 3, 3, 4, 4, 4, 4, 255] * 3)
+    + ([255, 5, 5, 5, 5, 6, 6, 6, 6, 255] * 3)
+    + [255] * 10
+)
+TWO_ROOMS_PIXELS = bytes(p if p in (3, 4, 255) else 255 for p in FOUR_ROOMS_PIXELS)
+ONE_ROOM_PIXELS = bytes([255] * 10 + [255, 3, 3, 3, 3, 3, 3, 3, 3, 255] * 6 + [255] * 10)
+
+
+def rooms_map(rooms: list[tuple[int, int]], attrs: list[dict[str, Any]], pixels: bytes = FOUR_ROOMS_PIXELS) -> str:
+    """A synthetic map whose `map_room_info` pairs each `(grid_id, room_id)` and whose `room_attrs` are `attrs`."""
+    payload = json.loads(fixture_map("map_without_live_data.json"))
+    payload["map_data"] = base64.b64encode(zlib.compress(pixels)).decode()
+    payload["map_room_info"] = [{"grid_id": g, "room_id": r, "color": i} for i, (g, r) in enumerate(rooms, 1)]
+    payload["room_attrs"] = attrs
+    return json.dumps(payload)
+
+
+def bounds(room: Any) -> tuple[float, float, float, float]:
+    return room.x0, room.y0, room.x1, room.y1
+
+
+async def grid_bounds(pixels: bytes = FOUR_ROOMS_PIXELS) -> dict[int, tuple[float, float, float, float]]:
+    """Where each grid id's room lies: the same map with every room keyed by its own grid id."""
+    grids = sorted(set(pixels) - {255})
+    map_data = await parse_fixture("xiaomi.vacuum.ov81gl", rooms_map([(g, g) for g in grids], [], pixels))
+    assert sorted(map_data.rooms) == grids
+    return {room_id: bounds(room) for room_id, room in map_data.rooms.items()}
+
+
+def names(map_data: Any) -> dict[int, str | None]:
+    return {room_id: room.name for room_id, room in map_data.rooms.items()}
+
+
+async def test_one_room_with_room_id_zero_keeps_key_zero() -> None:
+    """One room with `room_id` 0 on a model other than the ov21gl: keyed 0, as in 1.0.0."""
+    map_data = await parse_fixture("xiaomi.vacuum.ov81gl", rooms_map(
+        [(3, 0)], [{"id": 3, "room_id": 0, "name": "Living room"}], ONE_ROOM_PIXELS))
+
+    assert names(map_data) == {0: "Living room"}
+
+
+async def test_ov21gl_one_room_is_keyed_by_grid_id() -> None:
+    """The ov21gl's rooms are always keyed by grid id, also on a one-room map (its room ids are all 0)."""
+    map_data = await parse_fixture("xiaomi.vacuum.ov21gl", rooms_map(
+        [(3, 0)], [{"id": 3, "room_id": 0, "name": "Living room"}], ONE_ROOM_PIXELS))
+
+    assert names(map_data) == {3: "Living room"}
+
+
+async def test_ov21gl_four_rooms_are_keyed_by_grid_id_on_their_own_geometry() -> None:
+    grid = await grid_bounds()
+    map_data = await parse_fixture("xiaomi.vacuum.ov21gl", rooms_map(
+        [(3, 0), (4, 0), (5, 0), (6, 0)],
+        [{"id": 3, "room_id": 0, "name": "Kitchen"}, {"id": 4, "room_id": 0, "name": "Hall"},
+         {"id": 5, "room_id": 0, "name": "Bed"}, {"id": 6, "room_id": 0, "name": "Bath"}]))
+
+    assert names(map_data) == {3: "Kitchen", 4: "Hall", 5: "Bed", 6: "Bath"}
+    assert {room_id: bounds(room) for room_id, room in map_data.rooms.items()} == grid
+
+
+async def test_two_rooms_with_the_same_room_id_are_keyed_by_grid_id() -> None:
+    """Every entry repeats one room id (two or more rooms): keyed by grid id, names on their own rooms."""
+    grid = await grid_bounds(TWO_ROOMS_PIXELS)
+    map_data = await parse_fixture("xiaomi.vacuum.ov81gl", rooms_map(
+        [(3, 0), (4, 0)], [{"id": 3, "room_id": 0, "name": "Kitchen"}, {"id": 4, "room_id": 0, "name": "Hall"}],
+        TWO_ROOMS_PIXELS))
+
+    assert names(map_data) == {3: "Kitchen", 4: "Hall"}
+    assert bounds(map_data.rooms[3]) == grid[3]
+    assert bounds(map_data.rooms[4]) == grid[4]
+
+
+async def test_a_partly_repeated_room_id_keeps_the_room_ids_the_vacuum_sends(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """Ids 1, 2, 3 and a fourth grid repeating 3: keys stay 1, 2, 3 as in 1.0.0, names on their rooms.
+
+    1.0.2 re-keyed every room by grid id here: key 3 was named "Bed" on the kitchen's geometry and
+    4, 5, 6 had no name, so the card sent the vacuum room ids it does not know.
+    """
+    grid = await grid_bounds()
+    map_data = await parse_fixture("xiaomi.vacuum.ov81gl", rooms_map(
+        [(3, 1), (4, 2), (5, 3), (6, 3)],
+        [{"room_id": 1, "name": "Kitchen"}, {"room_id": 2, "name": "Hall"}, {"room_id": 3, "name": "Bed"}]))
+
+    assert sorted(map_data.rooms) == [1, 2, 3]
+    assert map_data.rooms[1].name == "Kitchen"
+    assert bounds(map_data.rooms[1]) == grid[3]
+    assert map_data.rooms[2].name == "Hall"
+    assert bounds(map_data.rooms[2]) == grid[4]
+    assert map_data.rooms[3].name == "Bed"
+    assert bounds(map_data.rooms[3]) in (grid[5], grid[6])
+    assert any("xiaomi.vacuum.ov81gl" in r.getMessage() and "room id" in r.getMessage() for r in caplog.records)
+
+
+async def test_named_rooms_and_two_rooms_with_room_id_zero_keep_their_room_ids() -> None:
+    """Named rooms 1 and 2 plus two rooms with 0: keys 1, 2, 0 as in 1.0.0, not four unnamed grid ids."""
+    grid = await grid_bounds()
+    map_data = await parse_fixture("xiaomi.vacuum.ov81gl", rooms_map(
+        [(3, 1), (4, 2), (5, 0), (6, 0)],
+        [{"id": 3, "room_id": 1, "name": "Kitchen"}, {"id": 4, "room_id": 2, "name": "Hall"}]))
+
+    assert sorted(map_data.rooms) == [0, 1, 2]
+    assert map_data.rooms[1].name == "Kitchen"
+    assert bounds(map_data.rooms[1]) == grid[3]
+    assert map_data.rooms[2].name == "Hall"
+    assert bounds(map_data.rooms[2]) == grid[4]
+
+
+async def test_partly_repeated_room_ids_are_logged_once_per_vacuum(caplog: pytest.LogCaptureFixture) -> None:
+    model = "xiaomi.vacuum.ov81gl"
+    cloud = Cloud({"3": encrypt_xiaomi_map(rooms_map([(3, 1), (4, 2), (5, 3), (6, 3)], []), model, DEVICE_ID)})
+    with lan_vacuum(FakeLanVacuum(model, properties={(2, 2): 1, (10, 1): obj_name("3")})):
+        vacuum = make_vacuum(model, cloud)
+        await vacuum.get_map()
+        await vacuum.get_map()
+
+    logged = [r for r in caplog.records if model in r.getMessage() and "room id" in r.getMessage()]
+    assert len(logged) == 1
+    assert logged[0].levelno == logging.DEBUG
+
+
+async def test_live_path_mostly_outside_the_map_is_dropped(caplog: pytest.LogCaptureFixture) -> None:
+    """The trajectory decoder scans for marker bytes (confirmed on the S20+ only): a record layout it
+    misreads gives points far outside the map, which must not be drawn or exposed as `path`."""
+    model = "xiaomi.vacuum.ov81gl"
+    garbage = [(-100, -50), (90_000, 40_000), (-70_000, 120_000), (500_000, -300_000)]
+    cloud = cleaning_cloud(model, **{"traj-17": encode_trajectory(garbage)})
+    with lan_vacuum(FakeLanVacuum(model, properties=dict(CLEANING[model]))):
+        map_data, _ = await make_vacuum(model, cloud).get_map()
+
+    assert map_data.path is None
+    position = map_data.vacuum_position
+    assert (position.x, position.y) == (120, -80)  # the position property is not the path
+    assert any("path" in r.getMessage() and r.levelno == logging.DEBUG for r in caplog.records)
+
+
+async def test_live_path_with_a_few_points_outside_the_map_is_kept() -> None:
+    model = "xiaomi.vacuum.ov81gl"
+    points = [(-100, -50), (0, 0), (120, -80), (900, 0)]
+    cloud = cleaning_cloud(model, **{"traj-17": encode_trajectory(points)})
+    with lan_vacuum(FakeLanVacuum(model, properties=dict(CLEANING[model]))):
+        map_data, _ = await make_vacuum(model, cloud).get_map()
+
+    assert [(p.x, p.y) for p in map_data.path.path[0]] == points
+
+
 async def test_no_go_and_no_mop_zones_and_virtual_walls() -> None:
     """Upstream #739 / PR #748: `fb_regions` with `fb_point` and `fb_walls` were not drawn (S40, 5 Pro)."""
     map_data = await parse_fixture("xiaomi.vacuum.ov81gl", fixture_map("map_forbidden_areas.json"))
@@ -510,3 +664,36 @@ async def test_no_go_and_no_mop_zones_and_virtual_walls() -> None:
     assert [a.as_list() for a in map_data.no_go_areas] == [[-200, -150, -100, -150, -100, -50, -200, -50]]
     assert [a.as_list() for a in map_data.no_mopping_areas] == [[100, 50, 200, 50, 200, 150, 100, 150]]
     assert [w.as_list() for w in map_data.walls] == [[0, -150, 0, 150]]
+
+
+async def test_room_key_rule_is_logged_correctly_once_per_rule(caplog: pytest.LogCaptureFixture) -> None:
+    """Each rule logs once per vacuum with what really happens; the ov21gl is re-keyed even when
+    some of its ids repeat, and a model outside the quirk set re-keyed by the general rule says so."""
+    caplog.set_level(logging.DEBUG)
+    for model, rooms in [
+        ("xiaomi.vacuum.ov21gl", [(3, 1), (4, 0), (5, 0), (6, 0)]),
+        ("xiaomi.vacuum.ov21cn", [(3, 0), (4, 0)]),
+    ]:
+        cloud = Cloud({"3": encrypt_xiaomi_map(rooms_map(rooms, []), model, DEVICE_ID)})
+        with lan_vacuum(FakeLanVacuum(model, properties={(2, 2): 1, (10, 1): obj_name("3")})):
+            vacuum = make_vacuum(model, cloud)
+            await vacuum.get_map()
+            await vacuum.get_map()
+
+    ov21gl = [r.getMessage() for r in caplog.records if "ov21gl" in r.getMessage() and "room" in r.getMessage()]
+    assert len(ov21gl) == 1 and "keeping" not in ov21gl[0] and "grid id" in ov21gl[0]
+    ov21cn = [r.getMessage() for r in caplog.records if "ov21cn" in r.getMessage() and "room" in r.getMessage()]
+    assert len(ov21cn) == 1 and "grid id" in ov21cn[0]
+
+
+async def test_room_key_log_is_not_used_up_while_debug_is_off(caplog: pytest.LogCaptureFixture) -> None:
+    model = "xiaomi.vacuum.ov81gl"
+    cloud = Cloud({"3": encrypt_xiaomi_map(rooms_map([(3, 1), (4, 2), (5, 3), (6, 3)], []), model, DEVICE_ID)})
+    with lan_vacuum(FakeLanVacuum(model, properties={(2, 2): 1, (10, 1): obj_name("3")})):
+        vacuum = make_vacuum(model, cloud)
+        caplog.set_level(logging.INFO)
+        await vacuum.get_map()
+        caplog.set_level(logging.DEBUG)
+        await vacuum.get_map()
+
+    assert [r for r in caplog.records if model in r.getMessage() and "room id" in r.getMessage()]

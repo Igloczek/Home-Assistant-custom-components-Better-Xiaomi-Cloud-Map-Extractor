@@ -21,6 +21,7 @@ from .xiaomi_miot import (
     layout_for,
     object_name,
     object_path,
+    room_key_rule, ROOM_KEY_LOG,
     vacuum_position,
     with_live_data,
     with_unique_room_ids,
@@ -66,6 +67,7 @@ class XiaomiCloudVacuum(BaseXiaomiCloudVacuumV2):
         self._last_map_state: dict[Property, Any] = {}
         self._live_path: list[dict[str, Any]] = []
         self._live_position: dict[str, Any] | None = None
+        self._logged_room_key_rules: set[str] = set()
 
     @property
     def _model_key(self: Self) -> str:
@@ -258,7 +260,12 @@ class XiaomiCloudVacuum(BaseXiaomiCloudVacuumV2):
                 if payload is None:
                     raise
             if isinstance(payload, dict):
-                payload = with_unique_room_ids(payload)
+                rule = room_key_rule(payload, self.model)
+                # Once per rule and vacuum, counted only when the line is really written.
+                if rule and rule not in self._logged_room_key_rules and _LOGGER.isEnabledFor(logging.DEBUG):
+                    self._logged_room_key_rules.add(rule)
+                    _LOGGER.debug(ROOM_KEY_LOG[rule], self.model)
+                payload = with_unique_room_ids(payload, self.model)
                 payload = with_live_data(payload, self._live_path, self._live_position)
             return self.map_data_parser.parse(payload)
         except Exception as err:
